@@ -313,8 +313,8 @@ class WorkspaceTools:
            这叫"路径遍历防护"（Path Traversal Prevention），
            是 Agent 安全的基础要求。
         """
-        candidate = (self.root / raw).resolve()
-        root = self.root.resolve()
+        root = Path(self.root).resolve()
+        candidate = (root / raw).resolve()
         if candidate != root and root not in candidate.parents:
             raise ValueError("path escapes workspace")
         return candidate
@@ -337,12 +337,13 @@ class WorkspaceTools:
         if not needle:
             raise ValueError("search input must not be empty")
         matches = []
-        for path in self.root.rglob("*"):
+        root = Path(self.root)
+        for path in root.rglob("*"):
             if path.is_file() and ".git" not in path.parts and path.stat().st_size < 1_000_000:
                 try:
                     for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
                         if needle in line:
-                            matches.append(f"{path.relative_to(self.root)}:{number}:{line[:200]}")
+                            matches.append(f"{path.relative_to(root)}:{number}:{line[:200]}")
                             if len(matches) >= 100:
                                 return "\n".join(matches)
                 except (UnicodeDecodeError, OSError):
