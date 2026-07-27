@@ -20,6 +20,7 @@
 | [测试用例](testing/test-cases.md) | 功能、安全、恢复、协议、性能和发布用例 |
 | [测试报告](testing/test-report-2026-07-27.md) | 当前基线证据、静态确认缺陷、阻塞项和发布结论 |
 | [M0 Minimum CI 验证](testing/m0-ci-validation.md) | Python 3.11 最小门禁的真实执行、发现、修复和边界 |
+| [M0 Closeout](roadmap/m0-closeout.md) | M0 Exit Gate、完成项、仓库设置阻塞和 M1 准入条件 |
 | [开源就绪执行计划](roadmap/open-source-readiness-plan.md) | Contract-first 的 M0–M6 开源阻断项清零计划 |
 
 ## 治理与维护
@@ -73,6 +74,6 @@
 
 ## 当前发布状态
 
-M0 最小 Python 3.11 自动化门禁已有真实绿色证据，但完整跨平台 CI、P0/P1 对抗测试、覆盖率和发布构件证据尚未形成。
+M0 最小 Python 3.11 自动化门禁已有真实绿色证据，但完整跨平台 CI、P0/P1 对抗测试、覆盖率、发布构件证据和仓库级 required-check enforcement 尚未全部形成。
 
 **当前结论：NO RELEASE。**
