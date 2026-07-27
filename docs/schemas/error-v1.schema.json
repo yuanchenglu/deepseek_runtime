@@ -1,0 +1,54 @@
+{
+  "$id": "https://deepseek-runtime.local/schemas/error-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "cause_class": {
+      "maxLength": 128,
+      "type": ["string", "null"]
+    },
+    "code": {
+      "enum": [
+        "PROVIDER_ERROR",
+        "PROVIDER_RESPONSE_INVALID",
+        "TOOL_NOT_FOUND",
+        "TOOL_ARGUMENT_INVALID",
+        "TOOL_EXECUTION_FAILED",
+        "TOOL_TIMEOUT",
+        "TOOL_RESULT_INVALID",
+        "TOOL_SIDE_EFFECT_UNCERTAIN",
+        "SANDBOX_VIOLATION",
+        "PERMISSION_DENIED",
+        "CHECKPOINT_CORRUPT",
+        "CHECKPOINT_VERSION_UNSUPPORTED",
+        "ROLLBACK_HANDLE_INVALID",
+        "ROLLBACK_HANDLE_EXPIRED",
+        "ROLLBACK_WORKSPACE_MISMATCH",
+        "ROLLBACK_CONFLICT",
+        "CHANGE_CONFLICT",
+        "BUDGET_STEP_EXCEEDED",
+        "BUDGET_TOKEN_EXCEEDED",
+        "BUDGET_COST_EXCEEDED",
+        "BUDGET_CONTEXT_EXCEEDED",
+        "BUDGET_TIME_EXCEEDED",
+        "CANCELLED",
+        "INTERNAL_ERROR"
+      ],
+      "type": "string"
+    },
+    "details": {"type": "object"},
+    "message": {"maxLength": 512, "minLength": 1, "type": "string"},
+    "retryable": {"type": "boolean"},
+    "schema_version": {"const": "1.0"}
+  },
+  "required": [
+    "schema_version",
+    "code",
+    "message",
+    "retryable",
+    "details",
+    "cause_class"
+  ],
+  "title": "DeepSeek Runtime Error v1",
+  "type": "object"
+}
