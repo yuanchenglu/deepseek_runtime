@@ -19,6 +19,7 @@
 | [State Transition Manifest](contracts/runtime-state-transitions.json) | 合法状态转换及 checkpoint/retry/approval/receipt 分母 |
 | [Versioned Schemas](schemas/README.md) | Error、Checkpoint、Evidence 与 ChangeJournal JSON Schema |
 | [Alpha Traceability](traceability/alpha-traceability.md) | Requirement → Milestone → PR → Test → Evidence 唯一追踪表 |
+| [M1-A Contract Evidence](traceability/m1-core-contracts.md) | PR #6 合同实现、Run 38、Partial 状态与剩余阻塞 |
 | [测试计划](testing/test-plan.md) | 测试策略、环境、明确分母、准入和退出标准 |
 | [测试用例](testing/test-cases.md) | 功能、安全、恢复、协议、性能和发布用例 |
 | [测试报告](testing/test-report-2026-07-27.md) | 当前基线证据、静态确认缺陷、阻塞项和发布结论 |
@@ -77,6 +78,6 @@
 
 ## 当前发布状态
 
-M1-A 正在冻结核心合同；现有生产 Runtime、Session 和 ChangeManager 尚未迁移。Workspace、rollback 和 uncertain side-effect P0 仍未关闭。
+M1-A 已形成合同级绿色证据；现有生产 Runtime、Session 和 ChangeManager 尚未迁移。Workspace、rollback 和 uncertain side-effect P0 仍未关闭。
 
 **当前结论：NO RELEASE。**
