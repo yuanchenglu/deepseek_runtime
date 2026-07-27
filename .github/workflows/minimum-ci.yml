@@ -41,23 +41,6 @@ jobs:
       - name: Critical lint
         run: python -m ruff check src tests scripts --select E9,F63,F7,F82
 
-      - name: Capture source snapshot
-        env:
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          git rev-parse "${HEAD_SHA}^{tree}" > base-tree.txt
-
-      - name: Upload source snapshot
-        uses: actions/upload-artifact@v4
-        with:
-          name: m0-source-snapshot
-          path: |
-            base-tree.txt
-            src/deepseek_runtime/observability.py
-            src/deepseek_runtime/runtime.py
-          if-no-files-found: error
-          retention-days: 7
-
       - name: Collect basic type-check diagnostics
         id: pyright
         shell: bash
