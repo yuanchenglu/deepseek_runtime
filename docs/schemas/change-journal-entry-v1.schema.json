@@ -1,0 +1,52 @@
+{
+  "$id": "https://deepseek-runtime.local/schemas/change-journal-entry-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "change_set_id": {"maxLength": 256, "minLength": 1, "type": "string"},
+    "consumed": {"type": "boolean"},
+    "created_at_unix": {"minimum": 0, "type": "integer"},
+    "expires_at_unix": {"minimum": 1, "type": "integer"},
+    "files": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "original_content_b64": {"type": ["string", "null"]},
+          "original_mode": {"minimum": 0, "type": ["integer", "null"]},
+          "original_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": ["string", "null"]
+          },
+          "post_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+          "relative_path": {"minLength": 1, "type": "string"}
+        },
+        "required": [
+          "relative_path",
+          "original_sha256",
+          "post_sha256",
+          "original_content_b64",
+          "original_mode"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "handle_id": {"pattern": "^[A-Za-z0-9_-]{32,256}$", "type": "string"},
+    "protection": {"enum": ["owner-only", "encrypted"], "type": "string"},
+    "schema_version": {"const": "1.0"},
+    "workspace_id": {"maxLength": 256, "minLength": 1, "type": "string"}
+  },
+  "required": [
+    "schema_version",
+    "handle_id",
+    "workspace_id",
+    "change_set_id",
+    "files",
+    "created_at_unix",
+    "expires_at_unix",
+    "consumed",
+    "protection"
+  ],
+  "title": "Change Journal Entry v1",
+  "type": "object"
+}
