@@ -38,6 +38,7 @@ from .security import (
     content_sha256,
 )
 from .session import SessionState, resume_tool_calls
+from .workspace import WorkspaceResolver, WorkspaceViolation
 
 __version__ = "0.1.1a1"
 
@@ -74,7 +75,9 @@ __all__ = [
     "ToolCallCheckpoint",
     "ToolSpec",
     "TransitionRule",
+    "WorkspaceResolver",
     "WorkspaceSandbox",
+    "WorkspaceViolation",
     "WorkspaceTools",
     "build_diagnostics",
     "content_sha256",

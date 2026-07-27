@@ -4,10 +4,10 @@ on:
   push:
     branches: [develop]
   pull_request:
-    branches: [develop, master, agent/m1-core-contracts]
+    branches: [develop, master]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: minimum-ci-${{ github.workflow }}-${{ github.ref }}
@@ -20,21 +20,11 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Check out migration branch
+      - name: Check out repository
         uses: actions/checkout@v4
         with:
-          ref: agent/m1-workspace-p0
           fetch-depth: 0
           show-progress: false
-
-      - name: Apply and commit one-time workspace migration
-        run: |
-          python scripts/apply_workspace_migration.py
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "fix: unify no-follow workspace containment"
-          git push origin HEAD:agent/m1-workspace-p0
 
       - name: Set up Python
         uses: actions/setup-python@v5
