@@ -12,6 +12,8 @@ ADR records are normative technical decisions for the Open-source Alpha. A super
 | [ADR-006](ADR-006-type-checker.md) | Pyright is the repository type checker | Accepted |
 | [ADR-007](ADR-007-versioning-and-errors.md) | APIs, schemas, and error codes follow explicit compatibility rules | Accepted |
 | [ADR-008](ADR-008-release-branch-flow.md) | Releases flow from develop to master to tag | Accepted |
+| [ADR-009](ADR-009-rollback-handle-journal.md) | Rollback authorization uses opaque handles and a durable ChangeJournal | Accepted |
+| [ADR-010](ADR-010-coverage-gate-manifests.md) | Coverage and Release Gates use explicit versioned denominators | Accepted |
 
 ## Required ADR fields
 
