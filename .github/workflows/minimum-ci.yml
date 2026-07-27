@@ -1,4 +1,3 @@
-# Temporary compacted-head validation trigger; removed in the next commit.
 name: Minimum CI
 
 on:
