@@ -5,7 +5,7 @@
 > Validated implementation commit: `144c16f09f175a387dfd184f4e9883cf3e9a86dd`
 > Workflow: `Minimum CI`
 > Implementation run: 48 (`30291608906`), `success`
-> Standard final validation: triggered against `develop`
+> Standard final validation: 49 (`30291890732`), `success`
 > Release decision: **NO RELEASE**
 
 ## 1. Scope
@@ -41,7 +41,7 @@ The production `ChangeManager` no longer trusts a caller-provided rollback paylo
 7. one-time consumption and created-file deletion;
 8. audit records contain no original or new file content.
 
-Run 48 passed critical Ruff diagnostics, Pyright, all existing and new unit tests, package import, tracked-secret scan and documentation checks.
+Runs 48 and 49 passed critical Ruff diagnostics, Pyright, all existing and new unit tests, package import, tracked-secret scan and documentation checks. Run 49 used the standard read-only repository workflow against the final production branch contents.
 
 ## 4. Storage and privacy boundary
 
