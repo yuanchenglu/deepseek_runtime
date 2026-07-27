@@ -14,11 +14,26 @@
 | [技术架构](architecture/technical-architecture.md) | 当前实现、目标组件、数据流、信任边界和非功能约束 |
 | [PRD](product/PRD.md) | 产品需求、优先级、验收标准、非目标和 M0–M6 发布门禁 |
 | [Threat Model](security/threat-model.md) | 保护资产、攻击输入、信任边界、保证与未保证边界 |
+| [ADR Index](adr/README.md) | 已接受的 Runtime、安全、恢复、schema、类型和发布决策 |
 | [Alpha Traceability](traceability/alpha-traceability.md) | Requirement → Milestone → PR → Test → Evidence 唯一追踪表 |
 | [测试计划](testing/test-plan.md) | 测试策略、环境、明确分母、准入和退出标准 |
 | [测试用例](testing/test-cases.md) | 功能、安全、恢复、协议、性能和发布用例 |
 | [测试报告](testing/test-report-2026-07-27.md) | 当前基线证据、静态确认缺陷、阻塞项和发布结论 |
+| [M0 Minimum CI 验证](testing/m0-ci-validation.md) | Python 3.11 最小门禁的真实执行、发现、修复和边界 |
 | [开源就绪执行计划](roadmap/open-source-readiness-plan.md) | Contract-first 的 M0–M6 开源阻断项清零计划 |
+
+## 治理与维护
+
+| 文档 | 目的 |
+| --- | --- |
+| [`CONTRIBUTING.md`](../CONTRIBUTING.md) | 贡献流程、PR 内容、检查命令和 Definition of Done |
+| [`SECURITY.md`](../SECURITY.md) | 安全范围、私密报告渠道、严重度和响应目标 |
+| [`SUPPORT.md`](../SUPPORT.md) | 当前支持范围、问题入口和不支持场景 |
+| [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) | 社区行为与执行原则 |
+| [`NOTICE`](../NOTICE) | 源码沿革和归属声明 |
+| [Breaking-change Policy](governance/breaking-change-policy.md) | API、CLI、schema 和 error-code 兼容流程 |
+| [Dependency License Review](governance/dependency-license-review.md) | 当前 manifest、许可风险和 M5 复核要求 |
+| [Dependency/Security Update Policy](governance/dependency-security-update-policy.md) | 依赖引入、版本、更新、漏洞和 No-Go 规则 |
 
 ## 文档权威顺序
 
@@ -58,6 +73,6 @@
 
 ## 当前发布状态
 
-当前基线仍存在 P0/P1 阻断项，且完整动态测试和发布构件证据尚未形成。
+M0 最小 Python 3.11 自动化门禁已有真实绿色证据，但完整跨平台 CI、P0/P1 对抗测试、覆盖率和发布构件证据尚未形成。
 
 **当前结论：NO RELEASE。**
