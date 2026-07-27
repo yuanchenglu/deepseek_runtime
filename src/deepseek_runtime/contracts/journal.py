@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 import secrets
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 from typing import Any, Mapping
 
@@ -18,6 +18,7 @@ _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 class RollbackHandle:
     handle_id: str
     schema_version: str = CHANGE_JOURNAL_SCHEMA_VERSION
+    consumed: bool = field(default=False, compare=False, repr=False)
 
     def __post_init__(self) -> None:
         if self.schema_version != CHANGE_JOURNAL_SCHEMA_VERSION:

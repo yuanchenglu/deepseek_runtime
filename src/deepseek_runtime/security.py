@@ -33,6 +33,15 @@ from enum import Enum  # 枚举类型（有限个选项）
 from pathlib import Path
 from typing import Callable, Sequence
 
+from .change_journal import ChangeJournalStore, workspace_identity
+from .contracts import (
+    ChangeJournalEntry,
+    ContractViolation,
+    ErrorCode,
+    JournalFileRecord,
+    RollbackHandle,
+    RuntimeErrorInfo,
+)
 from .workspace import WorkspaceResolver, WorkspaceViolation
 
 
@@ -294,41 +303,52 @@ class ChangeSet:
     changes: tuple[FileChange, ...]
     change_set_id: str = field(default_factory=lambda: uuid.uuid4().hex)
 
-@dataclass
-class RollbackToken:
-    """回滚令牌：保存了修改前的原始内容，用于撤销修改。每个令牌只能使用一次。"""
-    change_set_id: str
-    originals: dict[Path, bytes | None]
-    consumed: bool = False
+# Backward-compatible name only. The production authority is the opaque handle ID;
+# callers cannot supply paths or original bytes.
+RollbackToken = RollbackHandle
 
 
 # ===== ChangeManager（变更管理器）=====
 
-# ❓ 问：ChangeManager 的核心职责是什么？
-# 💡 答：协调文件修改的完整生命周期——
-#   1. preview() —— 生成 diff 差异对比（给用户审批）
-#   2. apply() —— 原子写入+自动回滚（事务性提交）
-#   3. rollback() —— 撤销修改，恢复原始内容
-
 class ChangeManager:
-    """文件变更管理器：预览 → 应用（原子写入）→ 回滚"""
+    """文件变更管理器：预览 → 持久化 Journal → 应用 → 受约束回滚。"""
+
     def __init__(
         self,
         sandbox: WorkspaceSandbox,
         policy: PermissionPolicy | None = None,
         replace: Callable[[str | os.PathLike[str], str | os.PathLike[str]], None] = os.replace,
+        journal_store: ChangeJournalStore | None = None,
+        clock: Callable[[], float] = time.time,
+        journal_ttl_seconds: int = 7 * 24 * 60 * 60,
     ):
+        if journal_ttl_seconds <= 0:
+            raise ValueError("journal_ttl_seconds must be positive")
         self.sandbox = sandbox
         self.policy = policy or sandbox.policy
         self.replace = replace
+        self.clock = clock
+        self.journal_ttl_seconds = journal_ttl_seconds
+        self.workspace_id = workspace_identity(sandbox.root)
+        self.journal_store = journal_store or ChangeJournalStore(clock=clock)
+        self.journal_store.cleanup_expired()
         self.audit_events: list[dict[str, object]] = []
 
+    @staticmethod
+    def _contract_error(code: ErrorCode, message: str, **details: object) -> ContractViolation:
+        return ContractViolation(RuntimeErrorInfo(code, message, details=details))
+
     def _current(self, path: Path) -> bytes | None:
-        """读取文件的当前内容（文件不存在则返回 None）"""
         return path.read_bytes() if path.exists() else None
 
-    def _validate(self, change: FileChange) -> tuple[Path, bytes | None]:
-        """验证修改的合法性：路径在沙箱内、哈希匹配、有写入权限"""
+    @staticmethod
+    def _mode(path: Path) -> int | None:
+        try:
+            return stat.S_IMODE(path.stat(follow_symlinks=False).st_mode)
+        except FileNotFoundError:
+            return None
+
+    def _validate(self, change: FileChange) -> tuple[Path, bytes | None, int | None]:
         path = self.sandbox.resolve(change.path)
         current = self._current(path)
         if change.original_sha256 is None:
@@ -339,69 +359,178 @@ class ChangeManager:
         decision = self.policy.decide(PermissionRequest(Risk.WRITE, self.sandbox.relative(path)))
         if decision is not Decision.ALLOW:
             raise PermissionDenied(f"write requires {decision.value}: {change.path}")
-        return path, current
+        return path, current, self._mode(path)
 
     def preview(self, change_set: ChangeSet) -> str:
-        """生成 unified diff，展示给用户看修改前后对比"""
         chunks: list[str] = []
         for change in change_set.changes:
             path = self.sandbox.resolve(change.path)
             current = self._current(path)
             before = (current or b"").decode("utf-8", errors="replace").splitlines(keepends=True)
             after = change.new_content.splitlines(keepends=True)
-            chunks.extend(difflib.unified_diff(before, after, fromfile=f"a/{change.path}", tofile=f"b/{change.path}"))
+            chunks.extend(
+                difflib.unified_diff(
+                    before,
+                    after,
+                    fromfile=f"a/{change.path}",
+                    tofile=f"b/{change.path}",
+                )
+            )
         return "".join(chunks)
 
-    def apply(self, change_set: ChangeSet) -> RollbackToken:
-        """
-        原子应用修改：先验证全部 → 再逐个写入 → 失败则自动回滚
-        参考 llm-harness-agent 论文 A1 中关于事务性 Agent 操作的讨论。
-        """
-        validated = [(*self._validate(change), change) for change in change_set.changes]
-        originals = {path: current for path, current, _ in validated}
-        applied: list[Path] = []
-        temps: list[Path] = []
+    def _write_bytes(self, path: Path, content: bytes, mode: int | None = None, *, suffix: str = "") -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.{suffix}", dir=path.parent)
+        temp = Path(temp_name)
         try:
-            for path, _, change in validated:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
-                temp = Path(temp_name)
-                temps.append(temp)
-                with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                    handle.write(change.new_content)
-                    handle.flush()
-                    os.fsync(handle.fileno())
-                self.replace(temp, path)
-                applied.append(path)
-            token = RollbackToken(change_set.change_set_id, originals)
-            self.audit_events.append({"event": "changeset_applied", "change_set_id": change_set.change_set_id, "paths": [self.sandbox.relative(path) for path in applied]})
-            return token
-        except Exception:
-            self._restore({path: originals[path] for path in applied})
-            self.audit_events.append({"event": "changeset_apply_failed_rolled_back", "change_set_id": change_set.change_set_id, "paths": [self.sandbox.relative(path) for path in applied]})
-            raise
-        finally:
-            for temp in temps:
-                temp.unlink(missing_ok=True)
-
-    def _restore(self, originals: dict[Path, bytes | None]) -> None:
-        """恢复文件到指定内容（None = 删除文件）"""
-        for path, content in originals.items():
-            if content is None:
-                path.unlink(missing_ok=True)
-                continue
-            path.parent.mkdir(parents=True, exist_ok=True)
-            fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.rollback.", dir=path.parent)
             with os.fdopen(fd, "wb") as handle:
                 handle.write(content)
                 handle.flush()
                 os.fsync(handle.fileno())
-            os.replace(temp_name, path)
+            self.replace(temp, path)
+            if mode is not None:
+                try:
+                    path.chmod(mode)
+                except OSError:
+                    pass
+        finally:
+            temp.unlink(missing_ok=True)
 
-    def rollback(self, token: RollbackToken) -> None:
-        """回滚：恢复到修改前的内容。每个令牌只能回滚一次（幂等性保护）"""
-        if token.consumed:
-            raise ValueError("rollback token already consumed")
-        self._restore(token.originals)
-        token.consumed = True
-        self.audit_events.append({"event": "changeset_rolled_back", "change_set_id": token.change_set_id})
+    def _restore_originals(self, originals: dict[Path, tuple[bytes | None, int | None]]) -> None:
+        for path, (content, mode) in originals.items():
+            if content is None:
+                path.unlink(missing_ok=True)
+            else:
+                self._write_bytes(path, content, mode, suffix="rollback.")
+
+    def apply(self, change_set: ChangeSet) -> RollbackHandle:
+        """Persist private recovery state before applying a validated change set."""
+        validated = [(*self._validate(change), change) for change in change_set.changes]
+        handle = RollbackHandle.issue()
+        now = int(self.clock())
+        records = [
+            JournalFileRecord(
+                relative_path=self.sandbox.relative(path),
+                original_sha256=content_sha256(current) if current is not None else None,
+                post_sha256=content_sha256(change.new_content.encode("utf-8")),
+                original_content_b64=(base64.b64encode(current).decode("ascii") if current is not None else None),
+                original_mode=mode,
+            )
+            for path, current, mode, change in validated
+        ]
+        entry = ChangeJournalEntry(
+            handle_id=handle.handle_id,
+            workspace_id=self.workspace_id,
+            change_set_id=change_set.change_set_id,
+            files=records,
+            created_at_unix=now,
+            expires_at_unix=now + self.journal_ttl_seconds,
+        )
+        self.journal_store.save(entry)
+
+        originals = {path: (current, mode) for path, current, mode, _ in validated}
+        applied: list[Path] = []
+        try:
+            for path, _, mode, change in validated:
+                self._write_bytes(path, change.new_content.encode("utf-8"), mode)
+                applied.append(path)
+            self.audit_events.append(
+                {
+                    "event": "changeset_applied",
+                    "change_set_id": change_set.change_set_id,
+                    "handle_id": handle.handle_id,
+                    "paths": [self.sandbox.relative(path) for path in applied],
+                }
+            )
+            return handle
+        except Exception:
+            self._restore_originals({path: originals[path] for path in applied})
+            self.journal_store.delete(handle)
+            self.audit_events.append(
+                {
+                    "event": "changeset_apply_failed_rolled_back",
+                    "change_set_id": change_set.change_set_id,
+                    "paths": [self.sandbox.relative(path) for path in applied],
+                }
+            )
+            raise
+
+    @staticmethod
+    def _decode_original(record: JournalFileRecord) -> bytes | None:
+        if record.original_sha256 is None:
+            if record.original_content_b64 is not None:
+                raise ValueError("new-file journal record contains original content")
+            return None
+        if record.original_content_b64 is None:
+            raise ValueError("existing-file journal record lacks original content")
+        value = base64.b64decode(record.original_content_b64.encode("ascii"), validate=True)
+        if content_sha256(value) != record.original_sha256:
+            raise ValueError("journal original content hash mismatch")
+        return value
+
+    def rollback(self, handle: RollbackHandle) -> None:
+        """Resolve an opaque handle and restore only its protected journal entry."""
+        try:
+            entry = self.journal_store.load(handle)
+        except ContractViolation:
+            raise
+        except Exception as exc:
+            raise self._contract_error(
+                ErrorCode.ROLLBACK_HANDLE_INVALID,
+                "rollback handle cannot be resolved",
+                cause_class=type(exc).__name__,
+            ) from exc
+
+        now = int(self.clock())
+        if entry.consumed:
+            raise self._contract_error(ErrorCode.ROLLBACK_HANDLE_INVALID, "rollback handle already consumed")
+        if entry.expires_at_unix <= now:
+            raise self._contract_error(ErrorCode.ROLLBACK_HANDLE_EXPIRED, "rollback handle expired")
+        if entry.workspace_id != self.workspace_id:
+            raise self._contract_error(
+                ErrorCode.ROLLBACK_WORKSPACE_MISMATCH,
+                "rollback handle belongs to a different workspace",
+            )
+
+        prepared: list[tuple[Path, bytes | None, int | None, str]] = []
+        try:
+            for record in entry.files:
+                path = self.sandbox.resolve(record.relative_path)
+                current = self._current(path)
+                if current is None or content_sha256(current) != record.post_sha256:
+                    raise self._contract_error(
+                        ErrorCode.ROLLBACK_CONFLICT,
+                        "workspace content changed after apply",
+                        path=record.relative_path,
+                    )
+                decision = self.policy.decide(PermissionRequest(Risk.WRITE, record.relative_path))
+                if decision is not Decision.ALLOW:
+                    raise PermissionDenied(f"rollback write requires {decision.value}: {record.relative_path}")
+                prepared.append((path, self._decode_original(record), record.original_mode, record.relative_path))
+        except ContractViolation:
+            raise
+        except (ValueError, OSError) as exc:
+            raise self._contract_error(
+                ErrorCode.ROLLBACK_HANDLE_INVALID,
+                "rollback journal entry is invalid",
+                cause_class=type(exc).__name__,
+            ) from exc
+
+        restored: list[str] = []
+        for path, original, mode, relative_path in prepared:
+            if original is None:
+                path.unlink(missing_ok=True)
+            else:
+                self._write_bytes(path, original, mode, suffix="rollback.")
+            restored.append(relative_path)
+
+        self.journal_store.mark_consumed(entry)
+        object.__setattr__(handle, "consumed", True)
+        self.audit_events.append(
+            {
+                "event": "changeset_rolled_back",
+                "change_set_id": entry.change_set_id,
+                "handle_id": handle.handle_id,
+                "paths": restored,
+            }
+        )
