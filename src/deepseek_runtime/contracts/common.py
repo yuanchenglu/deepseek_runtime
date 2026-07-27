@@ -152,10 +152,10 @@ def sanitize_public(value: Any, *, depth: int = 0) -> Any:
         return output
     if isinstance(value, (list, tuple)):
         items = list(value)
-        output = [sanitize_public(item, depth=depth + 1) for item in items[:100]]
+        list_output = [sanitize_public(item, depth=depth + 1) for item in items[:100]]
         if len(items) > 100:
-            output.append("[TRUNCATED]")
-        return output
+            list_output.append("[TRUNCATED]")
+        return list_output
     if isinstance(value, str):
         return value if len(value) <= 512 else value[:512] + "[TRUNCATED]"
     if isinstance(value, float):
