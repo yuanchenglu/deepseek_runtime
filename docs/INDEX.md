@@ -15,12 +15,15 @@
 | [PRD](product/PRD.md) | 产品需求、优先级、验收标准、非目标和 M0–M6 发布门禁 |
 | [Threat Model](security/threat-model.md) | 保护资产、攻击输入、信任边界、保证与未保证边界 |
 | [ADR Index](adr/README.md) | 已接受的 Runtime、安全、恢复、schema、类型和发布决策 |
+| [Runtime Core Contracts](contracts/runtime-contracts.md) | Error、State、Tool、Checkpoint、Evidence、Recovery 与 ChangeJournal 合同 |
+| [State Transition Manifest](contracts/runtime-state-transitions.json) | 合法状态转换及 checkpoint/retry/approval/receipt 分母 |
+| [Versioned Schemas](schemas/README.md) | Error、Checkpoint、Evidence 与 ChangeJournal JSON Schema |
 | [Alpha Traceability](traceability/alpha-traceability.md) | Requirement → Milestone → PR → Test → Evidence 唯一追踪表 |
 | [测试计划](testing/test-plan.md) | 测试策略、环境、明确分母、准入和退出标准 |
 | [测试用例](testing/test-cases.md) | 功能、安全、恢复、协议、性能和发布用例 |
 | [测试报告](testing/test-report-2026-07-27.md) | 当前基线证据、静态确认缺陷、阻塞项和发布结论 |
 | [M0 Minimum CI 验证](testing/m0-ci-validation.md) | Python 3.11 最小门禁的真实执行、发现、修复和边界 |
-| [M0 Closeout](roadmap/m0-closeout.md) | M0 Exit Gate、完成项、仓库设置阻塞和 M1 准入条件 |
+| [M0 Closeout](roadmap/m0-closeout.md) | M0 Exit Gate、完成项、仓库设置和 M1 准入条件 |
 | [开源就绪执行计划](roadmap/open-source-readiness-plan.md) | Contract-first 的 M0–M6 开源阻断项清零计划 |
 
 ## 治理与维护
@@ -42,7 +45,7 @@
 
 1. `product/PRD.md`：范围、优先级、Requirement 和验收标准；
 2. `security/threat-model.md`：安全保证、非保证和信任边界；
-3. `architecture/*` 与 ADR：技术合同和实现决策；
+3. `architecture/*`、`contracts/*`、`schemas/*` 与 ADR：技术合同和实现决策；
 4. `testing/test-cases.md`：验证场景，不得修改 Requirement 优先级；
 5. `traceability/alpha-traceability.md`：执行归属和证据状态；
 6. `roadmap/open-source-readiness-plan.md`：执行顺序和里程碑；
@@ -74,6 +77,6 @@
 
 ## 当前发布状态
 
-M0 最小 Python 3.11 自动化门禁已有真实绿色证据，但完整跨平台 CI、P0/P1 对抗测试、覆盖率、发布构件证据和仓库级 required-check enforcement 尚未全部形成。
+M1-A 正在冻结核心合同；现有生产 Runtime、Session 和 ChangeManager 尚未迁移。Workspace、rollback 和 uncertain side-effect P0 仍未关闭。
 
 **当前结论：NO RELEASE。**
