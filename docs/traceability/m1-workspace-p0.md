@@ -4,8 +4,8 @@
 > Stacked base: PR #6 (`agent/m1-core-contracts`)
 > Validated implementation commit: `d3cb31734d440c68cf6a98195e61787649c22f0e`
 > Workflow: `Minimum CI`
-> Run: 44 (`30290538817`)
-> Result: `success`
+> Implementation run: 44 (`30290538817`), `success`
+> Final evidence run: pending
 > Release decision: **NO RELEASE**
 
 ## 1. Scope
