@@ -4,7 +4,7 @@ on:
   push:
     branches: [develop]
   pull_request:
-    branches: [develop, master]
+    branches: [develop, master, agent/m1-core-contracts]
 
 permissions:
   contents: read
@@ -25,6 +25,18 @@ jobs:
         with:
           fetch-depth: 0
           show-progress: false
+
+      - name: Upload workspace migration source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: workspace-migration-source
+          path: |
+            src/deepseek_runtime/security.py
+            src/deepseek_runtime/runtime.py
+            src/deepseek_runtime/__init__.py
+            tests
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Set up Python
         uses: actions/setup-python@v5
