@@ -5,7 +5,7 @@
 > Validated implementation commit: `d3cb31734d440c68cf6a98195e61787649c22f0e`
 > Workflow: `Minimum CI`
 > Implementation run: 44 (`30290538817`), `success`
-> Final evidence run: pending
+> Standard final validation: 45 (`30290781979`), `success`
 > Release decision: **NO RELEASE**
 
 ## 1. Scope
@@ -42,7 +42,7 @@ The Alpha policy is conservative:
 7. Windows reparse attribute classification;
 8. an actual Windows junction test that runs only on Windows.
 
-Run 44 passed critical Ruff diagnostics, Pyright, all existing and new unit tests, package import, tracked-secret scan, and documentation checks.
+Runs 44 and 45 passed critical Ruff diagnostics, Pyright, all existing and new unit tests, package import, tracked-secret scan, and documentation checks. Run 45 used the normal repository workflow after all temporary migration files and write permissions were removed.
 
 ## 4. Security boundary
 
