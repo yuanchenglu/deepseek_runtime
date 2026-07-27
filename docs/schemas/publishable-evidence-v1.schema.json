@@ -1,0 +1,51 @@
+{
+  "$id": "https://deepseek-runtime.local/schemas/publishable-evidence-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "cost": {"type": "object"},
+    "errors": {
+      "items": {"$ref": "error-v1.schema.json"},
+      "type": "array"
+    },
+    "metadata": {"type": "object"},
+    "request_structure": {"items": {"type": "object"}, "type": "array"},
+    "response_structure": {"items": {"type": "object"}, "type": "array"},
+    "run_id": {"maxLength": 256, "minLength": 1, "type": "string"},
+    "runtime_state": {
+      "enum": [
+        "CREATED",
+        "PROVIDER_PENDING",
+        "PROVIDER_COMPLETED",
+        "TOOL_REQUESTED",
+        "APPROVAL_PENDING",
+        "TOOL_RUNNING",
+        "TOOL_SUCCEEDED",
+        "TOOL_FAILED",
+        "TOOL_SIDE_EFFECT_UNCERTAIN",
+        "COMPLETED",
+        "FAILED",
+        "CANCELLED",
+        "BUDGET_EXCEEDED"
+      ],
+      "type": "string"
+    },
+    "schema_version": {"const": "1.0"},
+    "transitions": {"items": {"type": "object"}, "type": "array"},
+    "usage": {"type": "object"}
+  },
+  "required": [
+    "schema_version",
+    "run_id",
+    "runtime_state",
+    "transitions",
+    "request_structure",
+    "response_structure",
+    "usage",
+    "cost",
+    "errors",
+    "metadata"
+  ],
+  "title": "Publishable Evidence v1",
+  "type": "object"
+}
