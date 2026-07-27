@@ -20,10 +20,12 @@
 
 from __future__ import annotations
 
+import base64
 import difflib  # 生成文件差异对比（diff）
 import fnmatch  # 文件名模式匹配（类似于 *.txt 的 glob 模式）
 import hashlib  # 哈希计算
 import os
+import stat
 import subprocess  # 执行系统命令
 import tempfile  # 临时文件
 import time
