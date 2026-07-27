@@ -5,7 +5,7 @@
 > Validated implementation commit: `144c16f09f175a387dfd184f4e9883cf3e9a86dd`
 > Workflow: `Minimum CI`
 > Implementation run: 48 (`30291608906`), `success`
-> Standard final validation: pending
+> Standard final validation: triggered against `develop`
 > Release decision: **NO RELEASE**
 
 ## 1. Scope
