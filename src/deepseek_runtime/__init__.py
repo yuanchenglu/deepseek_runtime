@@ -38,7 +38,13 @@ from .security import (
     WorkspaceSandbox,
     content_sha256,
 )
-from .session import SessionState, resume_tool_calls
+from .session import (
+    SessionState,
+    ToolCallRecord,
+    ToolExecutionResult,
+    reconcile_tool_call,
+    resume_tool_calls,
+)
 from .workspace import WorkspaceResolver, WorkspaceViolation
 
 __version__ = "0.1.1a1"
@@ -74,6 +80,8 @@ __all__ = [
     "RuntimeState",
     "SessionState",
     "ToolArgumentError",
+    "ToolCallRecord",
+    "ToolExecutionResult",
     "ToolCallCheckpoint",
     "ToolSpec",
     "TransitionRule",
@@ -84,6 +92,7 @@ __all__ = [
     "build_diagnostics",
     "content_sha256",
     "default_change_journal_dir",
+    "reconcile_tool_call",
     "resume_tool_calls",
     "summarize_observability",
     "transition_manifest",
