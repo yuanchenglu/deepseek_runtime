@@ -21,7 +21,7 @@ M0 establishes a trustworthy development baseline before P0 security and recover
 | Minimum CI automatically executes on new `develop` PRs | PASS | PR #1, `Minimum CI` run 28, conclusion `success` |
 | Current existing tests are green | PASS on Python 3.11/Ubuntu baseline | `docs/testing/m0-ci-validation.md`; full platform matrix remains M5 work |
 | Documentation links and Requirement/Test mappings pass | PASS | `scripts/check_docs_traceability.py` in the green M0 workflow |
-| Required checks are enforced by branch protection | **BLOCKED — repository setting** | GitHub issue tracks required `develop/master` protection; connector cannot apply repository rulesets |
+| Required checks are enforced by branch protection | **BLOCKED — repository setting** | Current GitHub connector cannot apply repository rulesets; repository Issues are disabled, so the blocker remains versioned in this document and Traceability |
 
 ## 3. M0 deliverables completed
 
@@ -53,7 +53,7 @@ The repository must enforce the `Minimum CI / Python 3.11 baseline` check throug
 - block force pushes and deletion;
 - tags and artifacts remain Release Gate outputs only.
 
-Until this repository setting is applied and verified, M0 is **implementation-complete but not administratively closed**.
+GitHub Issues are currently disabled, and no Issue was created for this blocker. Until the repository setting is applied and verified, M0 is **implementation-complete but not administratively closed**.
 
 ## 5. Next executable work
 
