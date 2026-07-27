@@ -45,7 +45,7 @@ class ChangeJournalSecurityTests(unittest.TestCase):
             journal = base / "journal"
             workspace.mkdir()
             target = workspace / "notes.txt"
-            target.write_text("old\n", encoding="utf-8")
+            target.write_bytes(b"old\n")
             store = ChangeJournalStore(journal, clock=lambda: 100.0)
             manager = self._manager(workspace, store)
 
