@@ -1,0 +1,111 @@
+{
+  "$id": "https://deepseek-runtime.local/schemas/recoverable-checkpoint-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "approvals": {"items": {"type": "object"}, "type": "array"},
+    "budgets": {"type": "object"},
+    "messages": {"items": {"type": "object"}, "type": "array"},
+    "provider_continuation": {"type": ["object", "null"]},
+    "receipts": {"items": {"type": "object"}, "type": "array"},
+    "recovery_metadata": {"type": "object"},
+    "runtime_state": {
+      "enum": [
+        "CREATED",
+        "PROVIDER_PENDING",
+        "PROVIDER_COMPLETED",
+        "TOOL_REQUESTED",
+        "APPROVAL_PENDING",
+        "TOOL_RUNNING",
+        "TOOL_SUCCEEDED",
+        "TOOL_FAILED",
+        "TOOL_SIDE_EFFECT_UNCERTAIN",
+        "COMPLETED",
+        "FAILED",
+        "CANCELLED",
+        "BUDGET_EXCEEDED"
+      ],
+      "type": "string"
+    },
+    "schema_version": {"const": "1.0"},
+    "session_id": {"maxLength": 256, "minLength": 1, "type": "string"},
+    "step": {"minimum": 0, "type": "integer"},
+    "tool_calls": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "approval": {"type": ["object", "null"]},
+          "arguments": {"type": "object"},
+          "attempt_count": {"minimum": 0, "type": "integer"},
+          "call_id": {"maxLength": 256, "minLength": 1, "type": "string"},
+          "error": {
+            "anyOf": [
+              {"$ref": "error-v1.schema.json"},
+              {"type": "null"}
+            ]
+          },
+          "idempotency_key": {"type": ["string", "null"]},
+          "name": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_.-]{0,127}$",
+            "type": "string"
+          },
+          "receipt": {"type": ["object", "null"]},
+          "recovery_policy": {
+            "enum": [
+              "PURE",
+              "IDEMPOTENT",
+              "RETRYABLE_WITH_KEY",
+              "NON_IDEMPOTENT",
+              "MANUAL_RECONCILIATION"
+            ],
+            "type": "string"
+          },
+          "result": {},
+          "side_effect": {"type": "boolean"},
+          "state": {
+            "enum": [
+              "TOOL_REQUESTED",
+              "APPROVAL_PENDING",
+              "TOOL_RUNNING",
+              "TOOL_SUCCEEDED",
+              "TOOL_FAILED",
+              "TOOL_SIDE_EFFECT_UNCERTAIN"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "call_id",
+          "name",
+          "arguments",
+          "state",
+          "recovery_policy",
+          "side_effect",
+          "attempt_count",
+          "idempotency_key",
+          "approval",
+          "receipt",
+          "result",
+          "error"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "session_id",
+    "runtime_state",
+    "step",
+    "messages",
+    "provider_continuation",
+    "tool_calls",
+    "approvals",
+    "receipts",
+    "budgets",
+    "recovery_metadata"
+  ],
+  "title": "Recoverable Checkpoint v1",
+  "type": "object"
+}

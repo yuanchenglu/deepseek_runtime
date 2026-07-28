@@ -1,80 +1,88 @@
 # Dependency and License Review
 
-> Review stage: M0 initial audit
-> Review date: 2026-07-27
-> Repository baseline: `develop@375c9ec`
-> Decision: no known dependency-license blocker in the current manifest; release-time revalidation remains mandatory.
+> Review stage: M1 contract dependency update
+> Review date: 2026-07-28
+> Decision: no known manifest-level license blocker; exact release artifacts must be revalidated in M5/M6.
 
 ## 1. Scope and method
 
-This review inspects the repository-controlled dependency declarations and distinguishes:
+This is a repository engineering review, not a legal opinion. It inspects declared dependencies and the metadata resolved in the M1 validation environment. Release-time review must use the exact locked wheel/sdist inputs and preserve a machine-readable inventory.
 
-1. runtime dependencies shipped to users;
-2. build-system dependencies;
-3. CI/development tools;
-4. bundled or copied third-party source/assets.
+## 2. Declared dependencies
 
-The M0 review is an initial distribution-risk screen, not a legal opinion. M5 must produce a resolved dependency inventory from the actual wheel/sdist build environment and repeat the license check against pinned artifacts.
+Current `pyproject.toml` declares:
 
-## 2. Current declared dependencies
+| Component | Role | Declared range | Shipped Runtime dependency |
+| --- | --- | --- | ---: |
+| `jsonschema` | Tool argument/schema validation | `>=4.23,<5` | Yes |
+| `setuptools` | PEP 517 build backend | `>=68` | Build environment only |
+| Ruff | Critical lint gate | CI installation | No |
+| Pyright | Type gate | CI installation | No |
 
-The current `pyproject.toml` declares:
+`jsonschema` is required by ADR-005 so the same Draft 2020-12 schema can generate Provider definitions and enforce local arguments.
 
-- no `[project.dependencies]` runtime packages;
-- `setuptools>=68` as the PEP 517 build-system requirement;
-- no optional-dependency groups.
+## 3. M1 resolved metadata review
 
-The M0 workflow installs `ruff` and `pyright` as CI-only quality tools. They are not declared Runtime dependencies and are not intended to be included in the wheel or sdist.
+The local validation environment resolved `jsonschema 4.26.0`. Installed package metadata identified the following licenses:
 
-| Component | Role | Shipped as Runtime dependency | M0 disposition |
-| --- | --- | ---: | --- |
-| Python standard library | Runtime implementation | No separate bundled package | Accept; governed by the selected Python distribution |
-| `setuptools>=68` | Build backend | Build environment only | Accept provisionally; resolve exact version and license metadata during artifact build |
-| Ruff | CI lint tool | No | Accept as development tooling; pin and revalidate before reproducible release workflows |
-| Pyright | CI type checker | No | Accept as development tooling; pin and revalidate before reproducible release workflows |
+| Package | Relationship | Metadata license |
+| --- | --- | --- |
+| `jsonschema` | Direct | MIT |
+| `attrs` | Transitive | MIT |
+| `referencing` | Transitive | MIT |
+| `rpds-py` | Transitive | MIT |
+| `jsonschema-specifications` | Transitive | MIT |
 
-## 3. Repository content and attribution
+No manifest-level conflict with Apache-2.0 distribution was identified. This conclusion applies only to the inspected environment and does not replace exact artifact/license-file verification.
+
+## 4. Repository content and attribution
 
 - Repository license: Apache-2.0 (`LICENSE`).
-- Attribution notice: `NOTICE` records the original `7colorai/deepseek_runtime` source lineage and subsequent fork modifications.
-- No vendored dependency directory, generated third-party bundle, binary library, model weight, dataset, or frontend asset package is declared by the current build manifest.
-- External project names and trademarks are descriptive references only; `NOTICE` does not grant trademark rights.
+- `NOTICE` records original source lineage and fork modifications.
+- No vendored copy of `jsonschema` or its transitive packages is committed.
+- Third-party dependencies must be installed from reviewed package artifacts, not copied into the source tree.
 
-## 4. Current risks
+## 5. Current risks and required controls
 
-### R1: Build and CI versions are not pinned
+### R1: Dependency ranges are not reproducible release inputs
 
-`setuptools>=68`, Ruff, and Pyright may resolve to different versions over time. This affects reproducibility, behavior, vulnerability posture, and the exact license inventory.
+`jsonschema>=4.23,<5` and `setuptools>=68` can resolve differently over time.
 
-**Required action:** M5 release workflows must use reviewed pins or a reproducible lock/constraint mechanism and preserve the resolved inventory as evidence.
+**M5 action:** create reviewed constraints/lock evidence, record exact filenames, versions, hashes and source indexes, then rebuild in a clean environment.
 
-### R2: Manifest-only review cannot detect copied snippets or untracked build inputs
+### R2: Transitive graph can change within the accepted range
 
-A legal/source provenance audit cannot rely only on `pyproject.toml`.
+A compatible direct version may add or replace transitive dependencies.
 
-**Required action:** every PR must identify newly copied third-party code/assets; release construction must use Git-tracked allowlists and produce an artifact file manifest.
+**M5 action:** generate an exact dependency inventory/SBOM, recheck licenses and vulnerabilities, and fail on unexpected graph changes.
 
-### R3: Optional future dependencies may expand obligations
+### R3: Metadata alone is insufficient
 
-JSON Schema validation, checkpoint encryption, SBOM generation, and platform adapters may add dependencies later.
+Package metadata can omit bundled components or secondary notices.
 
-**Required action:** dependency additions require license/provenance review in the introducing PR. Copyleft, source-available, non-commercial, field-of-use, or unclear licenses require explicit maintainer/legal approval before merge.
+**M5 action:** inspect wheel/sdist license files and artifact contents; include required attribution in release materials.
 
-## 5. Acceptance policy
+### R4: Schema formats can execute dependency-provided checks
+
+`FormatChecker` behavior depends on installed extras and registered checkers.
+
+**Implementation rule:** only explicitly enabled formats are security-relevant; schema acceptance cannot silently gain new enforcement from environment-dependent optional extras.
+
+## 6. Acceptance policy
 
 A dependency is acceptable only when:
 
-- its identity and source are unambiguous;
-- its license permits the intended use and Apache-2.0 distribution model;
-- required notices, source offers, or attribution are identified and included;
-- no conflicting restriction is hidden in package metadata, bundled assets, or secondary licenses;
-- the resolved artifact is scanned for known vulnerabilities and unexpected files;
-- the decision is recorded in the PR and release evidence.
+- identity, source and resolved artifact are unambiguous;
+- license permits the intended distribution model;
+- required notices are identified;
+- new build scripts, binaries and network fetches are reviewed;
+- vulnerability and provenance checks pass;
+- the introducing PR records alternatives and removal strategy.
 
-Unknown or ambiguous licensing is a `No-Go` condition, not an item to defer after publication.
+Unknown or ambiguous licensing is a `No-Go` condition.
 
-## 6. M0 conclusion
+## 7. Current conclusion
 
-The current repository has no declared third-party Runtime dependency and now contains Apache-2.0 license and attribution files. No current manifest-level license blocker was identified.
+The M1 `jsonschema` dependency has an identified technical requirement and no known manifest-level license blocker in the inspected environment.
 
-This conclusion is limited to M0. It does not authorize release until exact build inputs, resolved versions, artifact contents, SBOM/dependency inventory, notices, vulnerability results, and provenance are verified in M5/M6.
+The repository remains **NO RELEASE** until exact resolved artifacts, hashes, license files, vulnerability results, dependency inventory/SBOM and provenance are verified in M5/M6.
