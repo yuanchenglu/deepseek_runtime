@@ -4,6 +4,7 @@ import io
 import json
 import tempfile
 import unittest
+from collections.abc import Iterable
 from contextlib import redirect_stdout
 from pathlib import Path
 from types import SimpleNamespace
@@ -11,11 +12,11 @@ from typing import Any
 from unittest.mock import patch
 
 from deepseek_runtime import (
-    ContractViolation,
     DeepSeekRuntime,
     ErrorCode,
     ProviderResult,
     RecoveryPolicy,
+    Risk,
     ToolArgumentError,
     ToolRegistry,
     ToolSpec,
@@ -32,7 +33,7 @@ PARAMETERS = {
 
 
 class SequencedClient:
-    def __init__(self, messages: list[dict[str, Any]]) -> None:
+    def __init__(self, messages: Iterable[dict[str, Any]]) -> None:
         self.messages = list(messages)
         self.payloads: list[dict[str, Any]] = []
 
@@ -88,7 +89,7 @@ class ToolRegistryContractTests(unittest.TestCase):
             "Return one integer.",
             PARAMETERS,
             handler,
-            risk="read",
+            risk=Risk.READ,
             side_effect=False,
             timeout_seconds=2.5,
             max_output_bytes=512,
@@ -103,6 +104,7 @@ class ToolRegistryContractTests(unittest.TestCase):
         self.assertEqual(registry["sample"].timeout_seconds, 2.5)
         self.assertEqual(registry["sample"].max_output_bytes, 512)
         self.assertIs(registry["sample"].recovery_policy, RecoveryPolicy.PURE)
+        self.assertFalse(callable(spec))
         self.assertEqual(
             registry.provider_definitions(),
             [
@@ -186,6 +188,27 @@ class ToolRegistryContractTests(unittest.TestCase):
                 recovery_policy="NON_IDEMPOTENT",
             )
 
+        with self.assertRaisesRegex(ValueError, "handler must be callable"):
+            ToolSpec("invalid_handler", "Invalid.", PARAMETERS, None)
+
+        with self.assertRaisesRegex(ValueError, "timeout_seconds must be finite and positive"):
+            ToolSpec(
+                "invalid_timeout",
+                "Invalid.",
+                PARAMETERS,
+                lambda arguments: arguments,
+                timeout_seconds=True,
+            )
+
+        with self.assertRaisesRegex(ValueError, "max_output_bytes must be a positive integer"):
+            ToolSpec(
+                "invalid_output_limit",
+                "Invalid.",
+                PARAMETERS,
+                lambda arguments: arguments,
+                max_output_bytes=True,
+            )
+
 
 class RuntimeToolBoundaryTests(unittest.TestCase):
     def run_tool_call(self, registry: ToolRegistry, call: Any) -> tuple[Any, SequencedClient]:
@@ -225,11 +248,16 @@ class RuntimeToolBoundaryTests(unittest.TestCase):
                 self.assertEqual(tool_output(result), expected)
 
     def test_tc_run_009_rejects_invalid_result(self) -> None:
-        registry = ToolRegistry((ToolSpec("sample", "Invalid.", PARAMETERS, lambda arguments: object()),))
-        result, _ = self.run_tool_call(registry, tool_call())
+        invalid_values = (object(), {1: "one", "two": 2})
+        for value in invalid_values:
+            with self.subTest(value_type=type(value).__name__):
+                registry = ToolRegistry(
+                    (ToolSpec("sample", "Invalid.", PARAMETERS, lambda arguments, value=value: value),)
+                )
+                result, _ = self.run_tool_call(registry, tool_call())
 
-        self.assertTrue(result.ok)
-        self.assertEqual(tool_error_code(result), ErrorCode.TOOL_RESULT_INVALID.value)
+                self.assertTrue(result.ok)
+                self.assertEqual(tool_error_code(result), ErrorCode.TOOL_RESULT_INVALID.value)
 
     def test_non_utf8_bytes_are_structured_result_error(self) -> None:
         registry = ToolRegistry((ToolSpec("sample", "Bytes.", PARAMETERS, lambda arguments: b"\xff"),))
@@ -288,6 +316,10 @@ class RuntimeToolBoundaryTests(unittest.TestCase):
                 self.assertEqual(tool_error_code(result), ErrorCode.TOOL_ARGUMENT_INVALID.value)
                 self.assertEqual(calls, 0)
 
+                safe = result.to_safe_dict()
+                self.assertEqual(safe["message_count"], len(result.messages))
+                self.assertNotIn('"value": 1', json.dumps(safe, ensure_ascii=False))
+
     def test_invalid_tool_call_id_fails_closed_before_handler(self) -> None:
         for invalid_id in (123, None, ""):
             with self.subTest(call_id=invalid_id):
@@ -305,6 +337,7 @@ class RuntimeToolBoundaryTests(unittest.TestCase):
                 self.assertEqual(result.error, "malformed provider tool call id")
                 self.assertEqual(calls, 0)
                 self.assertEqual(len(client.payloads), 1)
+                self.assertEqual(result.to_safe_dict()["message_count"], len(result.messages))
 
 
 class CliRegistryMigrationTests(unittest.TestCase):
