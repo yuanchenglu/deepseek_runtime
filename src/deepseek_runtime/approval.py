@@ -131,7 +131,7 @@ class AuthorizationSession:
         *,
         on_approval_pending: Callable[[], None] | None = None,
     ) -> None:
-        """Authorize one call and optionally notify Runtime before a real ASK request."""
+        """Authorize one call and checkpoint a real pending ASK before host I/O."""
         try:
             risk = Risk(spec.risk)
         except ValueError as exc:
@@ -186,6 +186,8 @@ class AuthorizationSession:
                 )
             )
 
+        pending_index = len(self.events)
+        self.events.append(AuthorizationEvent(spec.name, risk, decision, "pending", summary))
         if on_approval_pending is not None:
             on_approval_pending()
 
@@ -198,7 +200,13 @@ class AuthorizationSession:
         try:
             outcome = self.approval_provider.request_approval(request)
         except Exception as exc:
-            self.events.append(AuthorizationEvent(spec.name, risk, decision, "unavailable", summary))
+            self.events[pending_index] = AuthorizationEvent(
+                spec.name,
+                risk,
+                decision,
+                "unavailable",
+                summary,
+            )
             raise ContractViolation(
                 RuntimeErrorInfo(
                     ErrorCode.APPROVAL_UNAVAILABLE,
@@ -209,7 +217,13 @@ class AuthorizationSession:
             ) from exc
 
         if not isinstance(outcome, ApprovalOutcome):
-            self.events.append(AuthorizationEvent(spec.name, risk, decision, "invalid", summary))
+            self.events[pending_index] = AuthorizationEvent(
+                spec.name,
+                risk,
+                decision,
+                "invalid",
+                summary,
+            )
             raise ContractViolation(
                 RuntimeErrorInfo(
                     ErrorCode.APPROVAL_UNAVAILABLE,
@@ -218,7 +232,13 @@ class AuthorizationSession:
                 )
             )
 
-        self.events.append(AuthorizationEvent(spec.name, risk, decision, outcome.value, summary))
+        self.events[pending_index] = AuthorizationEvent(
+            spec.name,
+            risk,
+            decision,
+            outcome.value,
+            summary,
+        )
         if outcome is ApprovalOutcome.APPROVE_ONCE:
             return
         if outcome is ApprovalOutcome.APPROVE_SESSION:
