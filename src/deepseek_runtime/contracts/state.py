@@ -142,6 +142,7 @@ TRANSITION_RULES: dict[tuple[RuntimeState, RuntimeState], TransitionRule] = dict
         _transition(RuntimeState.TOOL_RUNNING, RuntimeState.TOOL_SUCCEEDED, "tool.succeeded", receipt_requirement=ReceiptRequirement.IF_SIDE_EFFECT),
         _transition(RuntimeState.TOOL_RUNNING, RuntimeState.TOOL_FAILED, "tool.failed", retry_eligible=True),
         _transition(RuntimeState.TOOL_RUNNING, RuntimeState.TOOL_SIDE_EFFECT_UNCERTAIN, "tool.side_effect_uncertain", receipt_requirement=ReceiptRequirement.OPTIONAL),
+        _transition(RuntimeState.TOOL_RUNNING, RuntimeState.CANCELLED, "run.cancelled", recovery_eligible=False),
         _transition(RuntimeState.TOOL_SUCCEEDED, RuntimeState.PROVIDER_PENDING, "provider.requested", retry_eligible=True),
         _transition(RuntimeState.TOOL_FAILED, RuntimeState.PROVIDER_PENDING, "provider.requested", retry_eligible=True),
         _transition(RuntimeState.TOOL_FAILED, RuntimeState.TOOL_RUNNING, "recovery.retry", retry_eligible=True),
