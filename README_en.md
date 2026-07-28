@@ -2,7 +2,7 @@
 
 > A local Agent Runtime Kernel for the DeepSeek API.
 >
-> **Current phase: Open-source Alpha Hardening. Current release decision: NO RELEASE.**
+> **Current phase: Open-source Alpha Hardening. M1 P0 implementation is merged and the integrated closeout gate is running. Current release decision: NO RELEASE.**
 
 [English](README_en.md) | [简体中文](README.md)
 
@@ -10,7 +10,7 @@
 
 Calling a model API does not provide a reliable Agent. A Runtime must handle Provider protocols, tool contracts, policy and approval, budgets, recovery, evidence privacy, and release verification.
 
-This repository contains several of those primitives, but the end-to-end execution path is not yet complete or non-bypassable. [`docs/product/PRD.md`](docs/product/PRD.md) is the sole source of truth for the first public Alpha scope, priority, and acceptance criteria.
+This repository has completed the M1 core contracts, Workspace containment, constrained rollback, and ambiguous side-effect recovery. It has not yet completed a non-bypassable ToolRegistry, Policy, Approval, ExecutionAdapter, and unified Runtime lifecycle. [`docs/product/PRD.md`](docs/product/PRD.md) is the sole source of truth for the first public Alpha scope, priority, and acceptance criteria.
 
 ## Current factual status
 
@@ -18,18 +18,21 @@ This repository contains several of those primitives, but the end-to-end executi
 | --- | --- |
 | DeepSeek Provider request and basic response handling | Partial |
 | Text-only and basic tool loop | Partial |
-| Mandatory ToolRegistry, validation, policy, and approval path | Blocked |
-| Workspace containment and symlink/reparse-point defense | Blocked by P0 work |
-| Checkpoint and Evidence | Partial; current models must be separated |
-| Side-effect recovery | Blocked; uncertain effects must not auto-retry |
-| File changes and rollback | Blocked; handle and conflict semantics need hardening |
+| Mandatory ToolRegistry, validation, policy, and approval path | Blocked; first M2 priority |
+| Workspace containment and symlink/reparse-point defense | Implemented; integrated three-platform closeout gate is running |
+| Checkpoint and Evidence | Partial; contracts are frozen but production storage still requires separation |
+| Side-effect recovery | Implemented for the M1 P0 scope; persisted running non-idempotent effects enter manual reconciliation and do not auto-retry |
+| File changes and rollback | Implemented for the M1 P0 scope; opaque handles, durable journals, expiry, scope, and conflict checks are covered |
 | Evidence, diagnostics, usage, and cost | Partial |
-| Cross-platform CI, wheel/sdist, artifact provenance and integrity | Planned/Blocked |
+| Cross-platform CI | M1 P0 covers Linux/macOS/Windows with Python 3.11; the full release matrix remains Planned |
+| wheel/sdist, artifact provenance and integrity | Planned/Blocked |
 
 Evidence and plans:
 
 - [Complete Code Review](docs/reviews/2026-07-27-code-review.md)
-- [Current Test Report](docs/testing/test-report-2026-07-27.md)
+- [M1 Code Review Closeout](docs/reviews/2026-07-28-m1-closeout-review.md)
+- [M1 P0 Cross-platform Report](docs/testing/m1-p0-report.md)
+- [M1 Integrated Closeout](docs/roadmap/m1-closeout.md)
 - [Alpha Traceability](docs/traceability/alpha-traceability.md)
 - [Open-source Readiness Execution Plan](docs/roadmap/open-source-readiness-plan.md)
 
@@ -39,8 +42,10 @@ The current implementation is **not an operating-system security sandbox**.
 
 - `NoIsolationLocalAdapter` is for trusted local development only.
 - `RestrictedSubprocessAdapter` targets a minimal environment, explicit cwd, timeout, process-tree cleanup, cancellation, and output limits, but still does not provide kernel isolation.
+- Workspace containment does not promise protection against a malicious concurrent process with the same host-user permissions.
+- The durable ChangeJournal is owner-only local storage by default; owner-only is not encryption.
 - The current version is not suitable for untrusted multi-tenancy, arbitrary command execution, or high-value irreversible side effects.
-- The Runtime does not promise universal exactly-once behavior; ambiguous effects must enter manual reconciliation.
+- The Runtime does not promise universal exactly-once behavior; ambiguous effects enter manual reconciliation.
 
 See the [Threat Model](docs/security/threat-model.md) and [Security Policy](SECURITY.md).
 
@@ -73,7 +78,7 @@ export DEEPSEEK_API_KEY=sk-your-key-here
 deepseek-runtime run --workspace . "Describe this repository's structure"
 ```
 
-## M0 minimum quality gate
+## Minimum quality gate
 
 ```bash
 python -m pip install ruff pyright
@@ -82,6 +87,12 @@ pyright src/deepseek_runtime --pythonversion 3.11 --level error
 python -m unittest discover -s tests -v
 python scripts/check_tracked_secrets.py
 python scripts/check_docs_traceability.py
+```
+
+M1 P0 focused gate:
+
+```bash
+python scripts/m1_p0_gate.py --repetitions 20 --output m1-p0-local.json
 ```
 
 CI output is the shareable execution evidence. A local verbal claim is not release evidence.
@@ -106,6 +117,8 @@ Core documents:
 - [Support Policy](SUPPORT.md)
 - [Code of Conduct](CODE_OF_CONDUCT.md)
 - [Security Reporting](SECURITY.md)
+
+The default development flow is feature branch → PR → CI → `develop`. An exceptional direct push to `develop` is allowed only when the PR flow is persistently unavailable in the current environment, and the commit must record the root cause and remaining technical debt.
 
 Before the first Alpha, contributions should close a P0/P1 blocker, improve verification, or correct a factual documentation error.
 
