@@ -1,6 +1,6 @@
 # DeepSeek Runtime 开源就绪执行计划
 
-> 计划版本：2.2.2  
+> 计划版本：2.2.3  
 > 状态日期：2026-07-28  
 > 计划状态：**Execution in progress — M0/M1 closed, M2 active**  
 > 当前开发基线：`develop@64b938fbd861a0157c800191653bbc70b128901e`  
@@ -21,7 +21,7 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 | --- | --- | --- | --- |
 | M0 基线、治理、Traceability、最小 CI | **CLOSED** | 单一事实源、治理和最小 CI 已建立 | PR #1–#4、PR #13 |
 | M1 核心合同冻结与全部 P0 关闭 | **CLOSED** | M1 范围内 Workspace、rollback authorization、uncertain side effect 已验证 | PR #6–#10、PR #13、Gate runs 33/40 |
-| M2 Runtime 与 Security 闭环 | **IN PROGRESS / CI RED** | ToolRegistry 首个切片已远程保存；当前存在 1 个真实 Pyright blocker | Draft PR #14、Minimum CI run 92 |
+| M2 Runtime 与 Security 闭环 | **IN PROGRESS / PR #14 FINAL GATE** | M2-A 代码与测试已通过；正在验证文档同步后的最终精确内容 | Draft PR #14、Minimum CI run 99、M1 P0 Gate run 49 |
 | M3 Recovery、Change、Evidence、Observability | **NOT STARTED** | P1 Requirement 仍有 Blocked/Partial | Traceability |
 | M4 Provider、配置与 CLI 协议收口 | **NOT STARTED** | Provider、streaming、配置和 CLI 稳定合同未完成 | Traceability |
 | M5 完整 CI、Packaging 与治理 | **NOT STARTED** | 完整矩阵、构件和发布验证未建立 | Traceability |
@@ -31,7 +31,8 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 
 - 7 个里程碑中，2 个已关闭，1 个执行中，4 个未开始；
 - 里程碑规模不等，不应把 2/7 直接解释为发布完成度；
-- M1 的 P0 范围已关闭，但 M2–M5 仍有大量 P1 Requirement 未 `Verified`；
+- M2-A 仅关闭 ToolRegistry 唯一入口，不代表 Policy、Approval、Adapter 或 Runtime lifecycle 已完成；
+- M2–M5 仍有大量 P1 Requirement 未 `Verified`；
 - 当前必须保持 **NO RELEASE**。
 
 ## 3. 已完成结果
@@ -62,7 +63,7 @@ M1 证据：
 - artifacts：Linux `8676238220`、macOS `8676237125`、Windows `8676241048`；
 - 最终精确内容：Minimum CI run 89 PASS，M1 P0 Gate run 40 三平台 PASS。
 
-## 4. 当前 M2 工作现场
+## 4. 当前 M2-A 工作现场
 
 ### 4.1 远程保存状态
 
@@ -71,69 +72,112 @@ M1 证据：
 - 远程分支：`agent/m2-tool-registry`；
 - 基线：`develop@64b938fbd861a0157c800191653bbc70b128901e`；
 - Draft PR：#14 `feat: start M2 ToolRegistry production path`；
-- PR 为 open + draft，不允许自动合并；
+- PR 为 open + draft；完成严格 review 前不得转 Ready；
 - 动态 head 应从 PR #14 获取，不在计划中写死；
-- Run 92 的 CI evidence head：`517d0f72d97ba815656b8b883382d73c70741c36`；
-- 当前代码变更涉及 4 个文件，路线图为第 5 个文件。
+- 当前代码、测试、Traceability、中文/英文 README 与本路线图均已上传远程；
+- auto-merge 在 Draft 状态失败不属于产品 Gate。
 
-代码文件：
+当前直接变更范围：
 
 1. `src/deepseek_runtime/contracts/tools.py`
 2. `src/deepseek_runtime/contracts/__init__.py`
 3. `src/deepseek_runtime/__init__.py`
 4. `src/deepseek_runtime/runtime.py`
+5. `src/deepseek_runtime/cli.py`
+6. `tests/test_tool_registry_runtime.py`
+7. `docs/traceability/alpha-traceability.md`
+8. `README.md`
+9. `README_en.md`
+10. `docs/roadmap/open-source-readiness-plan.md`
 
-### 4.2 已实现但尚未验收
+### 4.2 已实现范围
 
-- `ToolRegistry` 作为 `ToolSpec` 的生产集合；
-- duplicate name、handler、risk、side-effect、limits、RecoveryPolicy 注册校验；
+- `ToolRegistry` 作为 `ToolSpec` 的生产工具集合；
+- duplicate name、handler callable、risk category、side-effect、limits、`RecoveryPolicy` 注册校验；
+- `side_effect` 和 `RecoveryPolicy` 的运行时类型合同；
 - JSON Schema Draft 2020-12 参数校验；
 - Provider tool definitions 由 `ToolSpec` 生成；
-- unknown tool → `TOOL_NOT_FOUND`；
+- unknown tool → `TOOL_NOT_FOUND`，且不执行任何 handler；
 - `str`、UTF-8 bytes、JSON-compatible result 确定性规范化；
 - invalid result → `TOOL_RESULT_INVALID`；
-- handler exception → `TOOL_EXECUTION_FAILED`；
-- `DeepSeekRuntime.run()` 不再接受裸 `dict[str, handler]`；
-- `read_file` 和 `search` 通过完整 `ToolSpec` 注册。
+- handler exception → `TOOL_EXECUTION_FAILED`，不暴露异常正文；
+- `DeepSeekRuntime.run()` 只接受 `ToolRegistry | None`；
+- CLI 默认传 `WorkspaceTools(...).catalog()`，`--no-tools` 传 `None`，不再产生裸 `{}` fallback；
+- `read_file` 和 `search` 通过完整 `ToolSpec` 注册；
+- malformed JSON、function 非 object、arguments 非 JSON string 均在 handler 前结构化拒绝；
+- tool-call ID 非空字符串校验失败时以 `PROVIDER_RESPONSE_INVALID` fail-closed，handler 不执行；
+- malformed tool-call 进入 Evidence 前使用非执行安全结构视图，避免旧 Evidence helper 在校验前崩溃；原始 Provider 消息不被修改。
 
-### 4.3 当前 CI 真实结果
+### 4.3 自动化测试
 
-PR #14 的 Run 92 evidence head：
+新增 `tests/test_tool_registry_runtime.py`，覆盖：
 
-- M1 P0 Gate run 42：**PASS**；
-- Minimum CI run 92：**FAIL**；
-- auto-merge 失败属于 Draft PR 无法启用自动合并，不是产品 Gate；
-- Minimum CI 在 type-check 失败后跳过 unit tests、import、secret scan 和 docs traceability。
+- `TC-TOOL-001`：完整 ToolSpec 与 Provider definition；
+- `TC-TOOL-002`：duplicate registry；
+- `TC-TOOL-003`：缺字段、额外字段、错误类型，handler 调用数保持 0；
+- `TC-TOOL-004`：side-effect 缺 risk/recovery、非法合同类型；
+- `TC-RUN-004`：裸 handler mapping 在 Provider 调用前拒绝；
+- `TC-RUN-009`：dict/list/UTF-8 bytes 确定性规范化，object/non-UTF-8 拒绝；
+- `TC-RUN-011`：unknown tool 返回 `TOOL_NOT_FOUND`，handler 调用数为 0；
+- malformed tool-call JSON；
+- function 不是 object；
+- arguments 不是 JSON string；
+- handler exception 与异常正文不泄漏；
+- tool-call ID 为数字、空值或空字符串；
+- CLI `--no-tools` 和默认 Registry 迁移。
 
-唯一 Pyright error：
+### 4.4 CI 失败历史与修复
 
-```text
-src/deepseek_runtime/cli.py:93
-Argument of type "ToolRegistry | dict[Unknown, Unknown]"
-cannot be assigned to parameter "tools" of type "ToolRegistry | None"
-in function "run".
-Rule: reportArgumentType
-```
+失败证据全部保留，未使用 rerun 掩盖：
 
-根因：Runtime API 已收紧为 `ToolRegistry | None`，但 `cli.py` 仍保留会产生 `{}` fallback 的旧调用方式。该问题属于实现迁移未完成，不是 CI 环境问题；禁止通过忽略 Pyright、降低规则或直推 `develop` 绕过。
+1. **Minimum CI run 92：FAIL**
+   - Pyright 唯一错误：CLI 仍可能把 `ToolRegistry | dict` 传入只接受 `ToolRegistry | None` 的 `Runtime.run()`；
+   - 根因是代码迁移不完整，不是 CI 环境问题；
+   - 修复为 `--no-tools → None`，默认路径传 `WorkspaceTools(...).catalog()`。
 
-### 4.4 PR #14 完成条件
+2. **Minimum CI run 98：FAIL**
+   - Pyright 已通过，证明原 blocker 清零；
+   - unit tests 首次执行新增 malformed function 测试时失败；
+   - 根因是 Runtime 在 tool-call 校验前调用旧 `response_evidence()`，旧 helper 假设 `function` 必为 object；
+   - 修复为只对 Evidence 构造安全结构视图，不能执行 handler，也不改变原始 Provider 消息。
 
-PR #14 **不得合并**，直到：
+3. **Minimum CI run 99：PASS**
+   - critical lint、Pyright、全量 unit、import、tracked secret scan、docs traceability 全部通过；
+   - 对应 code/test head：`9a604fb6875aeb27fc60672020016db308e10fc2`。
 
-- 修复 `cli.py` 的 `ToolRegistry | dict` 类型错误；
-- 自动化 `TC-TOOL-001`–`004`；
-- 自动化 `TC-RUN-004`、`TC-RUN-009`、`TC-RUN-011`；
-- 增加 malformed tool-call JSON、function shape、call ID、exception boundary 测试；
-- 审查旧 API 和 CLI 兼容性；
-- 更新 Traceability 的 PR、Test、Evidence、Status、Blocker；
-- 按需更新 README、architecture 和 contracts；
-- 最终精确内容 Minimum CI 全绿；
-- 完成严格 Code Review 后才从 Draft 转 Ready。
+4. **M1 P0 Gate run 49：PASS**
+   - 三平台 M1 P0 回归未被 M2-A 破坏。
 
-### 4.5 PR #14 明确不做
+文档同步后的最终精确内容仍需新的 Minimum CI 和 M1 P0 Gate 结果，才可进入 Ready/merge 决策。
 
-- Policy；
+### 4.5 PR #14 完成条件
+
+已完成：
+
+- [x] 修复 CLI `ToolRegistry | dict` 类型错误；
+- [x] 自动化 `TC-TOOL-001`–`004`；
+- [x] 自动化 `TC-RUN-004`、`TC-RUN-009`、`TC-RUN-011`；
+- [x] 增加 malformed tool-call JSON、function shape、arguments shape、call ID、exception boundary 测试；
+- [x] 审查旧 API 和 CLI 兼容性；
+- [x] 更新 Traceability 的实际 PR、Test、Evidence、Status、Blocker；
+- [x] 同步中文/英文 README 和路线图真实状态；
+- [x] 保留 run 92/run 98 失败证据；
+- [x] code/test 精确内容 Minimum CI run 99 全绿；
+- [x] M1 P0 Gate run 49 全绿。
+
+尚待完成：
+
+- [ ] 文档同步后的最终精确内容 Minimum CI 全绿；
+- [ ] 文档同步后的 M1 P0 Gate 全绿；
+- [ ] 完整 diff 严格 Code Review 无未解决 P0/S0/S1 blocker；
+- [ ] 更新 PR 描述为最终事实状态；
+- [ ] 从 Draft 转 Ready；
+- [ ] CI 全绿后合入 `develop`；
+- [ ] 合入后更新路线图为 M2-A merged，并开始独立 M2-B Draft PR。
+
+### 4.6 PR #14 明确不做
+
+- Permission Policy 重构；
 - ApprovalProvider；
 - ExecutionAdapter；
 - timeout/output-size 实际 enforcement；
@@ -141,7 +185,7 @@ PR #14 **不得合并**，直到：
 - cancellation；
 - token/cost/context/time budgets；
 - checkpoint timing；
-- CLI 输出协议重构；
+- CLI stdout/report/json 协议重构；
 - M3 checkpoint store 或 Evidence 重构。
 
 ## 5. M2 执行顺序
@@ -152,7 +196,7 @@ PR #14 **不得合并**，直到：
 
 ### M2-B：Policy 与 Approval
 
-依赖 M2-A。每次工具执行有 policy decision；READ 默认 ALLOW、非 READ 默认 DENY；规则优先级稳定；ASK 进入 ApprovalProvider；approve-once/session、deny、timeout；安全摘要；decision/approval 进入 checkpoint/evidence。
+依赖 M2-A 合入 `develop`。每次工具执行有 policy decision；READ 默认 ALLOW、非 READ 默认 DENY；规则优先级稳定；ASK 进入 ApprovalProvider；approve-once/session、deny、timeout；安全摘要；decision/approval 进入 checkpoint/evidence。
 
 目标用例：`TC-SEC-001`–`004`、`TC-SEC-008`。
 
@@ -257,8 +301,8 @@ workspace 外读写、密钥泄漏、artifact secret、重复高价值副作用�
 ```text
 你现在接手 GitHub 仓库 yuanchenglu/deepseek_runtime 的 Open-source Alpha Hardening 工作。
 
-先读取：
-1. PR #14 分支的 docs/roadmap/open-source-readiness-plan.md（v2.2.2）
+首先读取 PR #14 的动态状态，以及该分支上的：
+1. docs/roadmap/open-source-readiness-plan.md（v2.2.3）
 2. docs/product/PRD.md
 3. docs/traceability/alpha-traceability.md
 4. docs/testing/test-cases.md
@@ -266,47 +310,42 @@ workspace 外读写、密钥泄漏、artifact secret、重复高价值副作用�
 6. docs/security/threat-model.md
 7. CONTRIBUTING.md
 
-当前状态：
+当前事实：
 - develop：64b938fbd861a0157c800191653bbc70b128901e
 - M0：CLOSED
 - M1：CLOSED
-- M2：IN PROGRESS / CI RED
+- M2：IN PROGRESS
 - 分支：agent/m2-tool-registry
-- Draft PR：#14，feat: start M2 ToolRegistry production path
-- 动态 head：请直接读取 PR #14，不要依赖静态 SHA
-- Run 92 evidence head：517d0f72d97ba815656b8b883382d73c70741c36
+- Draft PR：#14
+- 动态 head：直接读取 PR #14，不依赖静态 SHA
 - Release：NO RELEASE
 
-PR #14 已实现 ToolRegistry/ToolSpec 注册合同、JSON Schema 参数校验、Provider definitions、result normalization、Runtime 仅接受 ToolRegistry、Workspace 内建 ToolSpec，但尚未验收。
+PR #14 已完成 CLI Registry 迁移、ToolRegistry/ToolSpec 注册合同、JSON Schema 参数校验、Provider definitions、结果规范化、unknown-tool 和 malformed tool-call 边界测试。
 
-当前 CI：
-- M1 P0 Gate run 42：PASS
-- Minimum CI run 92：FAIL
-- 唯一 Pyright error：src/deepseek_runtime/cli.py:93 仍可能把 ToolRegistry | dict 传给只接受 ToolRegistry | None 的 Runtime.run。
-- type-check 失败后 unit tests/import/secret scan/docs gate 被跳过。
-- 这是代码迁移未完成，不是环境问题；禁止降低 Pyright 或直推 develop 绕过。
+已保留失败证据：
+- Minimum CI run 92：Pyright 发现 CLI 裸 dict fallback；
+- Minimum CI run 98：Pyright 已清零，但 unit tests 暴露 Evidence 在 malformed function 校验前崩溃。
 
-立即执行：
-1. 拉取并严格审查 PR #14 完整 diff。
-2. 修复 cli.py：无 workspace tools 时使用 ToolRegistry() 或 None，不能产生 dict fallback，并审查 CLI 行为兼容性。
-3. 运行 Pyright，确认 errorCount=0。
-4. 补 TC-TOOL-001–004、TC-RUN-004/009/011，以及 malformed tool-call/exception boundary 测试。
-5. 测试暴露实现问题时修实现，不得降低断言。
-6. 保持 PR #14 范围，不混入 Policy、Approval、ExecutionAdapter、Budget、Cancellation、CLI 输出协议或 M3。
-7. 更新 Traceability 和必要文档。
-8. 运行最终精确内容 Minimum CI；保留失败证据，不用 rerun 掩盖问题。
-9. 严格 Code Review 后再转 Ready；CI 全绿才合入 develop。
-10. 合入后更新路线图，再开始 M2-B Policy 与 Approval。
+修复后证据：
+- Minimum CI run 99：PASS；
+- M1 P0 Gate run 49：PASS。
 
-流程：功能分支 → Draft PR → tests/CI → Ready → develop。只有 PR 流程持续因环境或基础设施问题无法完成，才允许直推 develop；直推 commit 必须包含“## 问题原因”和“## 技术债务”。禁止直接开发 master。
+下一步：
+1. 读取当前最新 head 的 CI，确认文档同步后的最终精确内容 Minimum CI 与 M1 P0 Gate 全绿；
+2. 严格审查 PR #14 完整 diff、public API、错误边界、测试断言和范围；
+3. 更新 PR 描述为最终事实状态；
+4. 无 P0/S0/S1 blocker 后从 Draft 转 Ready；
+5. CI 全绿后合入 develop；
+6. 合入后更新路线图并新建独立 M2-B Policy/Approval 分支和 Draft PR。
 
-请持续执行，不要停在分析或计划阶段；保持 NO RELEASE，直到 M6 最终 Gate 明确允许发布。
+禁止在 PR #14 混入 Policy、Approval、ExecutionAdapter、timeout/output enforcement、Budget、Cancellation、CLI 输出协议或 M3。禁止直接开发 master。保持 NO RELEASE。
 ```
 
 ## 11. 当前结论
 
 - M0/M1 已有合并态、三平台和 closeout 证据；
-- M2 已开始，Draft PR #14 和全部当前代码/文档均已保存在远程；
-- PR #14 当前因 1 个真实 Pyright 错误处于 CI RED；
-- 下一会话从 CLI 类型迁移、测试和 CI 收口继续；
-- M2–M6 完成前保持 **NO RELEASE**。
+- M2-A 的代码、测试与文档均已保存在 PR #14 远程分支；
+- run 92 和 run 98 的真实失败已保留并完成根因修复；
+- code/test 内容已由 Minimum CI run 99 和 M1 P0 Gate run 49 验证；
+- 当前只剩最终精确内容 CI、严格 review、Ready 和 merge；
+- M2-B–M2-G、M3–M6 完成前保持 **NO RELEASE**。
