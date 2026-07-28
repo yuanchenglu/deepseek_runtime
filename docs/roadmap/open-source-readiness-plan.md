@@ -1,12 +1,14 @@
 # DeepSeek Runtime 开源就绪执行计划
 
-> 计划版本：2.2.9  
+> 计划版本：2.3.0  
 > 状态日期：2026-07-29  
 > 计划状态：**Execution in progress — M0/M1/M2-A/M2-B/M2-C closed; M2-D in progress**  
 > 已合入开发基线：`develop@45b7c448d437df9ced5b5776f017a008376dabbb`  
 > 当前远程工作分支：`agent/m2-runtime-lifecycle`  
 > 当前工作入口：Draft PR #20 `feat(runtime): establish M2-D lifecycle and budget path`  
-> 本次核验 head：`13bc04415f1ae1b17eb1d220cffba8c3fcd23cad`  
+> 严格回归代码基线：`13bc04415f1ae1b17eb1d220cffba8c3fcd23cad`  
+> 交接文档基线：`7aa76f208b6161f0ca4122f6b643f1f6b7964c39`  
+> 当前 PR head：必须从 GitHub 动态获取，不在计划中固化为永久值  
 > 发布分支：`master`  
 > 发布结论：**NO RELEASE**
 
@@ -18,15 +20,15 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 
 ## 2. 当前事实快照
 
-- 当前容器没有本地 Git 工作树，也没有未提交、未 push 的本地文件；
-- M2-D 的代码、测试、workflow、合同、worklog 和测试报告均已保存到远程分支 `agent/m2-runtime-lifecycle`；
-- Draft PR #20 已存在并指向 `develop`，当前包含 16 个变更文件；
-- 当前 PR head `13bc0441` 是“严格回归测试提交”，尚未包含对应生产修复；
-- 因此当前精确 head 的 Minimum CI run 205 和 M2 Runtime Lifecycle Gate run 20 为失败；
-- 同一 head 的 M1 P0 Gate run 149、M2 ExecutionAdapter Gate run 55 为成功；
+- 当前交接容器没有本地 Git 工作树，也没有未提交、未 push 的本地文件；
+- M2-D 的代码、测试、workflow、合同、worklog、测试报告、计划和交接提示词均已保存到远程分支 `agent/m2-runtime-lifecycle`；
+- Draft PR #20 已存在并指向 `develop`；交接时包含 18 个变更文件；
+- 代码基线 `13bc0441` 新增了严格 approval checkpoint 回归测试，但尚未包含对应生产修复；
+- 交接文档基线 `7aa76f20` 的 Minimum CI run 207 和 M2 Runtime Lifecycle Gate run 22 失败，根因仍是同一个已知 blocker；
+- 同一交接基线的 M1 P0 Gate run 151、M2 ExecutionAdapter Gate run 57 成功；
 - 最近一个四套代码门禁均成功的较早 head 是 `2d71808b3ae8963998416fc5eedbf8ece2d8fc52`：Minimum CI run 202、M1 P0 Gate run 146、M2 ExecutionAdapter Gate run 52、M2 Runtime Lifecycle Gate run 17；
 - `2d71808b` 不包含后来增加的严格 approval checkpoint 回归，因此不能作为 PR #20 的最终验收 head；
-- 不得通过删除测试、降低断言或只引用较早绿色 head 将 M2-D 标记为完成。
+- 不得通过删除测试、降低断言、隐藏失败 run 或只引用较早绿色 head 将 M2-D 标记为完成。
 
 ## 3. 总体进展
 
@@ -37,7 +39,7 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 | M2-A ToolRegistry 唯一入口 | **CLOSED** | Registry-only Runtime path 已合入 | PR #14、runs 106/56、PR #15 |
 | M2-B Policy 与 Approval | **CLOSED** | Runtime tool call 强制经过 Policy/Approval | PR #16、runs 129/77、PR #17 |
 | M2-C ExecutionAdapter | **CLOSED** | 统一 Adapter、进程资源控制和三平台专项 Gate 已合入 | PR #18、runs 165/111/15、PR #19 |
-| M2-D Runtime Lifecycle、Budget、Cancellation | **IN PROGRESS** | 大部分实现已在 PR #20；存在 1 个已知 approval checkpoint blocker | PR #20、head `13bc0441` |
+| M2-D Runtime Lifecycle、Budget、Cancellation | **IN PROGRESS** | 大部分实现已在 PR #20；存在 1 个已知 approval checkpoint blocker | PR #20 |
 | M2-E Workspace P1 | **NOT STARTED** | read/search byte/file/time 与结构化 I/O 未完成 | `WS-003`–`005` |
 | M2-F CLI 核心 | **NOT STARTED** | stdout/report/json/exit-code 协议未完成 | `CLI-001`–`006` |
 | M2-G Integrated Closeout | **NOT STARTED** | M2 全部 P1 尚未综合验收 | Traceability |
@@ -96,7 +98,8 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 ### 4.5 M2-C：ExecutionAdapter
 
 - 实施 PR #18，closeout PR #19；
-- merge `7793a10152a49fb815aac667906080a4e1a39920`；closeout merge `45b7c448d437df9ced5b5776f017a008376dabbb`；
+- implementation merge `7793a10152a49fb815aac667906080a4e1a39920`；
+- closeout merge `45b7c448d437df9ced5b5776f017a008376dabbb`；
 - retained failure：Minimum CI run 144；
 - final Minimum CI run 165：PASS；
 - final M1 P0 Gate run 111：Linux/macOS/Windows PASS；
@@ -137,7 +140,7 @@ Provider tool call
 - side-effect success private structural receipt；
 - UTF-8 bytes checkpoint 兼容；
 - 三平台 M2 Runtime Lifecycle focused Gate；
-- Runtime lifecycle 合同、worklog 与测试报告。
+- Runtime lifecycle 合同、worklog、测试报告、计划和新会话交接提示词。
 
 ### 5.2 已保留失败证据
 
@@ -145,7 +148,7 @@ Provider tool call
 - M2 Runtime Lifecycle Gate run 1：manifest、receipt、UTF-8 checkpoint、旧 cancellation 语义等失败；
 - Minimum CI run 199 / M2 Gate run 13：全量兼容诊断阶段失败；
 - M2 Gate run 16：严格 review 暴露同一 batch 后续 ASK 的最终 approval checkpoint 时序缺口；
-- 当前 head 的 Minimum CI run 205 / M2 Gate run 20：新增回归测试已提交，但对应生产修复尚未提交。
+- Minimum CI runs 205、207 / M2 Gate runs 20、22：严格回归已提交，但生产修复尚未提交。
 
 失败记录不得删除、重跑覆盖或从 PR 描述中隐去。
 
