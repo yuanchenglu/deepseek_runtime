@@ -148,7 +148,7 @@ class AuthorizationSession:
             return
         if decision is Decision.DENY:
             self.events.append(
-                AuthorizationEvent(spec.name, risk, decision, ApprovalOutcome.DENY.value, summary)
+                AuthorizationEvent(spec.name, risk, decision, None, summary)
             )
             raise ContractViolation(
                 RuntimeErrorInfo(
