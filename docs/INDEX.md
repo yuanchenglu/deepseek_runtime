@@ -1,8 +1,8 @@
 # DeepSeek Runtime 文档索引
 
-> 适用验证基线：`develop@f8a5799ae50221a2830f3d0b2ed19f86852fccf4`
+> 适用验证基线：`develop@7793a10152a49fb815aac667906080a4e1a39920`
 > 文档修订：以各文件所在 Git commit 为准
-> 文档状态：Open-source Alpha Hardening；M1、M2-A、M2-B Closed；M2-C next
+> 文档状态：Open-source Alpha Hardening；M1、M2-A、M2-B、M2-C Closed；M2-D next
 > 原则：PRD 是产品范围、优先级和验收标准的唯一事实源；架构、测试和路线图均引用 PRD Requirement ID。
 
 ## 核心文档
@@ -12,16 +12,17 @@
 | [原始 Code Review](reviews/2026-07-27-code-review.md) | M0 基线上的完整代码质量、安全性、正确性和工程化审查 |
 | [M1 Code Review Closeout](reviews/2026-07-28-m1-closeout-review.md) | M1 对原始 P0/P1 finding 的关闭、保留和下一阶段判断 |
 | [产品架构](architecture/product-architecture.md) | 产品定位、用户、能力域、使用链路和边界 |
-| [技术架构](architecture/technical-architecture.md) | 当前实现、目标组件、数据流、信任边界和非功能约束 |
-| [PRD](product/PRD.md) | 产品需求、优先级、验收标准、非目标和 M0–M6 发布门禁 |
-| [Threat Model](security/threat-model.md) | 保护资产、攻击输入、信任边界、当前保证与未完成边界 |
+| [技术架构](architecture/technical-architecture.md) | 当前生产链、Adapter、生命周期目标、信任边界和非功能约束 |
+| [PRD](product/PRD.md) | 产品需求、优先级、验收标准、非目标和 M0–M6 发布门禁；当前 v1.3 |
+| [Threat Model](security/threat-model.md) | 保护资产、攻击输入、当前保证与明确非保证；当前 v1.3 |
 | [Known Unknowns](known-unknowns.md) | 当前未承诺、未验证和后续必须复核的边界 |
 | [ADR Index](adr/README.md) | 已接受的 Runtime、安全、恢复、schema、类型和发布决策 |
 | [Runtime Core Contracts](contracts/runtime-contracts.md) | Error、State、Tool、Checkpoint、Evidence、Recovery 与 ChangeJournal 合同 |
-| [Policy/Approval Contract](contracts/policy-approval.md) | M2-B 默认策略、规则优先级、Approval outcomes、隐私和 checkpoint handoff |
+| [Policy/Approval Contract](contracts/policy-approval.md) | 默认策略、规则优先级、Approval outcomes、隐私和 checkpoint handoff |
+| [ExecutionAdapter Contract](contracts/execution-adapter.md) | Adapter 接口、capability、Restricted controls、证据和非隔离声明 |
 | [State Transition Manifest](contracts/runtime-state-transitions.json) | 合法状态转换及 checkpoint/retry/approval/receipt 分母 |
 | [Versioned Schemas](schemas/README.md) | Error、Checkpoint、Evidence 与 ChangeJournal JSON Schema |
-| [Alpha Traceability](traceability/alpha-traceability.md) | Requirement → Milestone → PR → Test → Evidence 唯一追踪表 |
+| [Alpha Traceability](traceability/alpha-traceability.md) | Requirement → Milestone → PR → Test → Evidence 唯一追踪表；当前 v1.9 |
 | [M1-A Contract Evidence](traceability/m1-core-contracts.md) | PR #6 合同实现、Run 38、状态与剩余阻塞 |
 | [M1 Workspace Evidence](traceability/m1-workspace-p0.md) | PR #7 containment 实现和对抗测试证据 |
 | [M1 Rollback Evidence](traceability/m1-rollback-p0.md) | PR #8 opaque handle、ChangeJournal 和回滚约束证据 |
@@ -31,11 +32,13 @@
 | [基线测试报告](testing/test-report-2026-07-27.md) | M0 基线证据、静态确认缺陷和发布结论 |
 | [M0 Minimum CI 验证](testing/m0-ci-validation.md) | Python 3.11 最小门禁的真实执行、发现、修复和边界 |
 | [M1 P0 三平台报告](testing/m1-p0-report.md) | Linux/macOS/Windows 集成态重复 Gate、失败历史和 artifact |
-| [M0 Closeout](roadmap/m0-closeout.md) | M0 Exit Gate、当前分支政策和异常直推纪律 |
+| [M2-C ExecutionAdapter 报告](testing/m2-execution-adapter-report.md) | PR #18 最终 head、retained failure、三平台 108/108 与边界 |
+| [M0 Closeout](roadmap/m0-closeout.md) | M0 Exit Gate、分支政策和异常直推纪律 |
 | [M1 Integrated Closeout](roadmap/m1-closeout.md) | PR #6–#10 合并态复验、M1 Exit Gate 和 M2 准入条件 |
 | [M2-A ToolRegistry Closeout](roadmap/m2-a-closeout.md) | PR #14 合并态、失败/成功证据和 M2-B handoff |
 | [M2-B Policy/Approval Closeout](roadmap/m2-b-closeout.md) | PR #16 合并态、授权边界、失败/成功证据和 M2-C handoff |
-| [开源就绪执行计划](roadmap/open-source-readiness-plan.md) | Contract-first 的 M0–M6 开源阻断项清零计划；当前 v2.2.5 |
+| [M2-C ExecutionAdapter Closeout](roadmap/m2-c-closeout.md) | PR #18 合并态、三平台证据、非保证和 M2-D handoff |
+| [开源就绪执行计划](roadmap/open-source-readiness-plan.md) | Contract-first 的 M0–M6 阻断项清零计划；当前 v2.2.7，M2-D next |
 
 ## 治理与维护
 
@@ -77,7 +80,7 @@
 ## 文档治理
 
 1. 新功能必须先更新 PRD；首个 Alpha 原则上不接受非阻断功能。
-2. 安全边界变化必须同步 Threat Model、SECURITY 和相关 ADR。
+2. 安全边界变化必须同步 Threat Model、SECURITY 和相关 ADR/合同。
 3. 架构变化必须同步技术架构、错误/状态/schema 合同。
 4. 每条 P0/P1 Requirement 必须对应至少一个同级自动化 Test Case。
 5. Test Case 不得隐式提升或降低 Requirement 优先级。
@@ -89,12 +92,10 @@
 
 ## 当前发布状态
 
-M1 已关闭。PR #13 的 Minimum CI run 82 与 M1 P0 Gate run 33 在完整合并态验证 Linux/macOS/Windows 各 140/140，合计 420/420。
-
-M2-A 已关闭。PR #14 建立 ToolRegistry 唯一 Runtime 工具入口，最终 runs 106/56 通过。
-
-M2-B 已关闭。PR #16 建立 `ToolRegistry → Policy → Approval → handler` 强制链，最终 Minimum CI run 129 与 M1 P0 Gate run 77 通过；`SEC-001`、`SEC-002`、`SEC-004` 为 Verified，`SEC-003`、`SEC-009` 因跨切片边界保持 Partial。
-
-M2-C ExecutionAdapter 是下一执行切片。子进程最小环境、timeout、byte output limit、process-tree cleanup、cancellation handoff 和结构化执行结果仍未完成。
+- M1 已关闭；M1 P0 Gate run 33 在 Linux/macOS/Windows 各 140/140。
+- M2-A 已关闭；PR #14 建立 ToolRegistry 唯一 Runtime 工具入口，runs 106/56 通过。
+- M2-B 已关闭；PR #16 建立 Registry → Policy → Approval 强制链，runs 129/77 通过。
+- M2-C 已关闭；PR #18 建立统一 ExecutionAdapter 边界，最终 runs 165/111/15 通过，M2 Gate 三平台各 36/36；merge `7793a101`。
+- M2-D Runtime Lifecycle、Budget、Cancellation 是下一执行切片。
 
 **当前结论：NO RELEASE。**
