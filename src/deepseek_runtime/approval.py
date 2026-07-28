@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shlex
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Protocol
@@ -92,27 +93,29 @@ def _permission_request(risk: Risk, arguments: dict[str, Any]) -> PermissionRequ
     command: tuple[str, ...] = ()
     if isinstance(command_value, list) and all(isinstance(item, str) for item in command_value):
         command = tuple(command_value)
+    elif isinstance(command_value, str):
+        try:
+            command = tuple(shlex.split(command_value))
+        except ValueError:
+            command = ()
 
     return PermissionRequest(risk=risk, path=path, command=command)
 
 
 def _scrub_new_policy_audit_events(policy: PermissionPolicy, start: int) -> None:
-    """Retain decisions while removing raw path and command values from audit memory."""
+    """Ensure Runtime policy audit records contain no raw path or command values."""
     for event in policy.audit_events[start:]:
-        path = event.get("path")
-        command = event.get("command")
         event["path"] = None
-        event["path_present"] = isinstance(path, str) and bool(path)
+        event["path_present"] = bool(event.get("path_present", False))
         event["command"] = []
-        event["command_present"] = isinstance(command, list) and bool(command)
+        event["command_present"] = bool(event.get("command_present", False))
 
 
 @dataclass
 class AuthorizationSession:
     """Enforce one PermissionPolicy and ApprovalProvider for a Runtime.run session.
 
-    PermissionPolicy retains its documented declaration-order behavior: every matching
-    rule is evaluated and the last matching rule overrides earlier matches.
+    PermissionPolicy uses declaration order and the first matching rule wins.
     """
 
     policy: PermissionPolicy = field(default_factory=PermissionPolicy)
