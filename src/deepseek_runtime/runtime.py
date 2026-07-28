@@ -14,7 +14,6 @@ from .contracts import (
     ErrorCode,
     RecoveryPolicy,
     RuntimeErrorInfo,
-    ToolHandler,
     ToolRegistry,
     ToolSpec,
     normalize_tool_result,
@@ -65,6 +64,60 @@ class RuntimeResult:
         if include_content:
             return redact(asdict(self))
         return self.to_safe_dict()
+
+
+def _tool_calls_for_evidence(value: Any) -> list[dict[str, Any]]:
+    """Build a non-executable structural view for legacy Evidence helpers."""
+    if not isinstance(value, list):
+        return []
+    output: list[dict[str, Any]] = []
+    for call in value:
+        if not isinstance(call, Mapping):
+            output.append({})
+            continue
+        normalized = dict(call)
+        function = call.get("function")
+        normalized["function"] = dict(function) if isinstance(function, Mapping) else {}
+        output.append(normalized)
+    return output
+
+
+def _message_for_evidence(value: Any) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        return {}
+    output = dict(value)
+    if "tool_calls" in output:
+        output["tool_calls"] = _tool_calls_for_evidence(output.get("tool_calls"))
+    return output
+
+
+def _request_for_evidence(payload: dict[str, Any]) -> dict[str, Any]:
+    output = dict(payload)
+    messages = payload.get("messages")
+    output["messages"] = (
+        [_message_for_evidence(message) for message in messages]
+        if isinstance(messages, list)
+        else []
+    )
+    if "tools" in output:
+        output["tools"] = _tool_calls_for_evidence(output.get("tools"))
+    return output
+
+
+def _response_for_evidence(body: dict[str, Any]) -> dict[str, Any]:
+    output = dict(body)
+    choices = body.get("choices")
+    normalized_choices: list[dict[str, Any]] = []
+    if isinstance(choices, list):
+        for choice in choices:
+            if not isinstance(choice, Mapping):
+                normalized_choices.append({})
+                continue
+            normalized = dict(choice)
+            normalized["message"] = _message_for_evidence(choice.get("message"))
+            normalized_choices.append(normalized)
+    output["choices"] = normalized_choices
+    return output
 
 
 def _tool_error_content(error: RuntimeErrorInfo) -> str:
@@ -181,8 +234,10 @@ class DeepSeekRuntime:
                     "request_fingerprint": result.request_fingerprint,
                     "request_id": result.request_id,
                     "usage": result.usage,
-                    "request_evidence": request_evidence(result.request_payload or payload),
-                    "response_evidence": response_evidence(result.body),
+                    "request_evidence": request_evidence(
+                        _request_for_evidence(result.request_payload or payload)
+                    ),
+                    "response_evidence": response_evidence(_response_for_evidence(result.body)),
                     "error": result.error,
                     "error_class": result.error_class,
                 }
