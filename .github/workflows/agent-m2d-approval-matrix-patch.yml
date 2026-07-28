@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - agent/m2-runtime-lifecycle
+  pull_request:
+    branches:
+      - develop
+    types:
+      - opened
+      - synchronize
+      - reopened
   workflow_dispatch:
 
 permissions:
