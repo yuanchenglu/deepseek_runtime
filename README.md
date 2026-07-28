@@ -2,7 +2,7 @@
 
 > 面向 DeepSeek API 的本地 Agent Runtime Kernel。
 >
-> **当前阶段：Open-source Alpha Hardening；M1 P0 实现已合入，集成关闭门禁执行中；当前发布结论：NO RELEASE。**
+> **当前阶段：Open-source Alpha Hardening；M1 已通过集成态三平台门禁并关闭；当前发布结论：NO RELEASE。**
 
 [English](README_en.md) | [简体中文](README.md)
 
@@ -19,10 +19,10 @@
 | DeepSeek Provider 请求与基础响应处理 | Partial |
 | Text-only 与基础 Tool Loop | Partial |
 | ToolRegistry、参数校验、Policy、Approval 强制闭环 | Blocked，M2 首要工作 |
-| Workspace containment 与 symlink/reparse-point 防护 | Implemented；三平台集成关闭门禁执行中 |
+| Workspace containment 与 symlink/reparse-point 防护 | Verified for M1 P0；Linux/macOS/Windows 各 20/20 |
 | Checkpoint 与 Evidence | Partial；合同已冻结，生产存储仍需拆分 |
-| 副作用恢复 | Implemented for M1 P0；`running` 非幂等副作用进入人工协调，不自动重试 |
-| 文件变更与回滚 | Implemented for M1 P0；opaque handle、durable ChangeJournal、expiry/scope/conflict 已覆盖 |
+| 副作用恢复 | Verified for M1 P0；`running` 非幂等副作用进入人工协调，不自动重试 |
+| 文件变更与回滚 | Verified for M1 P0；opaque handle、durable ChangeJournal、expiry/scope/conflict 已覆盖 |
 | Evidence、Diagnostics、Usage/Cost | Partial |
 | 多平台 CI | M1 P0 已覆盖 Linux/macOS/Windows + Python 3.11；完整发布矩阵仍 Planned |
 | wheel/sdist、构件来源与完整性验证 | Planned/Blocked |
