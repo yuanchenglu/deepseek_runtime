@@ -115,7 +115,7 @@ def _scrub_new_policy_audit_events(policy: PermissionPolicy, start: int) -> None
 class AuthorizationSession:
     """Enforce one PermissionPolicy and ApprovalProvider for a Runtime.run session.
 
-    PermissionPolicy uses declaration order and the first matching rule wins.
+    PermissionPolicy uses declaration order and the last matching rule wins.
     """
 
     policy: PermissionPolicy = field(default_factory=PermissionPolicy)
