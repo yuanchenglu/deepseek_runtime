@@ -90,8 +90,8 @@ class PermissionRequest:
 
 # ❓ 问：一条权限规则是怎么工作的？
 # 💡 答：它把"什么条件下允许/拒绝/询问"编码成一条规则。
-#   比如："对所有 WRITE 操作，如果是 docs/* 目录就 ASK，
-#   其他目录就 DENY"。规则按声明顺序检查，第一条匹配的生效。
+#   比如：先写默认 DENY，再写 docs/* 的 ALLOW。
+#   规则按声明顺序检查，后匹配规则覆盖前匹配规则。
 
 @dataclass(frozen=True)
 class PermissionRule:
@@ -131,7 +131,7 @@ def _sanitize_command(command: Sequence[str]) -> list[str]:
 class PermissionPolicy:
     """
     权限策略的执行者。默认拒绝所有非只读操作，
-    rules 按声明顺序检查，第一条匹配规则覆盖默认行为。
+    rules 按声明顺序检查，最后一条匹配规则覆盖默认行为和较早规则。
     参考 llm-harness-agent 论文 A5 中关于 Agent 治理（Governance）的讨论。
     """
     rules: list[PermissionRule] = field(default_factory=list)
@@ -143,7 +143,6 @@ class PermissionPolicy:
         for rule in self.rules:
             if rule.matches(request):
                 decision = rule.decision
-                break
         self.audit_events.append({
             "event": "permission_decision",
             "timestamp_unix": int(time.time()),
