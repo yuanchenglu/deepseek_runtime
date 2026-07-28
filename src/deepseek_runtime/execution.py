@@ -108,6 +108,8 @@ class SubprocessRequest:
         for key, value in self.env.items():
             if not isinstance(key, str) or not isinstance(value, str):
                 raise ValueError("subprocess env keys and values must be text")
+            if not key or "=" in key or "\x00" in key or "\x00" in value:
+                raise ValueError("subprocess env contains an invalid key or value")
             normalized_env[key] = value
         if self.stdin is not None and not isinstance(self.stdin, bytes):
             raise ValueError("subprocess stdin must be bytes or None")
@@ -177,6 +179,21 @@ def _cancelled_error(adapter: str) -> ContractViolation:
     )
 
 
+def _adapter_handler_error(
+    adapter: str,
+    tool_name: str,
+    exc: BaseException,
+) -> ContractViolation:
+    return ContractViolation(
+        RuntimeErrorInfo(
+            ErrorCode.TOOL_EXECUTION_FAILED,
+            "execution adapter handler failed",
+            details={"adapter": adapter, "tool": tool_name},
+            cause_class=type(exc).__name__,
+        )
+    )
+
+
 class FakeExecutionAdapter:
     """Deterministic adapter for Runtime and contract tests; never calls handlers."""
 
@@ -211,10 +228,18 @@ class FakeExecutionAdapter:
         if context.cancellation is not None and context.cancellation.cancelled:
             raise _cancelled_error(self.name)
         if not self._outcomes:
-            raise RuntimeError("fake execution adapter has no scripted outcome")
+            raise ContractViolation(
+                RuntimeErrorInfo(
+                    ErrorCode.TOOL_EXECUTION_FAILED,
+                    "fake execution adapter has no scripted outcome",
+                    details={"adapter": self.name, "tool": spec.name},
+                )
+            )
         value = self._outcomes.pop(0)
         if isinstance(value, BaseException):
-            raise value
+            if isinstance(value, ContractViolation):
+                raise value
+            raise _adapter_handler_error(self.name, spec.name, value) from value
         if isinstance(value, ExecutionOutcome):
             return value
         if isinstance(value, ToolExecutionResult):
@@ -253,7 +278,12 @@ class NoIsolationLocalAdapter:
         if context.cancellation is not None and context.cancellation.cancelled:
             raise _cancelled_error(self.name)
         started = time.monotonic()
-        value = spec.handler(arguments)
+        try:
+            value = spec.handler(arguments)
+        except ContractViolation:
+            raise
+        except Exception as exc:
+            raise _adapter_handler_error(self.name, spec.name, exc) from exc
         if isinstance(value, ToolExecutionResult):
             private_receipt = value.receipt
             value = value.value
@@ -324,6 +354,7 @@ def _terminate_process_tree(process: subprocess.Popen[bytes], grace_seconds: flo
                 stderr=subprocess.DEVNULL,
                 check=False,
                 timeout=max(1.0, grace_seconds),
+                env=_minimal_environment({}),
             )
         except (OSError, subprocess.SubprocessError):
             process.kill()
@@ -406,7 +437,12 @@ class RestrictedSubprocessAdapter:
         if context.cancellation is not None and context.cancellation.cancelled:
             raise _cancelled_error(self.name)
 
-        built = spec.handler(arguments)
+        try:
+            built = spec.handler(arguments)
+        except ContractViolation:
+            raise
+        except Exception as exc:
+            raise _adapter_handler_error(self.name, spec.name, exc) from exc
         private_receipt: Mapping[str, Any] | None = None
         if isinstance(built, ToolExecutionResult):
             private_receipt = built.receipt
