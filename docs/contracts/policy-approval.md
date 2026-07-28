@@ -13,10 +13,10 @@ This contract defines the minimum production authorization boundary for register
 - `READ` defaults to `ALLOW`.
 - `WRITE`, `DELETE`, `NETWORK`, `SHELL_SAFE`, `SHELL_DANGEROUS`, and `GIT_MUTATING` default to `DENY`.
 - Explicit rules override the default.
-- Rules are evaluated in declaration order; the **first matching rule wins**.
+- Rules are evaluated in declaration order; the **last matching rule wins**.
 - A missing path does not match a path-specific rule. A catch-all rule must use `path_glob="*"`.
 
-This ordering is intentional: specific rules are placed before catch-all rules, and later rules cannot silently override an earlier match.
+This ordering preserves the existing public behavior and supports a deterministic pattern such as catch-all deny followed by a narrower allow. Reversing the declarations reverses the result and is covered by `TC-SEC-002`.
 
 ## 3. Tool execution order
 
