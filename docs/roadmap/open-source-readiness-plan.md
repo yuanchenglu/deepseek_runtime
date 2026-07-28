@@ -1,14 +1,13 @@
 # DeepSeek Runtime 开源就绪执行计划
 
-> 计划版本：2.3.0  
+> 计划版本：2.3.1  
 > 状态日期：2026-07-29  
 > 计划状态：**Execution in progress — M0/M1/M2-A/M2-B/M2-C closed; M2-D in progress**  
 > 已合入开发基线：`develop@45b7c448d437df9ced5b5776f017a008376dabbb`  
 > 当前远程工作分支：`agent/m2-runtime-lifecycle`  
 > 当前工作入口：Draft PR #20 `feat(runtime): establish M2-D lifecycle and budget path`  
-> 严格回归代码基线：`13bc04415f1ae1b17eb1d220cffba8c3fcd23cad`  
-> 交接文档基线：`7aa76f208b6161f0ca4122f6b643f1f6b7964c39`  
-> 当前 PR head：必须从 GitHub 动态获取，不在计划中固化为永久值  
+> 当前 PR head：必须从 GitHub 动态获取  
+> 全计划自主执行提示词：`docs/roadmap/full-plan-autonomous-handoff.md`  
 > 发布分支：`master`  
 > 发布结论：**NO RELEASE**
 
@@ -22,13 +21,10 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 
 - 当前交接容器没有本地 Git 工作树，也没有未提交、未 push 的本地文件；
 - M2-D 的代码、测试、workflow、合同、worklog、测试报告、计划和交接提示词均已保存到远程分支 `agent/m2-runtime-lifecycle`；
-- Draft PR #20 已存在并指向 `develop`；交接时包含 18 个变更文件；
-- 代码基线 `13bc0441` 新增了严格 approval checkpoint 回归测试，但尚未包含对应生产修复；
-- 交接文档基线 `7aa76f20` 的 Minimum CI run 207 和 M2 Runtime Lifecycle Gate run 22 失败，根因仍是同一个已知 blocker；
-- 同一交接基线的 M1 P0 Gate run 151、M2 ExecutionAdapter Gate run 57 成功；
-- 最近一个四套代码门禁均成功的较早 head 是 `2d71808b3ae8963998416fc5eedbf8ece2d8fc52`：Minimum CI run 202、M1 P0 Gate run 146、M2 ExecutionAdapter Gate run 52、M2 Runtime Lifecycle Gate run 17；
-- `2d71808b` 不包含后来增加的严格 approval checkpoint 回归，因此不能作为 PR #20 的最终验收 head；
-- 不得通过删除测试、降低断言、隐藏失败 run 或只引用较早绿色 head 将 M2-D 标记为完成。
+- Draft PR #20 已存在并指向 `develop`；
+- 当前已知 blocker 是同一 tool batch 后续 ASK 的 resolved approval checkpoint 未在 Adapter 执行前可靠 handoff；
+- 不得通过删除测试、降低断言、隐藏失败 run 或只引用较早绿色 head 将 M2-D 标记为完成；
+- 新会话必须使用 `docs/roadmap/full-plan-autonomous-handoff.md`，关闭 M2-D 后自动连续推进 M2-E、M2-F、M2-G、M3、M4、M5、M6，不等待用户反复发送“继续”。
 
 ## 3. 总体进展
 
@@ -39,23 +35,21 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 | M2-A ToolRegistry 唯一入口 | **CLOSED** | Registry-only Runtime path 已合入 | PR #14、runs 106/56、PR #15 |
 | M2-B Policy 与 Approval | **CLOSED** | Runtime tool call 强制经过 Policy/Approval | PR #16、runs 129/77、PR #17 |
 | M2-C ExecutionAdapter | **CLOSED** | 统一 Adapter、进程资源控制和三平台专项 Gate 已合入 | PR #18、runs 165/111/15、PR #19 |
-| M2-D Runtime Lifecycle、Budget、Cancellation | **IN PROGRESS** | 大部分实现已在 PR #20；存在 1 个已知 approval checkpoint blocker | PR #20 |
+| M2-D Runtime Lifecycle、Budget、Cancellation | **IN PROGRESS** | 大部分实现已在 PR #20；存在 approval checkpoint blocker | PR #20 |
 | M2-E Workspace P1 | **NOT STARTED** | read/search byte/file/time 与结构化 I/O 未完成 | `WS-003`–`005` |
 | M2-F CLI 核心 | **NOT STARTED** | stdout/report/json/exit-code 协议未完成 | `CLI-001`–`006` |
 | M2-G Integrated Closeout | **NOT STARTED** | M2 全部 P1 尚未综合验收 | Traceability |
-| M3 Recovery、Change、Evidence、Observability | **NOT STARTED** | 已有部分合同，但 durable recovery/evidence gate 未建立 | Traceability |
+| M3 Recovery、Change、Evidence、Observability | **NOT STARTED** | durable recovery/evidence gate 未建立 | Traceability |
 | M4 Provider、配置与协议收口 | **NOT STARTED** | Provider normalization/streaming/config 未完成 | Traceability |
 | M5 完整 CI、Packaging 与治理 | **NOT STARTED** | 完整矩阵、构件和发布验证未建立 | Traceability |
 | M6 RC 与 Alpha 发布 | **NOT STARTED** | 尚未进入 RC；不得合入 `master` 或打发布 tag | Release Gate |
 
 ### 3.1 进度判断
 
-不使用单一百分比冒充发布就绪度。按能力域判断：
-
-- 基线、治理和 P0 安全合同：已完成；
-- M2 Runtime/Tool/Security 主链：A/B/C 已关闭，D 接近代码完成，E/F/G 未开始；
-- M3 durable recovery/evidence、M4 Provider、M5 packaging/release matrix、M6 RC：仍是主要未完成工作；
-- 以首个 Alpha 的全部 M0–M6 Gate 估算，当前整体发布就绪度约为 **35%–40%**；该估算只用于资源规划，不替代 Requirement/Test/Evidence Gate；
+- 基线、治理和 P0 安全合同已完成；
+- M2 Runtime/Tool/Security 主链中 A/B/C 已关闭，D 接近代码完成，E/F/G 未开始；
+- M3 durable recovery/evidence、M4 Provider、M5 packaging/release matrix、M6 RC 仍是主要未完成工作；
+- 当前整体 Alpha 发布就绪度约为 **35%–40%**，仅用于资源规划，不替代 Requirement/Test/Evidence Gate；
 - 当前必须保持 **NO RELEASE**。
 
 ## 4. 已关闭阶段
@@ -77,34 +71,27 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 - side-effect crash window 进入 `TOOL_SIDE_EFFECT_UNCERTAIN`，不自动盲目重试；
 - M1 P0 Gate run 33：Linux/macOS/Windows 各 140/140，总计 420/420。
 
-### 4.3 M2-A：ToolRegistry
+### 4.3 M2-A
 
 - 实施 PR #14，closeout PR #15；
 - merge `b012265c4f51238c97c26c22b76d1e5e043153dc`；
 - final Minimum CI run 106、M1 P0 Gate run 56 PASS；
-- retained failures：runs 92、98；
-- `RUN-003`、`RUN-009`、`TOOL-001`–`004`、`TOOL-007` Verified。
+- retained failures：runs 92、98。
 
-### 4.4 M2-B：Policy 与 Approval
+### 4.4 M2-B
 
 - 实施 PR #16，closeout PR #17；
 - merge `f8a5799ae50221a2830f3d0b2ed19f86852fccf4`；
 - final Minimum CI run 129、M1 P0 Gate run 77 PASS；
-- retained failures：runs 114、122、127；
-- READ 默认 ALLOW，非 READ 默认 DENY；
-- last-match policy precedence、missing-path、approve-once/session、deny、timeout、unavailable fail-closed 已验证；
-- `SEC-001`、`SEC-002`、`SEC-004` Verified；`SEC-003` 因 durable checkpoint/resume 保持 Partial。
+- retained failures：runs 114、122、127。
 
-### 4.5 M2-C：ExecutionAdapter
+### 4.5 M2-C
 
 - 实施 PR #18，closeout PR #19；
 - implementation merge `7793a10152a49fb815aac667906080a4e1a39920`；
 - closeout merge `45b7c448d437df9ced5b5776f017a008376dabbb`；
-- retained failure：Minimum CI run 144；
-- final Minimum CI run 165：PASS；
-- final M1 P0 Gate run 111：Linux/macOS/Windows PASS；
-- M2 ExecutionAdapter Gate run 15：三平台各 36/36，总计 108/108；
-- strict review unresolved P0/S0/S1 = 0。
+- final Minimum CI run 165、M1 P0 Gate run 111、M2 ExecutionAdapter Gate run 15 PASS；
+- retained failure：Minimum CI run 144。
 
 生产调用链：
 
@@ -124,37 +111,20 @@ Provider tool call
 ### 5.1 已在远程分支实现
 
 - `LifecycleEvent`、`LifecycleTrace` 与 transition manifest 一致性检查；
-- `TOOL_RUNNING → CANCELLED` 合法转换；
 - Provider round / tool batch 粒度的单一生产 lifecycle；
 - private `RecoverableCheckpoint` handoff；
-- `PROVIDER_COMPLETED` checkpoint 包含刚收到的 assistant message；
-- ASK 在 ApprovalProvider I/O 前保存 `approval_outcome="pending"`；
-- Provider 调用前 cancellation 不发送请求；
-- pure tool cancellation → `CANCELLED`；
-- side-effect cancellation/未知结果 → `TOOL_SIDE_EFFECT_UNCERTAIN`；
+- Provider-before-call cancellation；
+- pure tool cancellation 与 side-effect uncertain；
 - step/token/USD cost/context/time budgets；
 - unknown usage/cost 保持 unknown；
 - `ToolErrorPolicy.CONTINUE/TERMINATE`；
-- malformed Provider 支持范围内返回结构化 `RuntimeResult`；
+- malformed Provider structured `RuntimeResult` subset；
 - public usage evidence 数值白名单；
 - side-effect success private structural receipt；
-- UTF-8 bytes checkpoint 兼容；
 - 三平台 M2 Runtime Lifecycle focused Gate；
-- Runtime lifecycle 合同、worklog、测试报告、计划和新会话交接提示词。
+- Runtime lifecycle 合同、worklog、测试报告和严格 review tests。
 
-### 5.2 已保留失败证据
-
-- Minimum CI run 184：首轮 lifecycle integration unit failures；
-- M2 Runtime Lifecycle Gate run 1：manifest、receipt、UTF-8 checkpoint、旧 cancellation 语义等失败；
-- Minimum CI run 199 / M2 Gate run 13：全量兼容诊断阶段失败；
-- M2 Gate run 16：严格 review 暴露同一 batch 后续 ASK 的最终 approval checkpoint 时序缺口；
-- Minimum CI runs 205、207 / M2 Gate runs 20、22：严格回归已提交，但生产修复尚未提交。
-
-失败记录不得删除、重跑覆盖或从 PR 描述中隐去。
-
-### 5.3 当前唯一已知 blocker
-
-测试：
+### 5.2 当前 blocker
 
 ```text
 tests/test_runtime_lifecycle_review.py::
@@ -162,74 +132,48 @@ RuntimeLifecycleReviewTests::
 test_later_batch_approval_is_checkpointed_before_execution
 ```
 
-问题：同一 Provider response 含多个需 ASK 的 tool call 时，第二个 call 的 `pending` checkpoint 已 handoff；ApprovalProvider 返回 `approve-once` 后，Runtime 在进入 Adapter 前没有再次 handoff 已解析的 approval outcome 与该 call 的 `TOOL_RUNNING` 状态。
+问题：同一 Provider response 含多个需 ASK 的 tool call 时，后续 call 的 pending checkpoint 已 handoff，但 resolved approval outcome 和执行前 call checkpoint 尚未在 `ExecutionAdapter.execute()` 前可靠 handoff。
 
-建议最小修复：
+不得删除或降低该回归测试。
 
-1. 保留当前测试，不降低断言；
-2. 在 `src/deepseek_runtime/runtime.py` 的 `on_authorized()` 中：
-   - 先将当前 `checkpoint_call.state` 设为 `TOOL_RUNNING`，`attempt_count=1`；
-   - 当全局 lifecycle 已是 `TOOL_RUNNING` 时，调用 `handoff_current_state(step)`；
-   - 此时 `AuthorizationSession.authorize()` 已把 pending event 原位替换为最终 approval outcome；
-   - handoff 完成后才允许进入 `ExecutionAdapter.execute()`；
-3. 补充 deny/timeout/unavailable 最终 outcome 是否同样需要 resolved checkpoint 的严格测试；不得用“只处理 approve happy path”掩盖恢复窗口。
-
-### 5.4 M2-D 完成条件
+### 5.3 M2-D 完成条件
 
 - [ ] 当前严格 approval checkpoint 回归通过；
 - [ ] Minimum CI 在最终精确 head 成功；
-- [ ] M1 P0 Gate 在最终精确 head 三平台成功；
-- [ ] M2 ExecutionAdapter Gate 在最终精确 head 三平台成功；
-- [ ] M2 Runtime Lifecycle Gate 在最终精确 head 三平台成功；
-- [ ] 获取 M2-D artifact ID、digest、tests_run、failures/errors/skipped 分母；
-- [ ] 更新 PR #20 描述，写入 retained failures、最终 head、run IDs 与明确排除项；
-- [ ] 核验 changed files 无 M2-E/M2-F/M3/M4/M5 范围漂移；
-- [ ] 核验 review threads、unresolved P0/S0/S1；
+- [ ] M1 P0 Gate 在最终精确 head三平台成功；
+- [ ] M2 ExecutionAdapter Gate 在最终精确 head三平台成功；
+- [ ] M2 Runtime Lifecycle Gate 在最终精确 head三平台成功；
+- [ ] 获取 M2-D artifact ID、digest 和测试分母；
+- [ ] 更新 PR #20 描述和 retained failures；
+- [ ] 核验 changed files、review threads、unresolved P0/S0/S1；
 - [ ] Draft → Ready；
-- [ ] squash merge PR #20 到 `develop`；
-- [ ] 新建 docs-only M2-D closeout PR，将合入态 Requirement 提升为 Verified，并将 M2-E 标记为 NEXT。
+- [ ] squash merge 到 `develop`；
+- [ ] docs-only M2-D closeout 合入；
+- [ ] 合入态 Requirement 才提升为 `Verified`；
+- [ ] M2-E 成为下一执行切片。
 
-## 6. M2-D 明确不做
+## 6. 后续执行顺序
 
-- Workspace read/search P1 budgets（M2-E）；
-- CLI stdout/report/json/exit-code 协议（M2-F）；
-- Provider streaming、retry、body-size、完整 arbitrary JSON normalization 与 in-flight cancellation（M4）；
-- durable encrypted checkpoint store、migration、locking（M3）；
-- ChangeManager、Evidence totality/canonical redesign（M3）；
-- container/VM/kernel sandbox；
-- Packaging、release matrix、`master`、tag 或 release。
+```text
+M2-D closeout
+→ M2-E Workspace P1
+→ M2-F CLI 核心
+→ M2-G Integrated Closeout
+→ M3 Recovery / Change / Evidence / Observability
+→ M4 Provider / Config / Protocol
+→ M5 CI Matrix / Packaging / Governance
+→ M6 RC / Alpha Release Gate
+```
 
-## 7. 后续顺序
+完整自主执行规则见：
 
-### M2-E：Workspace P1
+```text
+docs/roadmap/full-plan-autonomous-handoff.md
+```
 
-UTF-8 byte-safe truncation、read limit、search file/byte/time budgets、binary/permission/file-disappeared 结构化结果。目标用例：`TC-WS-004`–`006`。
+新会话不得只完成 M2-D 后停止。除必须由用户提供密钥、权限、签名或外部人工审核的硬阻断外，应自动连续执行整个 Plan。
 
-### M2-F：CLI 核心
-
-stdout 最终回答、stderr 进度、`--report`、`--json`、unsafe debug、稳定 exit code、workspace 错误 UX。目标用例：`TC-CLI-001`–`006`。
-
-### M2-G：Integrated Closeout
-
-必须通过 `TC-RUN-001`–`013`、`TC-TOOL-001`–`007`、`TC-WS-004`–`006`、`TC-SEC-001`–`009`、`TC-CLI-001`–`006`；无 Registry/Policy/Approval/Adapter bypass；transition 合法/非法类别覆盖 100%；Active P1 Runtime/Tool/Security defect = 0；在 integrated `develop` 复跑 closeout。
-
-### M3
-
-checkpoint/evidence 分离；atomic save、fsync、locking、corruption、migration、optional encryption；three crash windows；ChangeManager conflict/fsync/metadata；Evidence totality/canonical/redaction；Observability 正确性。
-
-### M4
-
-Python 3.11–3.13 配置和版本单一真源；Provider normalization、malformed schema、error mapping、retry/budget/size、request identity；真正 incremental SSE；CLI/doctor 协议稳定。
-
-### M5
-
-Ubuntu/macOS/Windows × Python 3.11/3.12/3.13；完整 lint/type/test/coverage；tracked allowlist 构建 wheel/sdist；secret scan；digest/tamper；clean install；live smoke；治理和 release process。
-
-### M6
-
-RC 只允许 P0/P1 fix、测试稳定性、文档事实和 release pipeline fix。最终 Gate 要求所有 P0/P1 `Verified`，Active P0/P1/S0/S1 = 0，测试/矩阵/构件/claim traceability 全部通过。任一 Gate 不满足，结论必须是 `NO RELEASE`。
-
-## 8. 开发与合入纪律
+## 7. 开发纪律
 
 默认流程：
 
@@ -242,27 +186,46 @@ latest develop
 → Ready for Review
 → required CI green
 → squash merge to develop
+→ docs-only closeout
+→ next milestone
 ```
 
-异常直推 `develop` 只作为 PR 流程持续不可用时的兜底。直推 commit 必须写明“问题原因”和“技术债务”，并在 `docs/TECH_DEBT.md` 或 commit body 留痕。
+直推 `develop` 只作为 PR 流程无法解决的异常兜底。直推 commit 必须包含：
+
+```text
+<type>(<scope>): <变更说明>
+
+## 问题原因
+[PR 流程无法通过的真实根因]
+
+## 技术债务
+- [未解决问题]
+- [后续验证项]
+```
 
 禁止：
 
 - 在 `master` 直接开发；
-- 用 rerun 覆盖失败证据；
-- 降低 Pyright/Ruff/test assertion；
-- 用 cast、fallback 或文档措辞掩盖真实合同错误；
-- 将后续里程碑工作混入当前 PR；
-- 在 M6 Gate 前发布、打正式 tag 或把 `master` 当开发分支。
+- 删除或隐藏失败证据；
+- rerun-mask；
+- 降低 Ruff、Pyright、test assertion、安全合同或 release criteria；
+- 用 cast、fallback、skip 或文档措辞掩盖真实缺陷；
+- 将 `Implemented` 写成 `Verified`；
+- 伪造 live smoke、人工审核、artifact 或外部凭据结果；
+- 在 M6 Gate 前发布、打正式 tag 或更新 `master`。
 
-## 9. 新会话交接
+## 8. 最终发布条件
 
-完整交接提示词保存在：
+只有以下条件全部满足，才允许执行发布：
+
+- 全部 P0/P1 Requirement 为 `Verified`；
+- Active P0/P1/S0/S1 = 0；
+- 完整 OS/Python matrix 通过；
+- coverage、Provider fixtures、recovery matrix、artifact manifest、digest/tamper、clean install、live smoke、governance/security review、README claim audit 和最终 RC report 全部通过；
+- 所有证据可访问并与最终 RC head 对应。
+
+任一条件不满足，结论必须保持：
 
 ```text
-docs/roadmap/m2-d-session-handoff.md
+NO RELEASE
 ```
-
-新会话必须先从远程读取 PR #20、当前 branch head、changed files、CI runs 和本计划，不得依赖旧会话的本地容器状态。
-
-当前结论：**M2-D IN PROGRESS；PR #20 未合入；NO RELEASE。**
