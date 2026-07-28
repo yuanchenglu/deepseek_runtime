@@ -126,7 +126,7 @@ class AuthorizationSession:
         except ValueError as exc:
             raise ContractViolation(
                 RuntimeErrorInfo(
-                    ErrorCode.POLICY_DENIED,
+                    ErrorCode.PERMISSION_DENIED,
                     "registered tool risk is not supported by the permission policy",
                     details={"tool": spec.name},
                     cause_class=type(exc).__name__,
@@ -149,7 +149,7 @@ class AuthorizationSession:
             )
             raise ContractViolation(
                 RuntimeErrorInfo(
-                    ErrorCode.POLICY_DENIED,
+                    ErrorCode.PERMISSION_DENIED,
                     "tool execution was denied by policy",
                     details={"tool": spec.name, "risk": risk.value},
                 )
@@ -232,7 +232,7 @@ class AuthorizationSession:
             )
         raise ContractViolation(
             RuntimeErrorInfo(
-                ErrorCode.POLICY_DENIED,
+                ErrorCode.PERMISSION_DENIED,
                 "tool execution was denied by approval",
                 details={"tool": spec.name, "risk": risk.value},
             )
