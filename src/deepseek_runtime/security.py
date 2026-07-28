@@ -91,7 +91,7 @@ class PermissionRequest:
 # ❓ 问：一条权限规则是怎么工作的？
 # 💡 答：它把"什么条件下允许/拒绝/询问"编码成一条规则。
 #   比如："对所有 WRITE 操作，如果是 docs/* 目录就 ASK，
-#   其他目录就 DENY"。规则按顺序检查，第一条匹配的生效。
+#   其他目录就 DENY"。规则按声明顺序检查，第一条匹配的生效。
 
 @dataclass(frozen=True)
 class PermissionRule:
@@ -105,7 +105,10 @@ class PermissionRule:
         """判断这条规则是否匹配给定的请求"""
         if request.risk != self.risk:
             return False
-        if request.path is not None and not fnmatch.fnmatch(request.path, self.path_glob):
+        if request.path is None:
+            if self.path_glob != "*":
+                return False
+        elif not fnmatch.fnmatch(request.path, self.path_glob):
             return False
         if self.command_prefix and request.command[:len(self.command_prefix)] != self.command_prefix:
             return False
@@ -115,25 +118,11 @@ class PermissionRule:
 # ===== 命令脱敏 =====
 
 def _sanitize_command(command: Sequence[str]) -> list[str]:
-    """
-    脱敏命令中的敏感参数（如 API Key、密码等）
-    例：curl --token sk-123 → curl --token [REDACTED]
-    """
-    sanitized: list[str] = []
-    hide_next = False
-    for argument in command:
-        lower = argument.lower()
-        if hide_next:
-            sanitized.append("[REDACTED]")
-            hide_next = False
-        elif lower in {"--token", "--api-key", "--password", "-p"}:
-            sanitized.append(argument)
-            hide_next = True
-        elif any(marker in lower for marker in ("api_key=", "token=", "password=", "authorization=")):
-            sanitized.append("[REDACTED]")
-        else:
-            sanitized.append(argument)
-    return sanitized
+    """只保留可执行文件名与参数数量，不记录参数正文。"""
+    if not command:
+        return []
+    executable = Path(command[0]).name
+    return [executable, f"[{max(0, len(command) - 1)}_ARGS_REDACTED]"]
 
 
 # ===== PermissionPolicy（权限策略）=====
@@ -142,24 +131,27 @@ def _sanitize_command(command: Sequence[str]) -> list[str]:
 class PermissionPolicy:
     """
     权限策略的执行者。默认拒绝所有非只读操作，
-    通过 rules 列表逐个覆盖默认行为。
+    rules 按声明顺序检查，第一条匹配规则覆盖默认行为。
     参考 llm-harness-agent 论文 A5 中关于 Agent 治理（Governance）的讨论。
     """
     rules: list[PermissionRule] = field(default_factory=list)
     audit_events: list[dict[str, object]] = field(default_factory=list)
 
     def decide(self, request: PermissionRequest) -> Decision:
-        """对一次权限请求做出决策，并记录审计日志"""
+        """对一次权限请求做出决策，并记录内容最小化审计日志。"""
         decision = Decision.ALLOW if request.risk is Risk.READ else Decision.DENY
         for rule in self.rules:
             if rule.matches(request):
                 decision = rule.decision
+                break
         self.audit_events.append({
             "event": "permission_decision",
             "timestamp_unix": int(time.time()),
             "risk": request.risk.value,
-            "path": request.path,
+            "path": None,
+            "path_present": isinstance(request.path, str) and bool(request.path),
             "command": _sanitize_command(request.command),
+            "command_present": bool(request.command),
             "decision": decision.value,
         })
         return decision
