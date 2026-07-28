@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .approval import ApprovalProvider, AuthorizationSession
 from .client import DeepSeekClient
 from .contracts import (
     ContractViolation,
@@ -20,6 +21,7 @@ from .contracts import (
 )
 from .diagnostics import build_diagnostics
 from .evidence import redact, request_evidence, response_evidence, sha256_bytes, wire_json
+from .security import PermissionPolicy
 from .session import ToolExecutionResult
 from .workspace import WorkspaceResolver, WorkspaceViolation
 
@@ -142,7 +144,11 @@ def _invalid_tool_call(message: str, *, tool: str = "", cause: BaseException | N
     )
 
 
-def _execute_registered_tool(registry: ToolRegistry, call: Any) -> str:
+def _execute_registered_tool(
+    registry: ToolRegistry,
+    authorization: AuthorizationSession,
+    call: Any,
+) -> str:
     if not isinstance(call, Mapping):
         return _invalid_tool_call("tool call must be an object")
     function = call.get("function")
@@ -164,7 +170,10 @@ def _execute_registered_tool(registry: ToolRegistry, call: Any) -> str:
         return _invalid_tool_call("tool call arguments contain invalid JSON", tool=name, cause=exc)
 
     try:
-        output = registry.execute(name, arguments)
+        spec = registry.resolve(name)
+        validated = spec.validate_arguments(arguments)
+        authorization.authorize(spec, validated)
+        output = spec.handler(validated)
         if isinstance(output, ToolExecutionResult):
             output = output.value
         return normalize_tool_result(output, tool_name=name)
@@ -183,7 +192,7 @@ def _execute_registered_tool(registry: ToolRegistry, call: Any) -> str:
 
 @dataclass
 class DeepSeekRuntime:
-    """Execute the production Provider → Registry → tool-result loop."""
+    """Execute the production Provider → Policy → Approval → tool-result loop."""
 
     client: DeepSeekClient
     max_steps: int = 8
@@ -197,17 +206,25 @@ class DeepSeekRuntime:
         messages: list[dict[str, Any]],
         workspace: str | Path = ".",
         tools: ToolRegistry | None = None,
+        policy: PermissionPolicy | None = None,
+        approval_provider: ApprovalProvider | None = None,
     ) -> RuntimeResult:
-        """Run a task using only registered ToolSpec contracts.
+        """Run a task through the Registry, Policy, and Approval production path.
 
-        Passing a raw handler dictionary is intentionally rejected before the Provider
-        is called. Policy, Approval, and ExecutionAdapter are attached to this Registry
-        path by later M2 slices; no second production tool path is retained.
+        READ tools are allowed by the default policy; every non-READ tool is denied
+        unless an explicit rule allows it or routes it through ApprovalProvider.
+        Passing a raw handler dictionary remains unsupported.
         """
         if tools is not None and not isinstance(tools, ToolRegistry):
             raise TypeError("tools must be a ToolRegistry; raw handler mappings are not supported")
+        if policy is not None and not isinstance(policy, PermissionPolicy):
+            raise TypeError("policy must be a PermissionPolicy")
 
         registry = tools if tools is not None else ToolRegistry()
+        authorization = AuthorizationSession(
+            policy=policy if policy is not None else PermissionPolicy(),
+            approval_provider=approval_provider,
+        )
         workspace_path = Path(workspace)
         active_messages = [dict(message) for message in messages]
         tool_definitions = registry.provider_definitions()
@@ -228,22 +245,22 @@ class DeepSeekRuntime:
                 if isinstance(value, int) and not isinstance(value, bool):
                     total_usage[key] = total_usage.get(key, 0) + value
 
-            evidence.append(
-                {
-                    "step": step,
-                    "status": result.status,
-                    "elapsed_ms": result.elapsed_ms,
-                    "request_fingerprint": result.request_fingerprint,
-                    "request_id": result.request_id,
-                    "usage": result.usage,
-                    "request_evidence": request_evidence(
-                        _request_for_evidence(result.request_payload or payload)
-                    ),
-                    "response_evidence": response_evidence(_response_for_evidence(result.body)),
-                    "error": result.error,
-                    "error_class": result.error_class,
-                }
-            )
+            step_evidence: dict[str, Any] = {
+                "step": step,
+                "status": result.status,
+                "elapsed_ms": result.elapsed_ms,
+                "request_fingerprint": result.request_fingerprint,
+                "request_id": result.request_id,
+                "usage": result.usage,
+                "request_evidence": request_evidence(
+                    _request_for_evidence(result.request_payload or payload)
+                ),
+                "response_evidence": response_evidence(_response_for_evidence(result.body)),
+                "authorization_events": [],
+                "error": result.error,
+                "error_class": result.error_class,
+            }
+            evidence.append(step_evidence)
 
             if result.status != 200:
                 return RuntimeResult(
@@ -312,7 +329,13 @@ class DeepSeekRuntime:
                         error_class=ErrorCode.PROVIDER_RESPONSE_INVALID.value,
                         step=step,
                     )
-                output = _execute_registered_tool(registry, call)
+                event_start = len(authorization.events)
+                output = _execute_registered_tool(registry, authorization, call)
+                authorization_events = step_evidence["authorization_events"]
+                if isinstance(authorization_events, list):
+                    authorization_events.extend(
+                        event.to_dict() for event in authorization.events[event_start:]
+                    )
                 active_messages.append(
                     {
                         "role": "tool",

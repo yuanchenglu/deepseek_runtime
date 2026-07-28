@@ -1,7 +1,7 @@
 # DeepSeek Runtime Alpha Traceability Matrix
 
-> 版本：1.5
-> 适用验证基线：`develop@b012265c4f51238c97c26c22b76d1e5e043153dc`；M2-A closeout PR #15
+> 版本：1.6
+> 适用验证基线：`develop@d20f2d4ee73483a47cb482359066622e0ba8562f`；M2-B implementation PR #16 head `75ae01ab73135f093d137c5fb611a06b4ea9d106`
 > 文档修订：以本文件所在 Git commit 为准
 > 作用：`Requirement → Milestone → PR → Test → Evidence` 的唯一追踪表。
 
@@ -55,6 +55,20 @@
 - 严格 Code Review：Risk enum 兼容、bool limits、mixed-key result、safe serialization 四项发现已修复；未解决 P0/S0/S1 = 0；
 - 自动化覆盖：`TC-TOOL-001`–`004`、`TC-RUN-004`、`TC-RUN-009`、`TC-RUN-011`，以及 malformed JSON/function/arguments/call ID、unknown tool 零执行、invalid result、non-UTF-8 bytes、handler exception、CLI Registry 迁移和安全序列化；
 - Closeout：`docs/roadmap/m2-a-closeout.md`；
+- 发布结论仍为 **NO RELEASE**。
+
+### M2-B 当前实施证据
+
+- 实施 PR：#16 `feat(security): enforce M2-B policy and approval path`；
+- 当前实现 head：`75ae01ab73135f093d137c5fb611a06b4ea9d106`；
+- 失败证据 1：Minimum CI run 114 (`30331798350`)；ErrorCode 合同不一致导致 Pyright 失败；
+- 失败证据 2：Minimum CI run 122 (`30332543894`)；严格审查中误改既有 Policy precedence，导致 unit regression；
+- 失败证据 3：Minimum CI run 127 (`30333987276`)；新增审计语义测试暴露直接 Policy DENY 被错误记录为人工 approval deny；
+- 三次失败均保留，未 rerun、删除、降低类型规则或降低断言；
+- 修复后 Minimum CI run 128 (`30339805675`)：`success`；
+- 修复后 M1 P0 Gate run 76 (`30339805662`)：Linux/macOS/Windows 全部 `success`；
+- 自动化覆盖：`TC-SEC-001`–`004`、`TC-SEC-008`，以及 missing path、command selector、exact-request session approval、provider exception、checkpoint-compatible authorization event 和 policy/approval denial audit distinction；
+- 当前状态：代码与直接测试已实现，等待最终文档精确内容 Gate、严格 review、Ready 和 merge；
 - 发布结论仍为 **NO RELEASE**。
 
 ## 2. 配置与版本
@@ -122,15 +136,15 @@
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| SEC-001 | P1 | M2 | Security | next M2-B PR | TC-SEC-001 | policy unit CI | Implemented | 旧 PermissionPolicy 存在，但尚未接入 Registry production path |
-| SEC-002 | P1 | M2 | Security | next M2-B PR | TC-SEC-002 | overlap/priority fixture CI | Partial | 规则优先级与 overlap 语义未冻结 |
-| SEC-003 | P1 | M2 | Security | next M2-B PR | TC-SEC-003 | approval integration CI | Blocked | ApprovalProvider 缺失 |
-| SEC-004 | P1 | M2 | Security | next M2-B PR | TC-SEC-004 | no-bypass integration CI | Blocked | ToolRegistry 已唯一，但 Policy/Approval 尚未强制接入每次执行 |
+| SEC-001 | P1 | M2 | Security | PR #16 | TC-SEC-001 | run 128; default risk matrix PASS | Implemented | 等待 PR #16 最终精确内容 Gate 与 merge |
+| SEC-002 | P1 | M2 | Security | PR #16 | TC-SEC-002 | run 128; overlap/priority matrix PASS | Implemented | 等待 PR #16 merge 后 integrated closeout |
+| SEC-003 | P1 | M2 | Security | PR #16 | TC-SEC-003 | run 128; approve-once/session/deny/timeout/unavailable PASS | Partial | 内存授权闭环已实现；durable checkpoint timing、resume 与 migration 仍属 M2-D/M3 |
+| SEC-004 | P1 | M2 | Security | PR #16 | TC-SEC-004 | run 128; denial paths execute zero handlers | Implemented | 等待 PR #16 merge 后提升为 Verified |
 | SEC-005 | P1 | M0/M2 | Security | PR-00/08 | TC-SEC-007 | docs/type/help snapshot | Partial | README/Threat Model/ADR 已修正；生产类型与 CLI 命名尚待 M2 |
 | SEC-006 | P1 | M2 | Security | M2-C PR | TC-SEC-005 | child-env subprocess CI | Blocked | 继承宿主环境 |
 | SEC-007 | P1 | M2 | Security | M2-C PR | TC-SEC-006 | process-tree platform CI | Planned | cleanup 未实现 |
 | SEC-008 | P1 | M2 | Runtime | M2-C PR | TC-SEC-009 | adapter contract CI | Planned | adapter 接口未实现 |
-| SEC-009 | P1 | M2 | Security | M2-B/M2-C PR | TC-SEC-008 | secret marker audit CI | Partial | 异常/参数面未全覆盖 |
+| SEC-009 | P1 | M2 | Security | PR #16 / M2-C PR | TC-SEC-008 | run 128; approval/evidence/audit secret-marker subset PASS | Partial | M2-B 面已覆盖；Adapter 子进程环境与错误输出面仍属 M2-C |
 
 ## 8. ChangeManager
 
@@ -240,6 +254,8 @@ M1 已关闭：核心合同、Workspace containment、rollback authorization、s
 
 M2-A 已关闭：PR #14 经 Minimum CI run 106、M1 P0 Gate run 56 和严格 Code Review 后 squash 合入 `develop@b012265c`。`RUN-003`、`RUN-009`、`TOOL-001`–`004`、`TOOL-007` 已提升为 `Verified`。
 
-M2-B Policy/Approval 是下一执行切片；M2-C ExecutionAdapter、M2-D lifecycle/budget/cancellation、M2-E Workspace P1、M2-F CLI contract 与 M2-G integrated closeout 仍为阻断项。
+M2-B Policy/Approval 已在 PR #16 实现并通过 run 128/76，当前仍处于 Draft/最终文档门禁阶段；合入前不得标记为 `Verified` 或启动 M2-C。
+
+M2-C ExecutionAdapter、M2-D lifecycle/budget/cancellation、M2-E Workspace P1、M2-F CLI contract 与 M2-G integrated closeout 仍为阻断项。
 
 因此当前发布结论继续保持：**NO RELEASE**。
