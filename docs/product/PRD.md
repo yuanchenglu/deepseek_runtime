@@ -1,8 +1,8 @@
 # DeepSeek Runtime 产品需求文档（PRD）
 
-> 文档版本：1.2
+> 文档版本：1.3
 > 产品阶段：Open-source Alpha Hardening
-> 适用验证基线：`develop@a8a0f3c8d0e417fa8ffe465cec1763063ca9eead`；M2-C implementation PR #18
+> 适用验证基线：`develop@7793a10152a49fb815aac667906080a4e1a39920`；M2-D next
 > 文档修订：以本文件所在 Git commit 为准
 > 唯一目标：以最少新增功能，把项目做到可以真实、可信、可持续地开源。
 
@@ -21,11 +21,7 @@
 
 直接调用 DeepSeek API 不能自动解决 Agent 产品所需的工具治理、状态恢复、文件变更、证据隐私、成本控制和发布验证。
 
-当前仓库已实现多个基础原语，但仍存在三类根本问题：
-
-1. M2 生产执行闭环尚未完成 integrated closeout；
-2. Recovery、Evidence、Provider、CLI 和 Release Engineering 仍有 P1 Blocked/Partial；
-3. 所有产品承诺必须持续与测试证据和代码实现同步。
+当前仓库已建立 ToolRegistry、Policy/Approval 和 ExecutionAdapter 生产链，但完整 Runtime lifecycle、任务预算、恢复、Provider 协议和发布工程仍未闭环。
 
 ## 2. 产品目标
 
@@ -35,7 +31,7 @@
 
 ### G-02：可控
 
-每次工具执行都经过注册、参数校验、权限决策、必要审批、明确执行 Adapter、超时和输出预算。
+每次工具执行都经过注册、参数校验、权限决策、必要审批、ExecutionAdapter、超时和输出预算。
 
 ### G-03：可恢复
 
@@ -67,7 +63,7 @@
 - 通用 exactly-once 外部副作用保证；
 - 默认交付 Docker/Podman/平台内核级隔离实现。
 
-首个 Alpha 不使用命令黑名单、cwd 限制、普通 subprocess 或 process-group control 宣称“安全沙箱”。
+首个 Alpha 不使用命令黑名单、cwd 限制或普通 subprocess 宣称“安全沙箱”。`RestrictedSubprocessAdapter` 是进程资源边界，不是 container、VM 或 kernel sandbox。
 
 ## 4. 用户与场景
 
@@ -132,10 +128,10 @@
 | --- | --- | --- | --- | --- |
 | RUN-001 | P1 | 支持 text-only 完成 | 一步返回 final result | Implemented |
 | RUN-002 | P1 | 支持多轮 tool call | Fake Provider 三轮测试 | Partial |
-| RUN-003 | P1 | 所有工具调用必须经 ToolRegistry | 无裸 handler 生产路径 | Verified |
+| RUN-003 | P1 | 所有工具调用必须经 ToolRegistry | 无裸 handler 或 Adapter bypass 生产路径 | Verified |
 | RUN-004 | P1 | 所有关键状态转换可 checkpoint | transition/event/checkpoint 测试 | Partial |
 | RUN-005 | P1 | max_steps 是明确预算 | 超限返回 `BUDGET_STEP_EXCEEDED` | Partial |
-| RUN-006 | P1 | 支持 cancellation | provider/tool 执行可取消并清理 | Partial |
+| RUN-006 | P1 | 支持 cancellation | Provider 前不发送请求；tool 执行可取消并清理 | Partial |
 | RUN-007 | P1 | 支持 token/cost/context/time budget | 达阈值停止并生成证据 | Planned |
 | RUN-008 | P1 | Tool error 回传模型或终止策略可配置 | policy tests | Partial |
 | RUN-009 | P1 | 非字符串工具结果被规范化或拒绝 | JSON/object/binary tests | Verified |
@@ -150,12 +146,10 @@
 | TOOL-002 | P1 | Registry 拒绝重复 tool name | 单元测试 | Verified |
 | TOOL-003 | P1 | 参数在 handler 前按 JSON Schema 校验 | invalid fixtures 不调用 handler | Verified |
 | TOOL-004 | P1 | Tool 声明 risk 和 side_effect | 缺失声明不能注册 | Verified |
-| TOOL-005 | P1 | Tool 声明 timeout/output limit | 超时或超限结构化失败 | Implemented |
+| TOOL-005 | P1 | Tool 声明 timeout/output limit | 超时或超限结构化失败 | Verified |
 | TOOL-006 | P1 | Tool 声明 recovery policy | side-effect 工具必须配置 | Partial |
 | TOOL-007 | P1 | 未知工具返回 `TOOL_NOT_FOUND` | handler 不执行 | Verified |
-| TOOL-008 | P2 | Provider tool schema 从 ToolSpec 自动生成 | schema snapshot test | Verified |
-
-`TOOL-005` 的实现状态按 Adapter capability 解释：`RestrictedSubprocessAdapter` 实际强制 timeout/output byte limit；`NoIsolationLocalAdapter` 明确声明不提供这些能力，不得被误认为 bounded execution。
+| TOOL-008 | P2 | Provider tool schema 从 ToolSpec 自动生成 | schema snapshot test | Implemented |
 
 ### 6.5 Workspace Tools
 
@@ -176,19 +170,14 @@
 | SEC-002 | P1 | 规则优先级明确且文档化 | overlap rule tests | Verified |
 | SEC-003 | P1 | ASK 有 ApprovalProvider | approve/deny/timeout tests | Partial |
 | SEC-004 | P1 | Runtime 强制所有工具走 policy | integration test | Verified |
-| SEC-005 | P1 | 命令 Gate 不宣称隔离 | 文档、类型和帮助文本一致 | Implemented |
-| SEC-006 | P1 | 子进程使用最小环境变量 | child 无 API Key 测试 | Implemented |
-| SEC-007 | P1 | 命令 timeout 清理进程树 | child-process test | Implemented |
-| SEC-008 | P1 | 提供可插拔 Execution/Sandbox Adapter 接口 | fake、no-isolation、restricted adapter tests | Implemented |
-| SEC-009 | P1 | 审计日志不泄露参数 secret | marker/结构化 secret tests | Partial |
+| SEC-005 | P1 | 命令 Gate 不宣称隔离 | 文档、类型和帮助文本一致 | Verified |
+| SEC-006 | P1 | 子进程使用最小环境变量 | child 无 API Key 测试 | Verified |
+| SEC-007 | P1 | 命令 timeout 清理进程树 | child-process test | Verified |
+| SEC-008 | P1 | 提供可插拔 Execution/Sandbox Adapter 接口 | fake、no-isolation、restricted adapter tests | Verified |
+| SEC-009 | P1 | 审计日志不泄露参数 secret | marker/结构化 secret tests | Verified |
 | SEC-010 | P2 | 提供 Docker/Podman 参考 adapter | example integration test | Planned |
 
-M2-C 当前能力边界：
-
-- `FakeExecutionAdapter` 用于 deterministic tests，不调用 handler；
-- `NoIsolationLocalAdapter` 仅为可信本地 Python handler 兼容路径，不提供 timeout、运行中 cancellation、output limit、environment minimization、process cleanup 或 kernel isolation；
-- `RestrictedSubprocessAdapter` 强制参数数组、contained cwd、最小环境、timeout、combined byte output limit、cancellation handoff 和 process-tree cleanup，但仍不是 kernel sandbox；
-- complete Provider cancellation、durable cancellation/checkpoint 和 recovery integration 属 M2-D/M3。
+`SEC-003` 保持 Partial：内存 approval 闭环已验证，但 durable checkpoint timing、resume 和 migration 属 M2-D/M3。
 
 ### 6.7 文件变更与回滚
 
@@ -264,7 +253,7 @@ M2-C 当前能力边界：
 | ID | P | 需求 | 验收标准 | 当前 |
 | --- | --- | --- | --- | --- |
 | OSS-001 | P1 | GitHub Actions 自动运行质量门禁 | 每个 PR 有 checks | Partial |
-| OSS-002 | P1 | Linux/macOS/Windows 测试 | matrix green | Partial |
+| OSS-002 | P1 | Linux/macOS/Windows 测试 | matrix green | Planned |
 | OSS-003 | P1 | Ruff + 单一 type checker | CI green | Partial |
 | OSS-004 | P1 | Coverage 阈值和关键路径分母明确 | 指标定义与 gate 均通过 | Partial |
 | OSS-005 | P1 | Secret scan | 故意 secret fixture 被拦截 | Partial |
@@ -280,12 +269,11 @@ M2-C 当前能力边界：
 
 ### NFR-SEC：安全
 
-- 模型输出、Provider response、工作区内容、工具参数、ApprovalProvider、handler/builder 和子进程均视为不可信或半可信边界。
+- 模型输出、Provider response、工作区内容和工具参数均视为不可信。
 - 所有工具参数必须在 handler/Adapter 前验证。
 - 默认日志不能包含正文和 secret。
-- Runtime 不得把命令分类器、cwd、普通 subprocess、process group 或 `RestrictedSubprocessAdapter` 描述为内核隔离。
-- `NoIsolationLocalAdapter` 的非保证必须在类型、Evidence 和文档中明确。
-- Alpha 防御不可信模型和不可信工作区内容，但不承诺抵抗同一主机上的恶意并发进程；该边界必须写入 Threat Model。
+- Runtime 不得把命令分类器、cwd、普通 subprocess 或 RestrictedSubprocessAdapter 描述为内核隔离。
+- Alpha 防御不可信模型和不可信工作区内容，但不承诺抵抗同一主机上的恶意并发进程或恶意 Tool builder。
 
 ### NFR-REL：可靠性
 
@@ -294,12 +282,11 @@ M2-C 当前能力边界：
 - side-effect uncertain 状态不能自动当作 pending。
 - retry 必须有上限和明确 eligibility。
 - Rollback handle 的进程重启、过期和跨工作区语义必须明确。
-- Adapter timeout/cancellation/output overflow 必须进入结构化结果，并在支持平台执行 process-tree cleanup。
 
 ### NFR-PERF：性能与资源
 
 - Workspace search 默认不超过 10,000 文件、100MB 扫描、5 秒，可配置。
-- Tool output 默认不超过 100KB，可配置；声称 byte-limit capability 的 Adapter 必须按合并 stdout/stderr 字节数实际执行。
+- Tool output 默认不超过 100KB，可配置。
 - Provider response 必须有最大字节限制。
 - 每次任务有 step/token/cost/context/time budget。
 
@@ -315,7 +302,6 @@ M2-C 当前能力边界：
 - 版本单一真源。
 - 教学注释移到 docs。
 - error code、checkpoint schema 和 evidence schema 有兼容策略。
-- Adapter capability 必须机器可读、可测试且不可虚标。
 
 ## 8. 产品交互要求
 
@@ -331,15 +317,7 @@ stderr: 进度/警告（可关闭）
 
 ### 审批
 
-审批信息至少包含：
-
-- 工具名；
-- 风险等级；
-- 参数安全摘要；
-- 是否可能有副作用；
-- allow once / allow session / deny / timeout。
-
-默认审批摘要不得包含完整命令、原始路径、参数值或正文。更具体的人机可读安全预览需要独立、经过脱敏的 UI/CLI 合同，不能直接复用私有 `SubprocessRequest`。
+审批信息至少包含：工具名、风险等级、规范化路径或命令、安全摘要、可能副作用，以及 allow once / allow session / deny / timeout。
 
 ## 9. 数据与隐私
 
@@ -349,7 +327,6 @@ stderr: 进度/警告（可关闭）
 | Prompt/response | checkpoint，可选加密 | 否 | 是 |
 | Reasoning continuation | checkpoint，可选加密 | 否 | 可能是 |
 | Tool arguments/results | checkpoint，可选加密 | 默认否 | 是 |
-| SubprocessRequest（command/cwd/env/stdin） | 仅执行期内存 | 否 | 取决于恢复设计 |
 | Structural evidence | JSON | 是 | 否 |
 | Usage/cost | JSON | 是 | 否 |
 | Approval/receipt | checkpoint | 可脱敏摘要 | 是 |
@@ -382,4 +359,4 @@ stderr: 进度/警告（可关闭）
 - M5：完整 CI、Packaging、治理和 Release Engineering；
 - M6：Release Candidate、独立验证与 Alpha 发布。
 
-具体执行顺序见 `docs/roadmap/open-source-readiness-plan.md`。
+M0、M1、M2-A、M2-B、M2-C 已关闭；M2-D Runtime Lifecycle、Budget、Cancellation 为下一执行切片。具体执行顺序见 `docs/roadmap/open-source-readiness-plan.md`。

@@ -1,7 +1,7 @@
 # DeepSeek Runtime Alpha Traceability Matrix
 
-> 版本：1.8
-> 适用验证基线：`develop@a8a0f3c8d0e417fa8ffe465cec1763063ca9eead`；M2-C implementation PR #18
+> 版本：1.9
+> 适用验证基线：`develop@7793a10152a49fb815aac667906080a4e1a39920`；M2-C closeout PR #19
 > 文档修订：以本文件所在 Git commit 为准
 > 作用：`Requirement → Milestone → PR → Test → Evidence` 的唯一追踪表。
 
@@ -58,21 +58,21 @@
 - strict review unresolved P0/S0/S1 = 0；
 - Closeout：`docs/roadmap/m2-b-closeout.md`。
 
-### M2-C 当前实施证据
+### M2-C 已形成的实际证据
 
 - implementation PR：#18 `feat(execution): establish M2-C ExecutionAdapter boundary`；
-- base：`develop@a8a0f3c8d0e417fa8ffe465cec1763063ca9eead`；
-- retained failure：Minimum CI run 144 (`30342778701`)；新增 schema-negative test helper 将显式 `{}` 错误替换为默认参数，导致 unit failure；生产 schema 边界无缺陷；
-- 修复方式：区分 `None` 与显式空对象，保留原断言；失败 run 未 rerun、删除或隐藏；
-- code-complete evidence head：`1e1e538291faa4c4fbb2aa5ee6238c296d9d3ced`；
-- Minimum CI run 159 (`30344773142`)：`success`；
-- M1 P0 Gate run 105 (`30344773139`)：Linux/macOS/Windows `success`；
-- M2 ExecutionAdapter Gate run 9 (`30344773173`)：Linux/macOS/Windows 各 36/36，总计 108/108，0 failures/errors/skipped；
-- Linux artifact `8682439373`, digest `a645fda1a6746f8b1397537f9d01c5bc804a4c3a824d8604d558e4b16250d4cf`；
-- macOS artifact `8682441110`, digest `89afa3434e0e720c0f551db7994e4642697b4842f1a4c329d68faa4c441471a6`；
-- Windows artifact `8682449665`, digest `505e3f48ca6903b46f13c2d7e084491f43a6d0abc11e24e9af6b13ac79a16eb7`；
+- final head：`b587b4382e3c7bd91126d88d1dff2cfdc43e4c38`；
+- squash merge：`7793a10152a49fb815aac667906080a4e1a39920`；
+- retained failure：Minimum CI run 144 (`30342778701`)；schema-negative test helper 将显式 `{}` 错误替换为默认参数；修复 helper 后保留原 schema 断言，未 rerun、删除或隐藏失败；
+- final Minimum CI run 165 (`30345881483`)：`success`；
+- final M1 P0 Gate run 111 (`30345881511`)：Linux/macOS/Windows `success`；
+- M2 ExecutionAdapter Gate run 15 (`30345881606`)：Linux/macOS/Windows 各 36/36，总计 108/108，0 failures/errors/skipped；
+- Linux artifact `8682866620`, digest `cb57b08c75d0f897ac52c8e3af52be2b0d4baee65dc5dfe43d4c9022315565a8`；
+- macOS artifact `8682871026`, digest `c8bd863f9114ff0a09faafb0525123772b1fec88dd54b4d7da1310cf0703d7eb`；
+- Windows artifact `8682875863`, digest `a7369240153ee8095540e0015561e1ee80da7a9b3c802e4cc102927c61dcb3de`；
+- strict review unresolved P0/S0/S1 = 0；review threads = 0；
 - report：`docs/testing/m2-execution-adapter-report.md`；
-- 当前状态：代码、专项三平台证据和核心合同已实现；等待最终文档、最终精确内容 Gate、strict review、Ready 与 merge；
+- Closeout：`docs/roadmap/m2-c-closeout.md`；
 - 发布结论：**NO RELEASE**。
 
 ## 2. 配置与版本
@@ -105,13 +105,13 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | RUN-001 | P1 | M2 | Runtime | M2-D PR | TC-RUN-001 | fake-provider integration CI | Implemented | 需接入统一 RuntimeResult/lifecycle |
 | RUN-002 | P1 | M2 | Runtime | M2-D PR | TC-RUN-002/003 | multi-round integration CI | Partial | 生命周期未统一 |
-| RUN-003 | P1 | M2 | Runtime | PR #14/#18 | TC-RUN-004 | run 106 Registry-only；run 9 Adapter ordering/bypass negatives | Verified | PR #18 merge 后需 closeout 确认 Adapter boundary |
+| RUN-003 | P1 | M2 | Runtime | PR #14/#18 | TC-RUN-004 | run 106 Registry-only；run 15 Adapter ordering/bypass negatives | Verified | 无 M2-A/M2-C blocker |
 | RUN-004 | P1 | M1/M2 | Runtime | PR #6 / M2-D PR | TC-RUN-005 | transition manifest CI | Partial | state/transition/checkpoint 合同已冻结；生产 Runtime 尚未强制全部转换 |
 | RUN-005 | P1 | M2 | Runtime | M2-D PR | TC-RUN-006 | budget integration CI | Partial | 仅 step 行为 |
-| RUN-006 | P1 | M2/M4 | Runtime | PR #18 / M2-D PR | TC-RUN-012/013、TC-PROV-015 | run 9 Adapter cancellation + cleanup PASS | Partial | Tool-during-cancel handoff 已实现；Provider 前/请求中 cancellation 与 durable lifecycle 属 M2-D/M4 |
+| RUN-006 | P1 | M2/M4 | Runtime | PR #18 / M2-D PR | TC-RUN-012/013、TC-PROV-015 | run 15 Adapter cancellation + cleanup PASS | Partial | Tool-during-cancel handoff 已实现；Provider 前/请求中 cancellation 与 durable lifecycle 属 M2-D/M4 |
 | RUN-007 | P1 | M2 | Runtime | M2-D PR | TC-RUN-007 | budget matrix CI | Planned | token/cost/context/time 未接入 |
 | RUN-008 | P1 | M2 | Runtime | M2-D PR | TC-RUN-008 | tool-error policy CI | Partial | RecoveryPolicy 已实现；Runtime 级继续/终止策略未完成 |
-| RUN-009 | P1 | M2 | Runtime | PR #14/#18 | TC-RUN-009、TC-TOOL-005/006 | run 106 normalization；run 9 timeout/output PASS | Verified | NoIsolation capability 明确不提供 limit；bounded path 由 Restricted Adapter 保证 |
+| RUN-009 | P1 | M2 | Runtime | PR #14/#18 | TC-RUN-009、TC-TOOL-005/006 | run 106 normalization；run 15 timeout/output PASS | Verified | NoIsolation capability 明确不提供 limit；bounded path 由 Restricted Adapter 保证 |
 | RUN-010 | P1 | M2/M4 | Runtime | PR #14 / M2-D/M4 Provider PR | TC-RUN-010 | run 98 retained；run 106 malformed subset PASS | Partial | arbitrary root、choices/message 全矩阵仍属后续 Provider/Runtime PR |
 
 ## 5. Tool Contract
@@ -122,7 +122,7 @@
 | TOOL-002 | P1 | M2 | Runtime | PR #14 | TC-TOOL-002 | run 106 | Verified | 无 M2-A blocker |
 | TOOL-003 | P1 | M2 | Runtime | PR #6/#14 | TC-TOOL-003 | run 106 | Verified | 无 M2-A blocker |
 | TOOL-004 | P1 | M1/M2 | Security | PR #6/#14 | TC-TOOL-004 | run 106 | Verified | 无 M2-A blocker |
-| TOOL-005 | P1 | M2 | Runtime | PR #18 | TC-TOOL-005/006 | M2 Gate run 9；timeout/output byte limit PASS × 3 OS | Implemented | 等待 PR #18 final Gate/merge；NoIsolation 显式声明不提供 limit |
+| TOOL-005 | P1 | M2 | Runtime | PR #18 | TC-TOOL-005/006 | M2 Gate run 15；timeout/output byte limit PASS × 3 OS | Verified | NoIsolation 显式声明不提供 limit；Restricted path 已验证 |
 | TOOL-006 | P1 | M1/M2 | Recovery | PR #6/#9/#14 / M2-D PR | TC-TOOL-004/007 | registration/recovery evidence | Partial | receipt/idempotency/retry 与 Adapter private receipt 尚未接入 lifecycle |
 | TOOL-007 | P1 | M2 | Runtime | PR #9/#14 | TC-RUN-011 | run 106 | Verified | 无 M2-A blocker |
 
@@ -130,8 +130,8 @@
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| WS-001 | P0 | M1 | Security | PR #7/#13/#18 | TC-WS-001 | run 33；M1 run 105 regression PASS | Verified | 无 M1 blocker |
-| WS-002 | P0 | M1 | Security | PR #7/#13/#18 | TC-WS-002/003 | run 33；M1 run 105 regression PASS | Verified | 同账号恶意并发进程不在承诺范围 |
+| WS-001 | P0 | M1 | Security | PR #7/#13/#18 | TC-WS-001 | run 33；M1 run 111 regression PASS | Verified | 无 M1 blocker |
+| WS-002 | P0 | M1 | Security | PR #7/#13/#18 | TC-WS-002/003 | run 33；M1 run 111 regression PASS | Verified | 同账号恶意并发进程不在承诺范围 |
 | WS-003 | P1 | M2 | Runtime | PR #7 / M2-E PR | TC-WS-004 | UTF-8 boundary CI | Partial | containment 已统一；read byte-limit/UTF-8 截断语义未完成 |
 | WS-004 | P1 | M2 | Runtime | M2-E PR | TC-WS-005 | large-workspace budget CI | Planned | read/search file/byte/time budget 未实现 |
 | WS-005 | P1 | M2 | Runtime | PR #7 / M2-E PR | TC-WS-006 | IO fixture CI | Partial | no-follow traversal 已实现；错误结构仍未统一 |
@@ -143,12 +143,12 @@
 | SEC-001 | P1 | M2 | Security | PR #16/#17 | TC-SEC-001 | run 129；merged `f8a5799a` | Verified | 无 M2-B blocker |
 | SEC-002 | P1 | M2 | Security | PR #16/#17 | TC-SEC-002 | run 129；merged `f8a5799a` | Verified | 无 M2-B blocker |
 | SEC-003 | P1 | M2 | Security | PR #16 / M2-D/M3 Recovery PR | TC-SEC-003 | run 129 | Partial | durable approval checkpoint timing、resume、migration 属 M2-D/M3 |
-| SEC-004 | P1 | M2 | Security | PR #16/#17/#18 | TC-SEC-004 | run 129；M2 Gate run 9 Adapter ordering/bypass PASS | Verified | PR #18 merge 后记录 integrated closeout |
-| SEC-005 | P1 | M0/M2 | Security | PR #18 | TC-SEC-007 | run 9 wrapped-command negative + capability snapshot × 3 OS | Implemented | 等待 final Gate/merge；CLI help 最终文案仍需 M2-F 复核 |
-| SEC-006 | P1 | M2 | Security | PR #18 | TC-SEC-005 | run 9 minimal env/API-key/loader-key negatives × 3 OS | Implemented | 等待 final Gate/merge |
-| SEC-007 | P1 | M2 | Security | PR #18 | TC-SEC-006 | run 9 descendant cleanup × 3 OS | Implemented | best-effort 对 hostile process 的非保证必须保留 |
-| SEC-008 | P1 | M2 | Runtime | PR #18 | TC-SEC-009 | run 9 Fake/NoIsolation/Restricted capability contract × 3 OS | Implemented | 等待 final Gate/merge |
-| SEC-009 | P1 | M2 | Security | PR #16/#18 / M3 Evidence PR | TC-SEC-008 | run 129 approval privacy；run 9 Adapter env/error/evidence privacy | Partial | M2 execution surfaces 已覆盖；CLI、Provider、checkpoint、构件全输出面仍属后续 |
+| SEC-004 | P1 | M2 | Security | PR #16/#17/#18 | TC-SEC-004 | run 129；M2 Gate run 15 Adapter ordering/bypass PASS | Verified | 无 M2-B/M2-C blocker |
+| SEC-005 | P1 | M0/M2 | Security | PR #18 | TC-SEC-007 | run 15 wrapped-command negative + capability snapshot × 3 OS | Verified | CLI help 最终文案仍由 M2-F 独立复核 |
+| SEC-006 | P1 | M2 | Security | PR #18 | TC-SEC-005 | run 15 minimal env/API-key/loader-key negatives × 3 OS | Verified | 无 M2-C blocker |
+| SEC-007 | P1 | M2 | Security | PR #18 | TC-SEC-006 | run 15 descendant cleanup × 3 OS | Verified | best-effort 对 hostile process 的非保证必须保留 |
+| SEC-008 | P1 | M2 | Runtime | PR #18 | TC-SEC-009 | run 15 Fake/NoIsolation/Restricted capability contract × 3 OS | Verified | 无 M2-C blocker |
+| SEC-009 | P1 | M2 | Security | PR #16/#18 | TC-SEC-008 | run 129 approval privacy；run 15 Adapter env/error/evidence privacy | Verified | 更广泛的 Provider/CLI/checkpoint/构件隐私由 CFG/EVD/OSS 独立验收 |
 
 ## 8. ChangeManager
 
@@ -231,7 +231,7 @@
 | OSS-008 | P1 | M5 | Release | M5 Packaging PR | TC-CFG-006、TC-OSS-006 | clean-venv logs | Planned | wheel/sdist gate 缺失 |
 | OSS-009 | P1 | M0/M5 | Maintainer | PR #2 / M5 Governance PR | TC-OSS-009 | governance files + docs/link CI | Partial | M5 release governance 复核未完成 |
 | OSS-010 | P1 | M0/M5 | Security | PR #2 / M5 Governance PR | TC-OSS-010 | SECURITY gate + approved review | Partial | 私密报告能力与 release review 待验证 |
-| OSS-011 | P1 | M0/M5/M6 | Maintainer | PR #2/#13/#14/#16/#17/#18 / M5 Claim Audit PR | TC-OSS-007 | README/Threat/contract synchronization | Partial | 完整逐项自动 claim audit 未实现 |
+| OSS-011 | P1 | M0/M5/M6 | Maintainer | PR #2/#13/#14/#16/#17/#18/#19 / M5 Claim Audit PR | TC-OSS-007 | README/Threat/contract synchronization | Partial | 完整逐项自动 claim audit 未实现 |
 
 ## 14. Release-level Evidence
 
@@ -253,12 +253,10 @@
 
 ## 15. 当前结论
 
-M0、M1、M2-A、M2-B 已关闭。
+M0、M1、M2-A、M2-B、M2-C 已关闭。
 
-M2-C 已在 PR #18 实现 Adapter 合同、三种 Adapter、Runtime 强制接入、WorkspaceSandbox 迁移、最小环境、cwd containment、timeout、byte output、cancellation handoff、process-tree cleanup 与 execution evidence。代码完成态 Minimum CI run 159、M1 P0 Gate run 105 和 M2 ExecutionAdapter Gate run 9 全绿，专项分母为三平台各 36/36。
+M2-C 通过 PR #18 建立 Adapter 合同、三种 Adapter、Runtime 强制接入、WorkspaceSandbox 迁移、最小环境、cwd containment、timeout、byte output、cancellation handoff、process-tree cleanup 与 execution evidence。最终 Minimum CI run 165、M1 P0 Gate run 111 和 M2 ExecutionAdapter Gate run 15 全绿，专项分母为三平台各 36/36；merge commit 为 `7793a10152a49fb815aac667906080a4e1a39920`。
 
-PR #18 尚未完成最终文档精确内容 Gate、strict review、Ready 和 merge，因此 M2-C 当前是 **IN PROGRESS**，相关 Requirement 不得提前全部标记为 `Verified`。
-
-M2-D lifecycle/budget/cancellation、M2-E Workspace P1、M2-F CLI contract 与 M2-G integrated closeout 仍为阻断项。
+M2-D lifecycle/budget/full cancellation、M2-E Workspace P1、M2-F CLI contract 与 M2-G integrated closeout 仍为阻断项。
 
 当前发布结论：**NO RELEASE**。

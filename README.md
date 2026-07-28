@@ -2,7 +2,7 @@
 
 > 面向 DeepSeek API 的本地 Agent Runtime Kernel。
 >
-> **当前阶段：Open-source Alpha Hardening；M1、M2-A、M2-B 已关闭；M2-C ExecutionAdapter 在 Draft PR #18 实施中；当前发布结论：NO RELEASE。**
+> **当前阶段：Open-source Alpha Hardening；M1、M2-A、M2-B、M2-C 已关闭；M2-D Runtime Lifecycle、Budget、Cancellation 为下一执行切片；当前发布结论：NO RELEASE。**
 
 [English](README_en.md) | [简体中文](README.md)
 
@@ -10,28 +10,37 @@
 
 直接调用模型 API 并不等于获得一个可靠 Agent。Runtime 需要处理 Provider 协议、工具合同、权限审批、受限执行、资源预算、状态恢复、证据隐私和发布验证。
 
-本仓库已完成 M1 的核心合同、Workspace containment、受约束回滚和不确定副作用恢复；M2-A 建立 ToolRegistry 唯一生产工具集合；M2-B 将 PermissionPolicy 与 ApprovalProvider 强制接入 Runtime。M2-C 正在 PR #18 建立统一 ExecutionAdapter 边界、受限子进程控制和三平台专项证据。完整 Runtime lifecycle、预算、Provider cancellation、durable checkpoint、Workspace P1、CLI 协议和发布工程仍未完成。首个公开 Alpha 的范围、优先级和验收标准以 [`docs/product/PRD.md`](docs/product/PRD.md) 为唯一事实源。
+本仓库已完成 M1 核心合同、Workspace containment、受约束回滚和不确定副作用恢复；M2-A 建立 ToolRegistry 唯一生产工具集合；M2-B 将 PermissionPolicy 与 ApprovalProvider 强制接入 Runtime；M2-C 将 ExecutionAdapter、受限子进程控制和三平台专项 Gate 合入 `develop`。完整 Runtime lifecycle、任务预算、Provider cancellation、durable checkpoint、Workspace P1、CLI 协议和发布工程仍未完成。首个公开 Alpha 的范围、优先级和验收标准以 [`docs/product/PRD.md`](docs/product/PRD.md) 为唯一事实源。
 
 ## 当前真实状态
 
 | 能力 | 当前判断 |
 | --- | --- |
 | DeepSeek Provider 请求与基础响应处理 | Partial |
-| Text-only 与基础 Tool Loop | Partial |
-| ToolRegistry 与参数/结果边界 | Verified for M2-A；PR #14、Minimum CI run 106、M1 P0 Gate run 56 |
+| Text-only 与基础 Tool Loop | Partial；M2-D 收口 lifecycle |
+| ToolRegistry 与参数/结果边界 | Verified for M2-A；PR #14、runs 106/56 |
 | Policy 与 Approval 强制闭环 | Verified for M2-B 内存生产路径；PR #16、runs 129/77 |
-| ExecutionAdapter 强制闭环 | Implemented on Draft PR #18；代码完成态 runs 159/105，M2 Gate run 9 三平台各 36/36；尚未合入 |
-| Restricted subprocess controls | Implemented on PR #18：minimal env、contained cwd、timeout、combined byte output、cancellation handoff、process-tree cleanup |
+| ExecutionAdapter 强制闭环 | Verified for M2-C；PR #18、merge `7793a101`、runs 165/111/15 |
+| Restricted subprocess controls | Verified for M2-C：minimal env、contained cwd、timeout、combined byte limit、cancel、process-tree cleanup |
 | Kernel / OS isolation | 不提供；所有当前 Adapter 均声明 `kernel_isolation=false` |
 | Approval durable checkpoint / resume | Partial；持久化时机、恢复和 migration 属 M2-D/M3 |
 | Complete cancellation | Partial；tool execution handoff 已实现，Provider 前/请求中 cancellation 属 M2-D/M4 |
-| Workspace containment 与 symlink/reparse-point 防护 | Verified for M1 P0；Linux/macOS/Windows 各 20/20 |
+| Workspace containment 与 symlink/reparse-point 防护 | Verified for M1 P0 |
 | Workspace read/search budgets | Planned；M2-E |
-| Checkpoint 与 Evidence | Partial；合同已冻结，生产存储仍需拆分 |
+| Checkpoint 与 Evidence | Partial；合同已冻结，生产 lifecycle/store 仍需收口 |
 | 副作用恢复 | Verified for M1 P0；不确定非幂等副作用进入人工协调 |
 | 文件变更与回滚 | Verified for M1 P0；opaque handle、durable ChangeJournal、expiry/scope/conflict 已覆盖 |
-| 多平台 CI | M1 P0 与 M2-C Adapter 专项均覆盖 Linux/macOS/Windows + Python 3.11；完整 release matrix 仍 Planned |
+| 多平台 CI | M1 P0 与 M2-C Adapter Gate 覆盖 Linux/macOS/Windows + Python 3.11；完整 release matrix 仍 Planned |
 | wheel/sdist、构件来源与完整性验证 | Planned/Blocked |
+
+M2-C 最终证据：
+
+- final head：`b587b4382e3c7bd91126d88d1dff2cfdc43e4c38`；
+- squash merge：`7793a10152a49fb815aac667906080a4e1a39920`；
+- Minimum CI run 165：PASS；
+- M1 P0 Gate run 111：Linux/macOS/Windows PASS；
+- M2 ExecutionAdapter Gate run 15：三平台各 36/36，总计 108/108，0 failures/errors/skips；
+- retained failure：Minimum CI run 144，未 rerun、删除或隐藏。
 
 详细证据：
 
@@ -41,13 +50,12 @@
 - [M1 P0 三平台报告](docs/testing/m1-p0-report.md)
 - [M2-A ToolRegistry Closeout](docs/roadmap/m2-a-closeout.md)
 - [M2-B Policy/Approval Closeout](docs/roadmap/m2-b-closeout.md)
+- [M2-C ExecutionAdapter Closeout](docs/roadmap/m2-c-closeout.md)
 - [ExecutionAdapter Contract](docs/contracts/execution-adapter.md)
 - [M2-C ExecutionAdapter Test Report](docs/testing/m2-execution-adapter-report.md)
 - [开源就绪执行计划](docs/roadmap/open-source-readiness-plan.md)
 
 ## 当前生产工具调用链
-
-PR #18 的目标路径为：
 
 ```text
 Provider tool call
@@ -56,7 +64,7 @@ Provider tool call
 → PermissionPolicy
 → ApprovalProvider（仅 ASK）
 → ExecutionAdapter
-→ result normalization
+→ deterministic result normalization
 → content-minimized evidence
 ```
 
@@ -64,8 +72,8 @@ Provider tool call
 
 - Registry/schema/Policy/Approval 失败时 Adapter 和 handler 调用次数为 0；
 - 默认 `NoIsolationLocalAdapter` 保持可信本地 Python handler 兼容，但明确不提供 timeout、运行中 cancellation、output limit、environment minimization、process cleanup 或隔离；
-- `RestrictedSubprocessAdapter` 强制参数数组、`shell=False`、contained cwd、最小环境、secret/loader key 剥离、ToolSpec timeout、combined stdout/stderr byte limit、cancellation handoff 和 process-tree cleanup；
-- execution event 不含 arguments、command、cwd、env、stdin、stdout、stderr、result 或异常正文；
+- `RestrictedSubprocessAdapter` 强制参数数组、`shell=False`、contained cwd、最小环境、secret/loader-key 剥离、ToolSpec timeout、combined stdout/stderr byte limit、cancellation handoff 和 process-tree cleanup；
+- execution event 不含 arguments、command、cwd、env、stdin、stdout、stderr、result、private receipt 或异常正文；
 - `WorkspaceSandbox.run()` 不再直接调用 `subprocess.run`，统一委托配置的 Adapter。
 
 ## 安全边界
@@ -74,14 +82,28 @@ Provider tool call
 
 - `NoIsolationLocalAdapter` 仅适用于可信本地工具；
 - `RestrictedSubprocessAdapter` 是 process-resource boundary，不提供 filesystem、network、syscall、user 或 kernel isolation；
-- command classifier 不是隔离：包装命令可能被分类为 `SHELL_SAFE`；
+- command classifier 不是隔离，包装命令可能仍被分类为 `SHELL_SAFE`；
 - Restricted 子进程仍可能访问同一宿主用户有权访问的资源；
-- process-tree cleanup 对 hostile process 仅为 best-effort，尽管三平台 fixture 已通过；
-- Python command builder 是半可信代码，M2-C 不能阻止恶意 builder 在返回 request 前产生副作用；
+- process-tree cleanup 对 hostile process 仅为 best-effort；
+- Python command builder 是半可信代码，Runtime 不能阻止恶意 builder 在返回 request 前产生副作用；
 - Workspace containment 不承诺抵抗同一用户权限下的恶意并发进程；
 - Runtime 不承诺任意外部系统的 exactly-once。
 
 完整边界见 [Threat Model](docs/security/threat-model.md) 和 [Security Policy](SECURITY.md)。
+
+## 下一执行切片：M2-D
+
+M2-D 只扩展现有 `DeepSeekRuntime`，不创建第二套 Agent loop。范围包括：
+
+- 生产状态转换与 lifecycle event；
+- checkpoint handoff；
+- Provider-before-call cancellation 与 tool-during-cancel 最终语义；
+- step/token/cost/context/time budgets；
+- tool error continue/terminate policy；
+- malformed Provider 的结构化 RuntimeResult 边界；
+- M2-D focused Gate。
+
+M2-D 不混入 Workspace P1、CLI 协议、Provider streaming/retry、M3 durable store/Evidence 或发布工程。
 
 ## 开发者快速开始
 
