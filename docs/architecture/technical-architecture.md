@@ -1,89 +1,226 @@
 # DeepSeek Runtime 技术架构
 
-> 状态：Current + Target Architecture
-> 基线：`develop@0e1e435`
-> 目标：以最少重构建立可测试、不可绕过的 Runtime 生命周期。
+> 状态：Current + Target Architecture  
+> 适用基线：`develop@a8a0f3c8d0e417fa8ffe465cec1763063ca9eead`；M2-C implementation PR #18  
+> 当前阶段：M1、M2-A、M2-B Closed；M2-C In Progress  
+> 发布结论：**NO RELEASE**
 
-## 1. 当前模块
+## 1. 架构目标
 
-| 模块 | 当前职责 | 主要风险 |
+DeepSeek Runtime 是 local-first Agent Runtime Kernel。核心目标不是扩展更多 Agent 功能，而是建立一条可验证、不可静默绕过、失败可解释的生产执行链：
+
+```text
+Provider
+→ Runtime
+→ ToolRegistry / JSON Schema
+→ PermissionPolicy / ApprovalProvider
+→ ExecutionAdapter
+→ Handler or bounded subprocess
+→ result normalization
+→ Runtime evidence
+```
+
+M2-C 只建立执行边界，不完成完整 Runtime 状态机、durable checkpoint、预算、Provider cancellation、Workspace P1 或发布构件。
+
+## 2. 当前模块与成熟度
+
+| 模块 | 当前职责 | 当前状态 |
 | --- | --- | --- |
-| `client.py` | HTTP、SSE、ProviderResult、配置 | 响应 shape、重试、真流式不足 |
-| `runtime.py` | ReAct loop、内建只读工具 | 未接入 session/security；symlink 风险 |
-| `session.py` | 状态、文件存储、恢复 | checkpoint/evidence 混合；副作用重复 |
-| `security.py` | policy、路径、命令、changeset | 不是隔离；rollback token 可伪造 |
-| `evidence.py` | hash、redact、结构证据 | canonical/隐私和任意输入健壮性 |
-| `observability.py` | 使用量、成本、成功率 | 未知成本按 0、数据质量语义混合 |
-| `diagnostics.py` | 环境和 evidence 摘要 | env 注入 bug、检查不等于可运行 |
-| `cli.py` | doctor/run | 默认不显示最终回答 |
-| `scripts/*` | 演练、构件、门禁 | denylist 打包、SHA 只验长度 |
-| `tests/*` | 15 个基础测试 | 缺少系统、对抗、恢复和协议测试 |
+| `client.py` | HTTP、SSE、ProviderResult、配置 | Partial；response normalization、retry、真正增量流式仍未完成 |
+| `runtime.py` | Provider/tool loop、Registry、Policy、Approval、Adapter 编排 | M2-A/B 已合入；M2-C Adapter 接入在 PR #18 |
+| `contracts/*` | Error、State、Tool、Checkpoint、Evidence、Recovery、Journal | M1/M2-A 最小合同已冻结 |
+| `approval.py` | Policy/Approval 强制链与内容最小化事件 | Verified for M2-B 内存路径 |
+| `execution.py` | Adapter 合同、Fake/NoIsolation/RestrictedSubprocess | M2-C implementation；待最终 Gate/merge |
+| `workspace.py` | canonical resolver、link/reparse-point containment | Verified for M1 P0 |
+| `security.py` | PermissionPolicy、WorkspaceSandbox compatibility、ChangeManager | 命令路径已迁移到 Adapter；类名不代表内核隔离 |
+| `session.py` | Session/ToolCallRecord、恢复原语 | Partial；未统一接入最终 lifecycle |
+| `evidence.py` | 请求/响应结构证据与脱敏 | Partial；M3 totality/canonical/privacy 仍未完成 |
+| `observability.py` | usage、cost、成功率汇总 | Partial；unknown 与预算语义未收口 |
+| `cli.py` | doctor/run | Partial；M2-F 输出和 exit-code 协议未完成 |
+| `.github/workflows/*` | Minimum CI、M1 P0 Gate、M2 Adapter Gate | M2-C 新增三平台专项证据 |
 
-## 2. 当前运行路径
+## 3. 当前生产调用链
+
+### 3.1 已合入 develop 的边界
+
+M2-A：
+
+- `ToolRegistry` 是 `DeepSeekRuntime` 接受的生产工具集合；
+- ToolSpec 完成名称、schema、risk、side-effect、limit 与 recovery 注册合同；
+- Provider tool definition 从 ToolSpec 生成；
+- malformed call、unknown tool、invalid result 有结构化错误。
+
+M2-B：
+
+- Registry/schema 后、handler 前强制 `PermissionPolicy`；
+- `ASK` 必须经过 `ApprovalProvider`；
+- deny、timeout、unavailable、provider exception 均 fail-closed；
+- authorization event 内容最小化。
+
+### 3.2 PR #18 增加的 M2-C 边界
 
 ```mermaid
 flowchart LR
-    CLI --> Runtime
-    Runtime --> Client
-    Client --> DeepSeekAPI
-    Runtime --> Handler
-    Runtime --> Diagnostics
+    Provider[Provider tool call]
+    Runtime[DeepSeekRuntime]
+    Registry[ToolRegistry]
+    Schema[JSON Schema]
+    Policy[PermissionPolicy]
+    Approval[ApprovalProvider]
+    Adapter[ExecutionAdapter]
+    Local[NoIsolationLocalAdapter]
+    Restricted[RestrictedSubprocessAdapter]
+    Result[ExecutionOutcome]
+    Evidence[Execution Evidence]
+
+    Provider --> Runtime
+    Runtime --> Registry
+    Registry --> Schema
+    Schema --> Policy
+    Policy --> Approval
+    Approval --> Adapter
+    Adapter --> Local
+    Adapter --> Restricted
+    Local --> Result
+    Restricted --> Result
+    Result --> Runtime
     Runtime --> Evidence
-
-    Session -.未接入.-> Runtime
-    Policy -.未强制.-> Handler
-    ChangeManager -.独立原语.-> Handler
-    Observability -.离线汇总.-> Runtime
 ```
 
-## 3. 目标组件模型
+强制顺序：
 
-### 3.1 Provider Adapter
+1. Provider tool-call shape 校验；
+2. Registry lookup；
+3. JSON Schema 参数校验；
+4. Policy decision；
+5. ASK approval；
+6. Adapter execution；
+7. result normalization；
+8. authorization/execution evidence。
 
-```python
-class ProviderAdapter(Protocol):
-    def complete(self, request: ProviderRequest) -> ProviderResponse: ...
-    def stream(self, request: ProviderRequest) -> Iterator[ProviderEvent]: ...
-```
+Registry/schema/Policy/Approval 失败时 Adapter 调用次数为 0。
 
-职责：
+## 4. ExecutionAdapter 模型
 
-- 生成请求；
-- 统一响应 shape；
-- 错误分类；
-- retry/backoff；
-- request id；
-- provider protocol compatibility；
-- 不承担业务工具执行。
-
-### 3.2 ToolSpec / ToolRegistry
+### 4.1 公共合同
 
 ```python
-@dataclass(frozen=True)
-class ToolSpec:
+class ExecutionAdapter(Protocol):
     name: str
-    description: str
-    parameters: dict[str, Any]
-    handler: ToolHandler
-    risk: Risk
-    side_effect: bool
-    timeout_seconds: float
-    max_output_bytes: int
-    recovery_policy: RecoveryPolicy
+    capabilities: ExecutionCapabilities
+
+    def execute(
+        self,
+        spec: ToolSpec,
+        arguments: dict[str, Any],
+        context: ExecutionContext,
+    ) -> ExecutionOutcome: ...
 ```
 
-Registry 必须：
+`ExecutionCapabilities` 明确：
 
-- 拒绝重复名称；
-- 校验 JSON Schema；
-- 生成 Provider tools definition；
-- 统一执行包装；
-- 输出 ToolExecutionResult；
-- 不允许 Runtime 直接调用裸 handler。
+- isolation level；
+- timeout enforcement；
+- cancellation enforcement；
+- byte output limit；
+- process-tree cleanup；
+- minimal environment；
+- kernel isolation。
 
-### 3.3 Runtime Orchestrator
+当前所有 Adapter 的 `kernel_isolation=false`。
 
-Runtime 只负责状态机：
+### 4.2 FakeExecutionAdapter
+
+- deterministic scripted outcome；
+- 不调用 handler；
+- 记录测试调用；
+- 用于 ordering、failure、cancellation 和 evidence 测试；
+- 不虚标 timeout、output、process-tree 或 minimal-env 能力。
+
+### 4.3 NoIsolationLocalAdapter
+
+- 当前 Python 进程内调用可信 handler；
+- 保持现有 read/search 等 Python 工具兼容；
+- handler exception 转为结构化 `TOOL_EXECUTION_FAILED`，不发布异常正文；
+- 只在开始前识别 cancellation；
+- 不提供 timeout、运行中 cancellation、输出限制、环境最小化、进程清理或 OS 隔离。
+
+这是显式低保证 Adapter，不得被描述为 sandbox。
+
+### 4.4 RestrictedSubprocessAdapter
+
+注册 handler 是纯 command builder，返回 `SubprocessRequest`，不得自行执行命令。
+
+执行控制：
+
+- command 必须是参数 tuple；
+- `shell=False`；
+- cwd 必须经过 `WorkspaceResolver`；
+- 子进程环境从小型 host allowlist 构建；
+- API key、token、authorization、password、credential、secret 等键被移除；
+- `PYTHONPATH`、`PYTHONHOME`、`LD_*`、`DYLD_*`、`NODE_OPTIONS` 等 loader/runtime 注入键被移除；
+- 使用 ToolSpec `timeout_seconds`；
+- stdout/stderr 合并按 byte 限制，保留内容总量不超过 `max_output_bytes`；
+- stdin 在独立线程写入，不能阻塞 timeout/cancellation loop；
+- timeout、cancel、output overflow 触发 process-tree cleanup；
+- Windows 使用 `taskkill /T /F`，辅助进程也使用最小环境；
+- Unix 使用独立 process group 和 TERM/KILL；
+- builder/spawn/pipe 异常结构化，不公开异常正文。
+
+该 Adapter 是 process-resource boundary，不是 kernel sandbox；同一宿主用户可访问的文件、网络和系统调用仍可能被子进程访问。
+
+## 5. WorkspaceSandbox 兼容路径
+
+`WorkspaceSandbox.run()` 历史上直接调用 `subprocess.run`，形成第二套执行路径。PR #18 将其改为：
+
+```text
+command array validation
+→ risk classification
+→ cwd containment
+→ PermissionPolicy
+→ temporary ToolSpec/SubprocessRequest
+→ configured ExecutionAdapter
+→ CommandResult compatibility envelope
+```
+
+默认使用 `RestrictedSubprocessAdapter`。`WorkspaceSandbox` 名称是兼容名称，不构成隔离保证。
+
+## 6. ExecutionOutcome 与 Evidence
+
+私有 `ExecutionOutcome` 包含：
+
+- handler/command result；
+- adapter identity/capabilities；
+- duration；
+- output bytes；
+- truncated；
+- return code；
+- optional private receipt。
+
+公开 execution event 仅包含：
+
+- tool；
+- adapter；
+- capability map；
+- succeeded/failed；
+- duration；
+- output byte count；
+- truncated；
+- return code；
+- error code/cause class。
+
+禁止进入公开 event：
+
+- tool arguments；
+- command/cwd；
+- env/stdin；
+- stdout/stderr；
+- result/private receipt；
+- handler/builder exception message。
+
+## 7. Runtime 生命周期目标
+
+M2-C 只提供 cancellation token 的 Adapter handoff。完整生命周期由 M2-D 负责：
 
 ```text
 CREATED
@@ -92,247 +229,111 @@ CREATED
   → TOOL_REQUESTED
   → APPROVAL_PENDING?
   → TOOL_RUNNING
-  → TOOL_SUCCEEDED | TOOL_FAILED | TOOL_UNCERTAIN
+  → TOOL_SUCCEEDED | TOOL_FAILED | TOOL_SIDE_EFFECT_UNCERTAIN
   → PROVIDER_PENDING
   → COMPLETED | FAILED | CANCELLED | BUDGET_EXCEEDED
 ```
 
-所有状态转换必须发出 lifecycle event 并可 checkpoint。
+M2-D 必须补：
 
-### 3.4 Policy & Approval
+- Provider 前 cancellation；
+- Provider 请求中 cancellation；
+- durable TOOL_RUNNING checkpoint；
+- token/cost/context/time budgets；
+- tool error continue/terminate policy；
+- lifecycle event ordering。
 
-策略输入：
+## 8. Checkpoint 与恢复
 
-- tool name；
-- risk；
-- normalized path；
-- normalized command；
-- side-effect；
-- session/user context。
-
-输出：
-
-- ALLOW；
-- ASK；
-- DENY；
-- reason/code；
-- optional constraints。
-
-ASK 必须有显式 ApprovalProvider，不能等价于 deny，也不能静默 allow。
-
-### 3.5 Sandbox Adapter
-
-```python
-class SandboxAdapter(Protocol):
-    def execute(self, spec: ExecutionSpec) -> ExecutionResult: ...
-```
-
-实现层级：
-
-1. `NoIsolationLocalAdapter`：仅可信开发环境；
-2. `RestrictedSubprocessAdapter`：最小 env、timeout、cwd、rlimit；
-3. Docker/Podman adapter；
-4. 平台特定 sandbox adapter。
-
-必须在文档中标注每个 adapter 的安全保证，不用命令黑名单伪装隔离。
-
-### 3.6 Checkpoint Store
-
-两种数据模型：
+现有合同区分：
 
 ```text
 RecoverableCheckpoint
-- complete conversation state
-- provider continuation fields
-- tool call states
-- receipts
-- approvals
-- budgets
-- optionally encrypted at rest
+- messages/provider continuation
+- tool states/arguments/results
+- approvals/receipts/budgets
+- private/recoverable
 
 PublishableEvidence
-- hashes/length/schema
-- redacted metadata
-- no recoverable secret content
+- structure/status/usage/safe metadata
+- no recoverable content
 ```
 
-必须支持：
+M2-C 的 `ExecutionOutcome.private_receipt` 尚未接入 durable checkpoint；这属于 M2-D/M3，不能由 Adapter Gate 替代。
 
-- schema version；
-- migration；
-- atomic single-checkpoint write；
-- directory fsync；
-- optional file lock；
-- corruption detection；
-- local encryption key injection。
+## 9. Change 与 rollback
 
-### 3.7 Change Transaction
+ChangeManager 继续使用：
 
-目标语义：
+- canonical resolver；
+- PermissionPolicy；
+- opaque RollbackHandle；
+- durable ChangeJournal；
+- workspace binding、expiry、pre/post hash；
+- stale/cross-workspace/forged rejection。
 
-- validate all；
-- reject duplicate path；
-- lock workspace；
-- stage files；
-- preserve metadata；
-- compare current version before commit；
-- replace；
-- fsync files and directories；
-- produce opaque rollback handle；
-- rollback checks post-change version；
-- emit evidence。
+M3 仍需 lock、parent fsync、metadata policy、duplicate path 和完整 fault matrix。
 
-跨多个目录的严格原子性无法由普通文件系统保证时，必须明确为 best-effort。
-
-## 4. 目标数据流
-
-```mermaid
-sequenceDiagram
-    participant App
-    participant Runtime
-    participant Store
-    participant Provider
-    participant Registry
-    participant Policy
-    participant Sandbox
-    participant Evidence
-
-    App->>Runtime: run(messages, budgets)
-    Runtime->>Store: checkpoint CREATED
-    Runtime->>Provider: complete(request)
-    Provider-->>Runtime: normalized response
-    Runtime->>Evidence: provider event
-    alt final response
-        Runtime->>Store: checkpoint COMPLETED
-        Runtime-->>App: RuntimeResult
-    else tool calls
-        Runtime->>Registry: validate tool + arguments
-        Registry->>Policy: decide
-        alt ASK
-            Policy-->>App: approval request
-            App-->>Runtime: approve/deny
-        end
-        Runtime->>Store: checkpoint TOOL_RUNNING
-        Registry->>Sandbox: execute
-        Sandbox-->>Registry: result + receipt
-        Registry-->>Runtime: ToolExecutionResult
-        Runtime->>Store: checkpoint TOOL_SUCCEEDED
-        Runtime->>Provider: continue with tool result
-    end
-```
-
-## 5. 信任边界
+## 10. 信任边界
 
 | 边界 | 默认信任 | 必须防御 |
 | --- | --- | --- |
-| 模型输出 | 不可信 | 工具名、JSON、路径、命令、超长输出 |
-| 用户 prompt | 敏感但合法 | 日志泄漏、注入到 shell |
-| Tool handler | 半可信 | 超时、异常、外部副作用、非幂等 |
-| 工作区文件 | 不可信 | symlink、二进制、巨型文件、权限 |
-| Provider response | 不可信 | 任意 JSON shape、协议漂移 |
-| Checkpoint storage | 本地主机可访问 | 明文敏感内容、篡改、损坏 |
-| Release working tree | 不可信 | `.env`、未跟踪 secret、构建污染 |
+| 模型输出 | 不可信 | tool name、JSON、路径、命令、超长输出 |
+| 用户 prompt | 敏感但合法 | 日志泄漏、间接命令注入 |
+| Tool handler/builder | 半可信 | exception、直接副作用、错误结果、secret 泄漏 |
+| ExecutionAdapter | 可替换基础设施 | capability 虚标、timeout/cancel 失效、原生异常 |
+| 子进程 | 不可信 | inherited env、cwd escape、无限输出、残留进程 |
+| 工作区文件 | 不可信 | traversal、symlink/reparse、二进制、巨型文件 |
+| Provider response | 不可信 | arbitrary JSON、协议漂移 |
+| Checkpoint store | 本地主机可访问 | 明文、篡改、损坏 |
+| Release tree | 不可信 | `.env`、未跟踪 secret、构建污染 |
 
-## 6. 错误分类
+## 11. 三平台验证
 
-统一错误码至少包括：
+M2-C 使用独立 `M2 ExecutionAdapter Gate`：
 
-- `CONFIG_INVALID`
-- `PROVIDER_AUTH`
-- `PROVIDER_RATE_LIMIT`
-- `PROVIDER_TIMEOUT`
-- `PROVIDER_TRANSPORT`
-- `PROVIDER_MALFORMED_RESPONSE`
-- `TOOL_NOT_FOUND`
-- `TOOL_ARGUMENT_INVALID`
-- `TOOL_PERMISSION_DENIED`
-- `TOOL_APPROVAL_REQUIRED`
-- `TOOL_TIMEOUT`
-- `TOOL_EXECUTION_FAILED`
-- `TOOL_RESULT_INVALID`
-- `TOOL_SIDE_EFFECT_UNCERTAIN`
-- `CHECKPOINT_CORRUPT`
-- `CHECKPOINT_VERSION_UNSUPPORTED`
-- `BUDGET_STEP_EXCEEDED`
-- `BUDGET_TOKEN_EXCEEDED`
-- `BUDGET_COST_EXCEEDED`
-- `CANCELLED`
-- `SANDBOX_VIOLATION`
-- `CHANGE_CONFLICT`
-- `ROLLBACK_CONFLICT`
+- Ubuntu / Python 3.11；
+- macOS / Python 3.11；
+- Windows / Python 3.11。
 
-错误必须包含 machine-readable code，禁止上层依赖英文异常字符串。
+Gate 直接覆盖：
 
-## 7. Provider 与流式协议
+- Adapter capability；
+- minimal environment；
+- loader env stripping；
+- cwd containment；
+- timeout；
+- byte output limit；
+- blocking stdin；
+- cancellation handoff；
+- descendant cleanup；
+- Runtime ordering；
+- WorkspaceSandbox migration；
+- exception/evidence privacy；
+- command Gate 非隔离声明。
 
-### 非流式
+每个 job 上传明确分母的 JSON evidence。workflow 不自动取消旧运行，并在合入 `develop` 后继续执行。
 
-1. 限制最大响应体；
-2. JSON 根必须 normalize 为对象；
-3. 校验 choices/message/tool_calls；
-4. 保留原始 request id；
-5. 429/5xx 支持可配置退避；
-6. 非幂等 tool side effect 不由 Provider retry 触发。
+## 12. Deferred / non-goals
 
-### 流式
+PR #18 不实现：
 
-需要真正的增量 parser：
+- Docker/Podman adapter；
+- OS/kernel sandbox；
+- Runtime 完整状态机；
+- token/cost/context/time budgets；
+- durable checkpoint timing/store；
+- Workspace read/search P1 budgets；
+- CLI stdout/report/JSON 协议；
+- Provider streaming/retry；
+- M3 Evidence redesign；
+- hosted/multi-tenant security boundary。
 
-- 支持任意 byte chunk boundary；
-- 增量 UTF-8 decoder；
-- SSE event framing；
-- multiline `data:`；
-- `[DONE]`；
-- malformed event error evidence；
-- consumer callback/iterator；
-- cancellation；
-- accumulated final response；
-- usage event reconciliation。
-
-## 8. Evidence 设计
-
-Evidence ID 建议基于 canonical envelope：
-
-```json
-{
-  "method": "POST",
-  "endpoint": "/chat/completions",
-  "body": "<canonical-json>",
-  "provider": "deepseek"
-}
-```
-
-隐私等级：
-
-- `PUBLIC`: 无正文，仅结构；
-- `LOCAL_SAFE`: 可包含受控摘要；
-- `LOCAL_DEBUG`: 明文，显式开启；
-- `CHECKPOINT_SECRET`: 可恢复，加密存储，不进入日志。
-
-对于低熵敏感文本，不应把裸 SHA-256 视为匿名化；可使用 keyed HMAC 或不输出 hash。
-
-## 9. 非功能要求
-
-| 类别 | 要求 |
-| --- | --- |
-| 兼容性 | Python 3.11–3.13；Linux/macOS/Windows |
-| 稳定性 | 核心 API 有版本化和弃用策略 |
-| 安全 | P0/P1 对抗测试必须自动化 |
-| 性能 | 内建 search 和输出必须有资源预算 |
-| 可恢复性 | 任何副作用都有明确 recovery policy |
-| 可观测性 | step/provider/tool/checkpoint 都产生事件 |
-| 隐私 | 默认日志不含 prompt/response/reasoning/key |
-| 可测试性 | Provider、approval、clock、filesystem 可注入 |
-| 发布 | wheel/sdist、hash、SBOM/依赖清单、secret scan |
-| 文档 | 每个公开 API 有最小可运行示例 |
-
-## 10. 建议 ADR
+## 13. 架构决策
 
 - ADR-001：Runtime 是 local-first kernel，不做 hosted control plane。
 - ADR-002：Checkpoint 与 Evidence 分离。
-- ADR-003：Command gate 不等于 sandbox。
-- ADR-004：ToolSpec 是所有工具调用的唯一入口。
+- ADR-003：Command Gate 不等于 sandbox。
+- ADR-004：ToolSpec/ToolRegistry 是 Runtime 工具合同入口。
 - ADR-005：Side-effect recovery 不承诺通用 exactly-once。
-- ADR-006：未知用量和成本保持 unknown，不转换为 0。
-- ADR-007：公开输出默认 content-free。
-- ADR-008：PRD 与测试用例 ID 是发布门禁输入。
+- M2-C contract：ExecutionAdapter 是授权后唯一执行边界；capability 必须可测试且不虚标。
