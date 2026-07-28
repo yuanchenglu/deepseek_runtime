@@ -94,11 +94,12 @@ def _execute_registered_tool(registry: ToolRegistry, call: Any) -> str:
     if not isinstance(function, Mapping):
         return _invalid_tool_call("tool call function must be an object")
 
-    name_value = function.get("name", "")
-    name = name_value if isinstance(name_value, str) else ""
+    name_value = function.get("name")
+    if not isinstance(name_value, str) or not name_value:
+        return _invalid_tool_call("tool call name must be non-empty text")
+    name = name_value
+
     arguments_value = function.get("arguments")
-    if arguments_value is None or arguments_value == "":
-        arguments_value = "{}"
     if not isinstance(arguments_value, str):
         return _invalid_tool_call("tool call arguments must be JSON text", tool=name)
 
@@ -242,12 +243,23 @@ class DeepSeekRuntime:
                 )
 
             for call in calls:
+                call_id = call.get("id") if isinstance(call, Mapping) else None
+                if not isinstance(call_id, str) or not call_id:
+                    return RuntimeResult(
+                        False,
+                        messages=active_messages,
+                        usage=total_usage,
+                        evidence=evidence,
+                        diagnostics=diagnostics,
+                        error="malformed provider tool call id",
+                        error_class=ErrorCode.PROVIDER_RESPONSE_INVALID.value,
+                        step=step,
+                    )
                 output = _execute_registered_tool(registry, call)
-                call_id = call.get("id", "") if isinstance(call, Mapping) else ""
                 active_messages.append(
                     {
                         "role": "tool",
-                        "tool_call_id": call_id if isinstance(call_id, str) else "",
+                        "tool_call_id": call_id,
                         "content": output,
                     }
                 )
