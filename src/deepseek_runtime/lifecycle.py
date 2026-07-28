@@ -74,6 +74,12 @@ class LifecycleEvent:
     step: int
     checkpoint_required: bool
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.sequence, int) or isinstance(self.sequence, bool) or self.sequence <= 0:
+            raise ValueError("lifecycle event sequence must be a positive integer")
+        if not isinstance(self.step, int) or isinstance(self.step, bool) or self.step < 0:
+            raise ValueError("lifecycle event step must be a non-negative integer")
+
     def to_dict(self) -> dict[str, object]:
         return {
             "sequence": self.sequence,
@@ -101,6 +107,8 @@ class LifecycleTrace:
         receipt_present: bool = False,
         side_effect: bool = False,
     ) -> TransitionRule:
+        if not isinstance(step, int) or isinstance(step, bool) or step < 0:
+            raise ValueError("lifecycle transition step must be a non-negative integer")
         source = self.state
         rule = validate_transition(
             source,
@@ -167,11 +175,43 @@ def _context_tokens(usage: Mapping[str, Any]) -> int | None:
 
 
 def _request_cost(usage: Mapping[str, Any]) -> float | None:
-    for key in ("estimated_cost_usd", "cost_usd", "cost"):
+    for key in ("estimated_cost_usd", "cost_usd"):
         parsed = _nonnegative_float(usage.get(key))
         if parsed is not None:
             return parsed
     return None
+
+
+_SAFE_USAGE_INT_KEYS = (
+    "prompt_tokens",
+    "completion_tokens",
+    "total_tokens",
+    "input_tokens",
+    "output_tokens",
+    "context_tokens",
+    "prompt_cache_hit_tokens",
+    "prompt_cache_miss_tokens",
+    "cache_hit_tokens",
+    "cached_tokens",
+    "reasoning_tokens",
+)
+_SAFE_USAGE_FLOAT_KEYS = ("estimated_cost_usd", "cost_usd")
+
+
+def safe_usage_evidence(usage_value: Any) -> dict[str, int | float]:
+    """Expose only recognized non-negative numeric usage fields."""
+    if not isinstance(usage_value, Mapping):
+        return {}
+    output: dict[str, int | float] = {}
+    for key in _SAFE_USAGE_INT_KEYS:
+        value = _nonnegative_int(usage_value.get(key))
+        if value is not None:
+            output[key] = value
+    for key in _SAFE_USAGE_FLOAT_KEYS:
+        value = _nonnegative_float(usage_value.get(key))
+        if value is not None:
+            output[key] = value
+    return output
 
 
 @dataclass
@@ -241,21 +281,21 @@ class BudgetTracker:
         if (
             self.budgets.max_tokens is not None
             and self.total_tokens is not None
-            and self.total_tokens > self.budgets.max_tokens
+            and self.total_tokens >= self.budgets.max_tokens
         ):
             return RuntimeErrorInfo(
                 ErrorCode.BUDGET_TOKEN_EXCEEDED,
-                "Runtime token budget was exceeded",
+                "Runtime token budget was reached",
                 details={"limit": self.budgets.max_tokens, "observed": self.total_tokens},
             )
         if (
             self.budgets.max_cost_usd is not None
             and self.total_cost_usd is not None
-            and self.total_cost_usd > self.budgets.max_cost_usd
+            and self.total_cost_usd >= self.budgets.max_cost_usd
         ):
             return RuntimeErrorInfo(
                 ErrorCode.BUDGET_COST_EXCEEDED,
-                "Runtime cost budget was exceeded",
+                "Runtime cost budget was reached",
                 details={
                     "limit": self.budgets.max_cost_usd,
                     "observed": self.total_cost_usd,
@@ -264,11 +304,11 @@ class BudgetTracker:
         if (
             self.budgets.max_context_tokens is not None
             and self.context_tokens is not None
-            and self.context_tokens > self.budgets.max_context_tokens
+            and self.context_tokens >= self.budgets.max_context_tokens
         ):
             return RuntimeErrorInfo(
                 ErrorCode.BUDGET_CONTEXT_EXCEEDED,
-                "Runtime context budget was exceeded",
+                "Runtime context budget was reached",
                 details={
                     "limit": self.budgets.max_context_tokens,
                     "observed": self.context_tokens,
@@ -282,10 +322,10 @@ class BudgetTracker:
     def _time_error(self) -> RuntimeErrorInfo | None:
         limit = self.budgets.max_elapsed_seconds
         elapsed = self.elapsed_seconds
-        if limit is not None and elapsed > limit:
+        if limit is not None and elapsed >= limit:
             return RuntimeErrorInfo(
                 ErrorCode.BUDGET_TIME_EXCEEDED,
-                "Runtime time budget was exceeded",
+                "Runtime time budget was reached",
                 details={"limit": limit, "observed": elapsed},
             )
         return None
@@ -307,16 +347,19 @@ class BudgetTracker:
         return self._context_tokens if self._context_known else None
 
     def snapshot(self) -> dict[str, Any]:
+        total_tokens = self.total_tokens
+        total_cost = self.total_cost_usd
+        context_tokens = self.context_tokens
         return {
             "limits": self.budgets.to_dict(),
             "observed": {
                 "completed_steps": self.completed_steps,
-                "total_tokens": self.total_tokens,
-                "total_tokens_known": self.total_tokens is not None,
-                "cost_usd": self.total_cost_usd,
-                "cost_known": self.total_cost_usd is not None,
-                "context_tokens": self.context_tokens,
-                "context_known": self.context_tokens is not None,
+                "total_tokens": total_tokens,
+                "total_tokens_known": total_tokens is not None,
+                "cost_usd": total_cost,
+                "cost_known": total_cost is not None,
+                "context_tokens": context_tokens,
+                "context_known": context_tokens is not None,
                 "elapsed_ms": int(self.elapsed_seconds * 1000),
             },
         }
