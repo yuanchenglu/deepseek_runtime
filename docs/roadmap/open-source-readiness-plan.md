@@ -1,8 +1,8 @@
 # DeepSeek Runtime 开源就绪执行计划
 
-> 计划版本：2.3.1  
+> 计划版本：2.3.2  
 > 状态日期：2026-07-29  
-> 计划状态：**Execution in progress — M0/M1/M2-A/M2-B/M2-C closed; M2-D in progress**  
+> 计划状态：**Execution in progress — M0/M1/M2-A/M2-B/M2-C closed; M2-D implementation complete, pre-merge evidence synchronization in progress**  
 > 已合入开发基线：`develop@45b7c448d437df9ced5b5776f017a008376dabbb`  
 > 当前远程工作分支：`agent/m2-runtime-lifecycle`  
 > 当前工作入口：Draft PR #20 `feat(runtime): establish M2-D lifecycle and budget path`  
@@ -22,7 +22,7 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 - 当前交接容器没有本地 Git 工作树，也没有未提交、未 push 的本地文件；
 - M2-D 的代码、测试、workflow、合同、worklog、测试报告、计划和交接提示词均已保存到远程分支 `agent/m2-runtime-lifecycle`；
 - Draft PR #20 已存在并指向 `develop`；
-- 当前已知 blocker 是同一 tool batch 后续 ASK 的 resolved approval checkpoint 未在 Adapter 执行前可靠 handoff；
+- 原 M2-D blocker 已修复：同一 tool batch 后续 ASK 的 resolved outcome 在 Adapter 执行前 handoff；deny、timeout、unavailable、invalid outcome 在结构化返回前 handoff；
 - 不得通过删除测试、降低断言、隐藏失败 run 或只引用较早绿色 head 将 M2-D 标记为完成；
 - 新会话必须使用 `docs/roadmap/full-plan-autonomous-handoff.md`，关闭 M2-D 后自动连续推进 M2-E、M2-F、M2-G、M3、M4、M5、M6，不等待用户反复发送“继续”。
 
@@ -35,7 +35,7 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 | M2-A ToolRegistry 唯一入口 | **CLOSED** | Registry-only Runtime path 已合入 | PR #14、runs 106/56、PR #15 |
 | M2-B Policy 与 Approval | **CLOSED** | Runtime tool call 强制经过 Policy/Approval | PR #16、runs 129/77、PR #17 |
 | M2-C ExecutionAdapter | **CLOSED** | 统一 Adapter、进程资源控制和三平台专项 Gate 已合入 | PR #18、runs 165/111/15、PR #19 |
-| M2-D Runtime Lifecycle、Budget、Cancellation | **IN PROGRESS** | 大部分实现已在 PR #20；存在 approval checkpoint blocker | PR #20 |
+| M2-D Runtime Lifecycle、Budget、Cancellation | **IMPLEMENTED / PRE-MERGE** | blocker 已关闭；代码与回归矩阵已实现，正在同步最终 exact-head 文档/证据 | PR #20 |
 | M2-E Workspace P1 | **NOT STARTED** | read/search byte/file/time 与结构化 I/O 未完成 | `WS-003`–`005` |
 | M2-F CLI 核心 | **NOT STARTED** | stdout/report/json/exit-code 协议未完成 | `CLI-001`–`006` |
 | M2-G Integrated Closeout | **NOT STARTED** | M2 全部 P1 尚未综合验收 | Traceability |
@@ -124,21 +124,13 @@ Provider tool call
 - 三平台 M2 Runtime Lifecycle focused Gate；
 - Runtime lifecycle 合同、worklog、测试报告和严格 review tests。
 
-### 5.2 当前 blocker
+### 5.2 Blocker closure
 
-```text
-tests/test_runtime_lifecycle_review.py::
-RuntimeLifecycleReviewTests::
-test_later_batch_approval_is_checkpointed_before_execution
-```
-
-问题：同一 Provider response 含多个需 ASK 的 tool call 时，后续 call 的 pending checkpoint 已 handoff，但 resolved approval outcome 和执行前 call checkpoint 尚未在 `ExecutionAdapter.execute()` 前可靠 handoff。
-
-不得删除或降低该回归测试。
+原严格回归 `test_later_batch_approval_is_checkpointed_before_execution` 已在不增加第二套生产状态机的前提下修复。新增矩阵覆盖 approve-session、deny、timeout、missing/failed ApprovalProvider 与 invalid outcome：pending 在 Provider I/O 前 handoff；resolved outcome 在 Adapter 执行或结构化返回前 handoff。该回归与断言均保留。
 
 ### 5.3 M2-D 完成条件
 
-- [ ] 当前严格 approval checkpoint 回归通过；
+- [x] 当前严格 approval checkpoint 回归与 resolved outcome matrix 通过（实现态；最终 exact-head 文档 CI 待生成）；
 - [ ] Minimum CI 在最终精确 head 成功；
 - [ ] M1 P0 Gate 在最终精确 head三平台成功；
 - [ ] M2 ExecutionAdapter Gate 在最终精确 head三平台成功；

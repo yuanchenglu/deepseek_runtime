@@ -1,7 +1,7 @@
 # DeepSeek Runtime Open-source Alpha Threat Model
 
-> 版本：1.3
-> 适用代码审查基线：`develop@7793a10152a49fb815aac667906080a4e1a39920`；M2-D next
+> 版本：1.4
+> 适用代码审查基线：PR #20 M2-D implementation head；pending exact-head CI、merge 与 closeout
 > 文档修订：以本文件所在 Git commit 为准
 > 目标：明确首个 Alpha 保护什么、不保护什么，以及所有安全声明的证据要求。
 
@@ -35,15 +35,15 @@ DeepSeek Runtime 首个 Alpha 是 **local-first Runtime Kernel**，不是多租�
 | --- | --- | --- |
 | ToolRegistry 唯一 Runtime 工具集合 | Verified for M2-A | PR #14，runs 106/56 |
 | Policy/Approval 强制链 | Verified for M2-B 内存生产路径 | PR #16，runs 129/77 |
-| Approval durable checkpoint/resume | Partial | event contract 可 round-trip；持久化时机、resume、migration 属 M2-D/M3 |
+| Approval durable checkpoint/resume | Partial | PR #20 已实现 pending-before-I/O 与全部 resolved outcome 的内存 handoff；durable store、resume、migration 属 M3 |
 | ExecutionAdapter 强制链 | Verified for M2-C | PR #18，Minimum CI 165、M1 P0 111、M2 Gate 15 |
 | Restricted subprocess controls | Verified for M2-C | 三平台各 36/36；minimal env、cwd、timeout、byte limit、cancel、tree cleanup |
-| Full Runtime lifecycle/budget/cancellation | Partial / M2-D next | Provider-before-cancel、state/event/checkpoint、budgets 未闭环 |
+| Full Runtime lifecycle/budget/cancellation | Implemented in PR #20 / pre-merge | state/event/checkpoint handoff、budgets、Provider-before-call 与 tool cancellation 已实现；待 exact-head CI、merge/closeout |
 | Workspace containment | Verified for M1 P0 | PR #7/#13；Linux/macOS/Windows |
 | Workspace resource budgets | Planned / M2-E | read/search byte/file/time limits 未完整实现 |
 | Release artifact safety | Blocked / M5 | tracked allowlist、完整 secret scan、digest/tamper、clean install 未完成 |
 
-因此，M2-C 合入不改变当前结论：**NO RELEASE**。
+因此，M2-D implementation 完成也不构成发布门禁通过；在 merge/closeout 及 M3–M6 完成前结论仍为 **NO RELEASE**。
 
 ## 2. 保护资产
 
@@ -110,7 +110,7 @@ flowchart LR
 - 任意 JSON-compatible 根必须返回规范化对象或结构化错误；
 - tool name 和 arguments 不因来自模型而获得信任；
 - retry 只应用于明确 eligible 的 Provider 请求，不代表 Tool 副作用可重试；
-- M2-D 关闭 Provider-before-call cancellation；请求进行中的 transport cancellation 允许明确移交 M4。
+- PR #20 已实现 Provider-before-call cancellation；请求进行中的 transport cancellation 明确移交 M4。
 
 ### 4.2 Runtime 与 Registry/Approval 边界
 
