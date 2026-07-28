@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shlex
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Protocol
@@ -123,7 +124,14 @@ class AuthorizationSession:
     events: list[AuthorizationEvent] = field(default_factory=list)
     _session_approvals: set[str] = field(default_factory=set, init=False, repr=False)
 
-    def authorize(self, spec: ToolSpec, arguments: dict[str, Any]) -> None:
+    def authorize(
+        self,
+        spec: ToolSpec,
+        arguments: dict[str, Any],
+        *,
+        on_approval_pending: Callable[[], None] | None = None,
+    ) -> None:
+        """Authorize one call and optionally notify Runtime before a real ASK request."""
         try:
             risk = Risk(spec.risk)
         except ValueError as exc:
@@ -142,14 +150,10 @@ class AuthorizationSession:
         _scrub_new_policy_audit_events(self.policy, audit_start)
 
         if decision is Decision.ALLOW:
-            self.events.append(
-                AuthorizationEvent(spec.name, risk, decision, None, summary)
-            )
+            self.events.append(AuthorizationEvent(spec.name, risk, decision, None, summary))
             return
         if decision is Decision.DENY:
-            self.events.append(
-                AuthorizationEvent(spec.name, risk, decision, None, summary)
-            )
+            self.events.append(AuthorizationEvent(spec.name, risk, decision, None, summary))
             raise ContractViolation(
                 RuntimeErrorInfo(
                     ErrorCode.PERMISSION_DENIED,
@@ -173,9 +177,7 @@ class AuthorizationSession:
             return
 
         if self.approval_provider is None:
-            self.events.append(
-                AuthorizationEvent(spec.name, risk, decision, "unavailable", summary)
-            )
+            self.events.append(AuthorizationEvent(spec.name, risk, decision, "unavailable", summary))
             raise ContractViolation(
                 RuntimeErrorInfo(
                     ErrorCode.APPROVAL_UNAVAILABLE,
@@ -183,6 +185,9 @@ class AuthorizationSession:
                     details={"tool": spec.name, "risk": risk.value},
                 )
             )
+
+        if on_approval_pending is not None:
+            on_approval_pending()
 
         request = ApprovalRequest(
             tool_name=spec.name,
@@ -193,9 +198,7 @@ class AuthorizationSession:
         try:
             outcome = self.approval_provider.request_approval(request)
         except Exception as exc:
-            self.events.append(
-                AuthorizationEvent(spec.name, risk, decision, "unavailable", summary)
-            )
+            self.events.append(AuthorizationEvent(spec.name, risk, decision, "unavailable", summary))
             raise ContractViolation(
                 RuntimeErrorInfo(
                     ErrorCode.APPROVAL_UNAVAILABLE,
@@ -206,9 +209,7 @@ class AuthorizationSession:
             ) from exc
 
         if not isinstance(outcome, ApprovalOutcome):
-            self.events.append(
-                AuthorizationEvent(spec.name, risk, decision, "invalid", summary)
-            )
+            self.events.append(AuthorizationEvent(spec.name, risk, decision, "invalid", summary))
             raise ContractViolation(
                 RuntimeErrorInfo(
                     ErrorCode.APPROVAL_UNAVAILABLE,
@@ -217,9 +218,7 @@ class AuthorizationSession:
                 )
             )
 
-        self.events.append(
-            AuthorizationEvent(spec.name, risk, decision, outcome.value, summary)
-        )
+        self.events.append(AuthorizationEvent(spec.name, risk, decision, outcome.value, summary))
         if outcome is ApprovalOutcome.APPROVE_ONCE:
             return
         if outcome is ApprovalOutcome.APPROVE_SESSION:
