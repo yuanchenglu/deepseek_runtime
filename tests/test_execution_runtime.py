@@ -125,7 +125,8 @@ class RuntimeExecutionAdapterTests(unittest.TestCase):
         arguments: dict[str, Any] | None = None,
         cancellation: CancellationToken | None = None,
     ) -> tuple[Any, SequencedClient]:
-        client = SequencedClient((tool_message(arguments or {"value": "x"}), final_message()))
+        call_arguments = {"value": "x"} if arguments is None else arguments
+        client = SequencedClient((tool_message(call_arguments), final_message()))
         with tempfile.TemporaryDirectory() as workspace:
             result = DeepSeekRuntime(client).run(
                 [{"role": "user", "content": "test"}],
