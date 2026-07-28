@@ -26,6 +26,28 @@ It does not promise:
 - universal exactly-once behavior for external systems;
 - safe execution of arbitrary shell, network, browser, or computer-use operations.
 
+## M1 security-control status
+
+M1 implemented and merged the following scoped controls:
+
+- a shared Workspace resolver for read and search paths;
+- rejection of traversal, external absolute paths, symlinks, and Windows reparse-point traversal in the tested paths;
+- opaque rollback handles backed by a durable ChangeJournal;
+- workspace, expiry, scope, post-change-hash, and consumed-handle checks before rollback;
+- no automatic replay of persisted running non-idempotent side effects;
+- explicit operator reconciliation for ambiguous side effects;
+- a permanent Linux/macOS/Windows P0 test manifest.
+
+These controls close the defined M1 P0 scenarios only. They do **not** establish a complete security execution boundary because:
+
+- the production Runtime does not yet force every tool call through one ToolRegistry, Policy, ApprovalProvider, and ExecutionAdapter path;
+- owner-only ChangeJournal storage is not encryption;
+- multi-file replacement remains best-effort rather than strictly atomic;
+- same-account hostile process races remain outside the Alpha guarantee;
+- external systems may not support idempotency keys, receipts, or status queries.
+
+The M1 integrated closeout evidence is maintained in `docs/roadmap/m1-closeout.md` and `docs/testing/m1-p0-report.md`.
+
 ## Secret and evidence handling
 
 - Store the API key in explicit configuration or `DEEPSEEK_API_KEY`.
@@ -33,6 +55,7 @@ It does not promise:
 - Public evidence must exclude API keys, prompt/response/reasoning content, and recoverable tool content.
 - Raw Provider responses and checkpoints are private local artifacts; checkpoint encryption, when enabled, does not make public sharing safe.
 - Debug-content modes are dangerous and must be explicitly enabled.
+- ChangeJournal files may contain rollback material and must be treated as private local state even when owner-only permissions are applied.
 
 ## Reporting a vulnerability
 
