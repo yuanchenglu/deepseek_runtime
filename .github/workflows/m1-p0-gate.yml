@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: m1-p0-${{ github.workflow }}-${{ github.ref }}-${{ matrix.os }}
+  group: m1-p0-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
