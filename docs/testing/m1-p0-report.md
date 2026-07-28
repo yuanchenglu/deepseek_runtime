@@ -1,19 +1,19 @@
 # M1 P0 Cross-platform Validation Report
 
-> Report date: 2026-07-27 UTC  
+> Report date: 2026-07-28 UTC  
 > Repository: `yuanchenglu/deepseek_runtime`  
-> Matrix validation head: `0e60610e47076bfb5bafbf0520f3e49886267902`  
-> Pull request: #10  
-> Matrix workflow: `Minimum CI` run 67 (`30294382210`)  
-> Standard branch validation before report consolidation: run 69 (`30294676040`)  
-> Rewritten clean-history validation: run 72 (`30295621991`), success  
-> Technical gate: **PASS**  
-> Milestone governance state: **READY FOR APPROVAL / NOT MERGED**  
+> Original matrix validation head: `0e60610e47076bfb5bafbf0520f3e49886267902`  
+> Implementation pull requests: #6–#10  
+> Original matrix workflow: `Minimum CI` run 67 (`30294382210`)  
+> Final compacted-stack validation: run 75 (`30296322310`), success  
+> Integrated merge head: `develop@59a634a5fdfef06240e48d3ae594b0d4dc3ffdc8`  
+> Technical gate: **PASS ON RETAINED MATRIX**  
+> Milestone governance state: **IMPLEMENTATION MERGED / INTEGRATED RERUN PENDING**  
 > Release decision: **NO RELEASE**
 
 ## 1. Decision
 
-The M1 P0 technical exit gate passes on Linux, macOS, and Windows.
+The retained M1 P0 technical matrix passes on Linux, macOS, and Windows.
 
 All seven M1 P0 Test Case IDs completed twenty consecutive repetitions on each platform without a failure, skip, or not-applicable result:
 
@@ -32,7 +32,7 @@ All seven M1 P0 Test Case IDs completed twenty consecutive repetitions on each p
 
 `TC-CHG-011` executes three underlying unittest methods per attempt. The complete matrix therefore executed 540 underlying unittest method invocations.
 
-This closes the known reproducible defects in the scoped M1 P0 scenarios. It does not merge the implementation PRs, replace human contract review, or authorize an Alpha release.
+This closes the known reproducible defects in the scoped M1 P0 scenarios on the retained validation head. PR #6–#10 are now merged into `develop`. M1 governance closure additionally requires the permanent gate to rerun against the integrated closeout PR based on the merged state.
 
 ## 2. Platform summary
 
@@ -83,6 +83,8 @@ Run 67 retained one JSON document per platform for 30 days. Each document record
 
 The permanent gate is `.github/workflows/m1-p0-gate.yml`. The versioned denominator and runner are defined in `scripts/m1_p0_gate.py`.
 
+The integrated closeout PR must retain a new artifact set before M1 is marked closed.
+
 ## 6. Failure history and correction
 
 The first three-platform execution was run 59 (`30293591740`) at commit `66f829076678327bc96bc2d0db70f69b315ebb1c`.
@@ -96,36 +98,37 @@ The production implementation now capability-detects `os.fchmod`; the fixture no
 
 The rollback root branch passed Minimum CI run 63 after these corrections. The fixes were then synchronized into the full stack and validated by run 67. The failed run was retained and was not rerun or averaged away.
 
-## 7. M1 stack
+## 7. M1 implementation stack
 
 | Slice | Pull request | Purpose | Current state |
 | --- | ---: | --- | --- |
-| M1-A | #6 | Core contracts, schemas, transition manifest, ADRs | Ready for review; not merged |
-| M1-B | #7 | Workspace containment and no-follow traversal | Ready for review; not merged |
-| M1-C | #8 | Opaque rollback handle and durable ChangeJournal | Ready for review; not merged |
-| M1-D | #9 | Side-effect uncertain recovery and reconciliation | Ready for review; not merged |
-| M1-E | #10 | Versioned cross-platform P0 gate and consolidated report | Ready for review; not merged |
+| M1-A | #6 | Core contracts, schemas, transition manifest, ADRs | Merged into `develop` |
+| M1-B | #7 | Workspace containment and no-follow traversal | Merged into `develop` |
+| M1-C | #8 | Opaque rollback handle and durable ChangeJournal | Merged into `develop` |
+| M1-D | #9 | Side-effect uncertain recovery and reconciliation | Merged into `develop` |
+| M1-E | #10 | Versioned cross-platform P0 gate and consolidated report | Merged into `develop` |
 
-Required merge order:
+Merge order was preserved:
 
 ```text
 PR #6 → PR #7 → PR #8 → PR #9 → PR #10
 ```
 
-Each successor must be retargeted to `develop` after its base PR merges.
+The integrated `develop` merge head before the closeout branch is `59a634a5fdfef06240e48d3ae594b0d4dc3ffdc8`.
 
 ## 8. Exit-gate evaluation
 
 | M1 exit condition | Evidence | Status |
 | --- | --- | --- |
-| M1-A contracts implemented and tests pass | PR #6; Minimum CI runs 38 and 40 | Technical PASS; human approval pending |
-| Seven required P0 Test Case IDs pass | Run 67 and retained JSON artifacts | PASS |
-| Applicable-platform P0 tests pass 20 consecutive repetitions | Linux, macOS, Windows each 140/140 | PASS |
+| M1-A contracts implemented and tests pass | PR #6; Minimum CI runs 38 and 40 | PASS |
+| Seven required P0 Test Case IDs pass | Run 67 and retained JSON artifacts | PASS; integrated rerun pending |
+| Applicable-platform P0 tests pass 20 consecutive repetitions | Linux, macOS, Windows each 140/140 | PASS; integrated rerun pending |
 | Failures are not hidden by rerun | Run 59 retained; fixes validated in new commits and run 67 | PASS |
-| Active reproducible P0 defects in the tested scope | No failure remains in the versioned manifest | PASS for tested scope |
+| Active reproducible P0 defects in the tested scope | No failure remains in the versioned manifest | PASS for current evidence |
 | Active S0 defects | No S0 defect identified by M1 evidence | PASS for current evidence |
-| SECURITY, Known Unknowns, Code Review, Traceability synchronized | Slice evidence and this report exist; final status update follows merge | PENDING GOVERNANCE CLOSEOUT |
-| Protected-branch review and ordered merge | PR #6–#10 remain unmerged | PENDING HUMAN APPROVAL |
+| SECURITY, Known Unknowns, Code Review, README, and Traceability synchronized | M1 integrated closeout branch | PENDING CI |
+| Ordered implementation merge | PR #6–#10 merged into `develop` | PASS |
+| Permanent gate on integrated merged state | M1 integrated closeout PR | PENDING CI |
 
 ## 9. Boundary and non-claims
 
@@ -136,15 +139,18 @@ This report does not claim:
 - strict multi-file transactional atomicity across directories;
 - encrypted ChangeJournal storage by default;
 - external exactly-once semantics for arbitrary side effects;
+- a non-bypassable ToolRegistry/Policy/Approval/ExecutionAdapter path;
 - completion of M2–M6 requirements;
 - Alpha release readiness.
 
-The repository remains **NO RELEASE** until the protected-branch review chain is merged and later milestone gates are completed.
+The repository remains **NO RELEASE** until later milestone gates are completed.
 
 ## 10. Conclusion
 
-**M1 P0 technical gate: PASS.**
+**M1 P0 technical gate on the retained matrix: PASS.**
 
-**M1 governance closure: PENDING HUMAN APPROVAL AND ORDERED MERGE.**
+**M1 implementation merge: COMPLETE.**
 
-After PR #6–#10 merge, the permanent `M1 P0 Gate` must run on the integrated `develop` state and Traceability statuses must be updated before M1 is marked closed.
+**M1 integrated governance closure: PENDING THE CLOSEOUT PR CI.**
+
+After the closeout PR's Minimum CI and three-platform permanent P0 jobs pass, their run and artifact identifiers must be written into this report, `docs/roadmap/m1-closeout.md`, and Traceability. Only then may M1 be marked closed.
