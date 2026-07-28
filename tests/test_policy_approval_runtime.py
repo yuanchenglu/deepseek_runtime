@@ -152,7 +152,7 @@ class PermissionPolicyTests(unittest.TestCase):
                     decision,
                 )
 
-    def test_tc_sec_002_first_matching_rule_has_stable_precedence(self) -> None:
+    def test_tc_sec_002_last_matching_rule_has_stable_precedence(self) -> None:
         wildcard_deny = PermissionRule(
             risk=Risk.WRITE,
             decision=Decision.DENY,
@@ -166,11 +166,11 @@ class PermissionPolicyTests(unittest.TestCase):
         request = PermissionRequest(risk=Risk.WRITE, path="docs/plan.md")
 
         self.assertIs(
-            PermissionPolicy([specific_allow, wildcard_deny]).decide(request),
+            PermissionPolicy([wildcard_deny, specific_allow]).decide(request),
             Decision.ALLOW,
         )
         self.assertIs(
-            PermissionPolicy([wildcard_deny, specific_allow]).decide(request),
+            PermissionPolicy([specific_allow, wildcard_deny]).decide(request),
             Decision.DENY,
         )
 
