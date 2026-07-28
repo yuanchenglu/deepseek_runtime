@@ -200,11 +200,11 @@ class FakeExecutionAdapter:
     name = "fake"
     capabilities = ExecutionCapabilities(
         isolation=IsolationLevel.FAKE,
-        timeout_enforced=True,
+        timeout_enforced=False,
         cancellation_enforced=True,
-        byte_output_limit=True,
-        process_tree_cleanup=True,
-        minimal_environment=True,
+        byte_output_limit=False,
+        process_tree_cleanup=False,
+        minimal_environment=False,
     )
 
     def __init__(self, outcomes: Iterable[Any] = ()) -> None:
@@ -323,6 +323,20 @@ _SECRET_ENV_MARKERS = (
     "SECRET",
     "TOKEN",
 )
+_UNSAFE_ENV_KEYS = {
+    "BASH_ENV",
+    "ENV",
+    "GIT_CONFIG_COUNT",
+    "GIT_CONFIG_PARAMETERS",
+    "NODE_OPTIONS",
+    "PERL5OPT",
+    "PROMPT_COMMAND",
+    "PYTHONHOME",
+    "PYTHONPATH",
+    "RUBYOPT",
+    "SHELLOPTS",
+}
+_UNSAFE_ENV_PREFIXES = ("DYLD_", "LD_")
 
 
 def _is_secret_env_key(key: str) -> bool:
@@ -330,14 +344,21 @@ def _is_secret_env_key(key: str) -> bool:
     return any(marker in upper for marker in _SECRET_ENV_MARKERS)
 
 
+def _is_unsafe_env_key(key: str) -> bool:
+    upper = key.upper()
+    return upper in _UNSAFE_ENV_KEYS or upper.startswith(_UNSAFE_ENV_PREFIXES)
+
+
 def _minimal_environment(explicit: Mapping[str, str]) -> dict[str, str]:
     environment = {
         key: value
         for key, value in os.environ.items()
-        if key.upper() in _ENV_ALLOWLIST and not _is_secret_env_key(key)
+        if key.upper() in _ENV_ALLOWLIST
+        and not _is_secret_env_key(key)
+        and not _is_unsafe_env_key(key)
     }
     for key, value in explicit.items():
-        if not _is_secret_env_key(key):
+        if not _is_secret_env_key(key) and not _is_unsafe_env_key(key):
             environment[key] = value
     return environment
 
@@ -382,6 +403,7 @@ def _read_stream(
     stream: Any,
     sink: bytearray,
     total: list[int],
+    retained: list[int],
     lock: threading.Lock,
     overflow: threading.Event,
     max_output_bytes: int,
@@ -393,15 +415,28 @@ def _read_stream(
                 return
             with lock:
                 total[0] += len(chunk)
-                remaining = max(0, max_output_bytes - len(sink))
-                if remaining:
-                    sink.extend(chunk[:remaining])
+                remaining = max(0, max_output_bytes - retained[0])
+                kept = chunk[:remaining]
+                if kept:
+                    sink.extend(kept)
+                    retained[0] += len(kept)
                 if total[0] > max_output_bytes:
                     overflow.set()
     finally:
         try:
             stream.close()
         except OSError:
+            pass
+
+
+def _write_stdin(stream: Any, value: bytes) -> None:
+    try:
+        stream.write(value)
+        stream.close()
+    except (BrokenPipeError, OSError, ValueError):
+        try:
+            stream.close()
+        except (OSError, ValueError):
             pass
 
 
@@ -508,6 +543,7 @@ class RestrictedSubprocessAdapter:
         stdout_buffer = bytearray()
         stderr_buffer = bytearray()
         total_output = [0]
+        retained_output = [0]
         output_lock = threading.Lock()
         overflow = threading.Event()
         readers = (
@@ -517,6 +553,7 @@ class RestrictedSubprocessAdapter:
                     process.stdout,
                     stdout_buffer,
                     total_output,
+                    retained_output,
                     output_lock,
                     overflow,
                     spec.max_output_bytes,
@@ -529,6 +566,7 @@ class RestrictedSubprocessAdapter:
                     process.stderr,
                     stderr_buffer,
                     total_output,
+                    retained_output,
                     output_lock,
                     overflow,
                     spec.max_output_bytes,
@@ -539,12 +577,14 @@ class RestrictedSubprocessAdapter:
         for reader in readers:
             reader.start()
 
+        stdin_writer: threading.Thread | None = None
         if built.stdin is not None and process.stdin is not None:
-            try:
-                process.stdin.write(built.stdin)
-                process.stdin.close()
-            except (BrokenPipeError, OSError):
-                pass
+            stdin_writer = threading.Thread(
+                target=_write_stdin,
+                args=(process.stdin, built.stdin),
+                daemon=True,
+            )
+            stdin_writer.start()
 
         deadline = started + spec.timeout_seconds
         stop_reason: str | None = None
@@ -565,6 +605,8 @@ class RestrictedSubprocessAdapter:
 
         for reader in readers:
             reader.join(timeout=max(1.0, self.termination_grace * 2))
+        if stdin_writer is not None:
+            stdin_writer.join(timeout=max(1.0, self.termination_grace * 2))
 
         duration_ms = max(0, int((time.monotonic() - started) * 1000))
         if stop_reason == "cancelled":
@@ -580,14 +622,11 @@ class RestrictedSubprocessAdapter:
 
         stdout_raw = bytes(stdout_buffer)
         stderr_raw = bytes(stderr_buffer)
-        retained_stdout = stdout_raw[: spec.max_output_bytes]
-        remaining = max(0, spec.max_output_bytes - len(retained_stdout))
-        retained_stderr = stderr_raw[:remaining]
         truncated = overflow.is_set() or total_output[0] > spec.max_output_bytes
         value = {
             "returncode": process.returncode,
-            "stdout": retained_stdout.decode("utf-8", errors="replace"),
-            "stderr": retained_stderr.decode("utf-8", errors="replace"),
+            "stdout": stdout_raw.decode("utf-8", errors="replace"),
+            "stderr": stderr_raw.decode("utf-8", errors="replace"),
             "truncated": truncated,
         }
         receipt = dict(private_receipt or {})
