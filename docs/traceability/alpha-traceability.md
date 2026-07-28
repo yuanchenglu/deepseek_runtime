@@ -1,7 +1,7 @@
 # DeepSeek Runtime Alpha Traceability Matrix
 
-> 版本：1.2
-> 适用代码审查基线：`develop@59a634a`
+> 版本：1.3
+> 适用验证基线：PR #13 head `81643dca`
 > 文档修订：以本文件所在 Git commit 为准
 > 作用：`Requirement → Milestone → PR → Test → Evidence` 的唯一追踪表。
 
@@ -33,9 +33,14 @@
 - PR #8：opaque rollback handle、durable ChangeJournal 与 Windows 修复，已合入 `develop`；
 - PR #9：side-effect-uncertain、RecoveryPolicy 与人工 reconciliation，已合入 `develop`；
 - PR #10：永久三平台 P0 Gate、版本化 runner 与 `docs/testing/m1-p0-report.md`，已合入 `develop`；
-- matrix run 67：Linux/macOS/Windows 各 140/140，合计 420/420；
-- compacted-stack Minimum CI run 75：结论 `success`；
-- integrated closeout：`docs/roadmap/m1-closeout.md`，等待本 PR 在完整 `develop` 基线上执行永久 Gate。
+- PR #13：M1 integrated closeout、文档/治理同步与无效 workflow concurrency 修复；
+- Minimum CI run 82 (`30327637525`)：结论 `success`；
+- M1 P0 Gate run 33 (`30327637544`)：Linux/macOS/Windows 各 140/140，合计 420/420；
+- Linux artifact `8676238220`, digest `a3ca74a50e7ab6831fc352a24aaa1f94cdf99013784d515108ae134432c7fb03`；
+- macOS artifact `8676237125`, digest `4c9a7461d6a685df3c025297f79d9e799a146efe0c7303d6082a1fbbe1b0658e`；
+- Windows artifact `8676241048`, digest `6342d9a008b833848603d6d9c5067d5b512037cebecccee930f9c140184d7341`；
+- M1 Closeout：`docs/roadmap/m1-closeout.md`；
+- M1 scoped P0 Requirements are `Verified`; M2–M6 Requirements remain independently gated.
 
 ## 2. 配置与版本
 
@@ -92,8 +97,8 @@
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| WS-001 | P0 | M1 | Security | PR #7 | TC-WS-001 | run 67 + integrated P0 Gate | Implemented | 等待 integrated closeout PR 三平台 Gate 后提升为 Verified |
-| WS-002 | P0 | M1 | Security | PR #7 | TC-WS-002/003 | run 67 + integrated P0 Gate | Implemented | 等待 integrated closeout PR；Windows 使用实际 junction/reparse-point 测试 |
+| WS-001 | P0 | M1 | Security | PR #7/#13 | TC-WS-001 | run 33; Linux/macOS/Windows 20/20 | Verified | 无 M1 blocker；M2 继续资源限制与结构化 I/O |
+| WS-002 | P0 | M1 | Security | PR #7/#13 | TC-WS-002/003 | run 33; Windows actual junction test | Verified | 无 M1 blocker；同账号恶意并发进程不在承诺范围 |
 | WS-003 | P1 | M2 | Runtime | PR #7 / PR-09 | TC-WS-004 | UTF-8 boundary CI | Partial | containment 已统一；read byte-limit/UTF-8 截断语义未完成 |
 | WS-004 | P1 | M2 | Runtime | PR #7 / PR-09 | TC-WS-005 | large-workspace budget CI | Planned | 无 file/byte/time budget |
 | WS-005 | P1 | M2 | Runtime | PR #7 / PR-09 | TC-WS-006 | IO fixture CI | Partial | no-follow traversal 已实现；错误结构仍未统一 |
@@ -116,8 +121,8 @@
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CHG-001 | P0 | M1 | Security | PR #8 | TC-CHG-001 | run 67 + integrated P0 Gate | Implemented | 等待 integrated closeout PR 后提升为 Verified |
-| CHG-002 | P0 | M1 | Security | PR #8 | TC-CHG-002 | run 67 + integrated P0 Gate | Implemented | 等待 integrated closeout PR 后提升为 Verified |
+| CHG-001 | P0 | M1 | Security | PR #8/#13 | TC-CHG-001 | run 33; forged handle 20/20 × 3 OS | Verified | 无 M1 blocker |
+| CHG-002 | P0 | M1 | Security | PR #8/#13 | TC-CHG-002 | run 33; external path 20/20 × 3 OS | Verified | 无 M1 blocker |
 | CHG-003 | P1 | M3 | Runtime | PR-13 | TC-CHG-003 | duplicate-path unit CI | Planned | 未拒绝重复路径 |
 | CHG-004 | P1 | M3 | Runtime | PR-13 | TC-CHG-004 | concurrent fixture CI | Planned | 无 lock/完整 TOCTOU 控制 |
 | CHG-005 | P1 | M3 | Runtime | PR #8 / PR-13 | TC-CHG-005 | stale rollback CI | Implemented | post-change hash 冲突保护已实现；M3 仍需并发/恢复矩阵 |
@@ -137,7 +142,7 @@
 | SES-004 | P1 | M3 | Recovery | PR-11 | TC-SES-004/011 | crash/corrupt/concurrent CI | Partial | 原子保存原语存在；lock/corruption 语义不足 |
 | SES-005 | P1 | M3 | Recovery | PR #6/#9 / PR-11 | TC-SES-005 | migration fixture CI | Partial | schema 1.0→1.1 与 future-version rejection 已实现；RecoverableCheckpoint migration 仍未完成 |
 | SES-006 | P1 | M3 | Recovery | PR-12 | TC-SES-006 | resume integration CI | Implemented | 需纳入最终 Runtime 状态机 |
-| SES-007 | P0 | M1 | Recovery | PR #9 | TC-SES-007 | run 67 + integrated P0 Gate | Implemented | 等待 integrated closeout PR 后提升为 Verified |
+| SES-007 | P0 | M1 | Recovery | PR #9/#13 | TC-SES-007 | run 33; crash-after-effect 20/20 × 3 OS | Verified | 无 M1 blocker；完整 receipt/idempotency matrix 属 M3 |
 | SES-008 | P1 | M3 | Runtime | PR #9 / PR-12 | TC-SES-008 | missing-handler recovery CI | Implemented | 恢复路径已结构化为 `TOOL_NOT_FOUND`；最终 Runtime 集成仍属 M2/M3 |
 | SES-009 | P1 | M3 | Recovery | PR #9 / PR-12 | TC-SES-009 | fake-clock retry CI | Partial | attempt/max-attempt budget 已实现；backoff、time budget 与 fake-clock matrix 未完成 |
 | SES-010 | P1 | M3 | Recovery | PR #6/#9 / PR-11/12 | TC-SES-010 | roundtrip integration CI | Partial | recovery/attempt/receipt/operator metadata 已持久化；完整 approvals/budgets/checkpoint roundtrip 未完成 |
@@ -186,14 +191,14 @@
 | OSS-001 | P1 | M0/M5 | Release | PR #1/#2 / PR-18 | TC-OSS-001 | required PR checks | Partial | PR-first 流程和 PR CI 已建立；异常直推意味着 required-check enforcement 仍需 M5 明确定义和负向证据 |
 | OSS-002 | P1 | M5 | Release | PR-18 | TC-OSS-001 | 3 OS × 3 Python matrix | Planned | M1 仅验证 P0 Python 3.11 三 OS；完整 release matrix 未建立 |
 | OSS-003 | P1 | M0/M5 | Release | PR #1/#2 / PR-18 | TC-OSS-002 | Ruff + Pyright + coverage CI | Partial | Ruff/Pyright 已绿色；coverage 和完整矩阵尚未建立 |
-| OSS-004 | P1 | M5 | Release | PR #6 / PR-18 | TC-OSS-002 | coverage reports + manifests | Partial | Gate manifest 已版本化；coverage 配置/报告未实现 |
+| OSS-004 | P1 | M5 | Release | PR #6/#10/#13 / PR-18 | TC-OSS-002 | coverage reports + manifests | Partial | Gate manifest 与独立 workflow 已版本化并执行；coverage 配置/报告未实现 |
 | OSS-005 | P1 | M0/M5 | Security | PR #1/#2 / PR-18 | TC-OSS-003 | tracked/artifact secret negative CI | Partial | tracked-file scanner 已绿色；故意 secret negative fixture 与 artifact scan 尚未实现 |
 | OSS-006 | P1 | M5 | Release | PR-18 | TC-OSS-003/005 | artifact file manifest | Blocked | denylist 打包工作树 |
 | OSS-007 | P1 | M5 | Release | PR-18 | TC-OSS-004 | recomputed digest + tamper failure | Blocked | 只检查长度 |
 | OSS-008 | P1 | M5 | Release | PR-18 | TC-CFG-006、TC-OSS-006 | clean-venv logs | Planned | wheel/sdist gate 缺失 |
 | OSS-009 | P1 | M0/M5 | Maintainer | PR #2 / PR-19 | TC-OSS-009 | governance files + docs/link CI | Partial | 治理文件与模板已落库、链接绿色；M5 仍需 release governance 复核 |
 | OSS-010 | P1 | M0/M5 | Security | PR #2 / PR-19 | TC-OSS-010 | SECURITY gate + approved review | Partial | 范围/SLA/报告流程已文档化；私密报告能力与 release review 尚待验证 |
-| OSS-011 | P1 | M0/M5/M6 | Maintainer | PR #2 / PR-19 | TC-OSS-007 | README claim audit | Partial | README 已事实收口；完整逐项自动 claim audit 尚未实现 |
+| OSS-011 | P1 | M0/M5/M6 | Maintainer | PR #2/#13 / PR-19 | TC-OSS-007 | README claim audit | Partial | README 已同步 M1 真实状态；完整逐项自动 claim audit 尚未实现 |
 
 ## 14. Release-level Evidence
 
@@ -214,10 +219,10 @@
 
 ## 15. 当前结论
 
-M0 已关闭并建立 PR-first、异常直推需留痕的开发政策。M1 的合同、Workspace containment、rollback authorization、side-effect uncertain 和永久 P0 Gate 已通过 PR #6–#10 合入 `develop`。
+M0 已关闭并建立 PR-first、异常直推需留痕的开发政策。
 
-M1 P0 行当前标记为 `Implemented`，不是 `Verified`：本 closeout PR 必须在完整合并态重新执行 Linux/macOS/Windows 永久 Gate，并将最终 run 和 artifact 写回本表后，才能正式关闭 M1。
+M1 已关闭：核心合同、Workspace containment、rollback authorization、side-effect uncertain 和永久 P0 Gate 已通过 PR #6–#10 合入 `develop`，并由 PR #13 的 Minimum CI run 82 与 M1 P0 Gate run 33 在集成态复验。`WS-001`、`WS-002`、`CHG-001`、`CHG-002`、`SES-007` 已提升为 `Verified`。
 
-M2 的 ToolRegistry、Policy、Approval、ExecutionAdapter、统一 Runtime lifecycle、budget/cancellation、Workspace P1 和 CLI contract 仍是当前最高优先级阻断项。
+M2 的 ToolRegistry、Policy、Approval、ExecutionAdapter、统一 Runtime lifecycle、budget/cancellation、Workspace P1 和 CLI contract 是当前最高优先级阻断项。
 
 因此当前发布结论继续保持：**NO RELEASE**。
