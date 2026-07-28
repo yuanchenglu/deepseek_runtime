@@ -1,8 +1,8 @@
 # DeepSeek Runtime 文档索引
 
-> 适用验证基线：PR #13 head `81643dca`
+> 适用验证基线：`develop@f8a5799ae50221a2830f3d0b2ed19f86852fccf4`
 > 文档修订：以各文件所在 Git commit 为准
-> 文档状态：Open-source Alpha Hardening；M1 Closed；M2 authorized
+> 文档状态：Open-source Alpha Hardening；M1、M2-A、M2-B Closed；M2-C next
 > 原则：PRD 是产品范围、优先级和验收标准的唯一事实源；架构、测试和路线图均引用 PRD Requirement ID。
 
 ## 核心文档
@@ -14,10 +14,11 @@
 | [产品架构](architecture/product-architecture.md) | 产品定位、用户、能力域、使用链路和边界 |
 | [技术架构](architecture/technical-architecture.md) | 当前实现、目标组件、数据流、信任边界和非功能约束 |
 | [PRD](product/PRD.md) | 产品需求、优先级、验收标准、非目标和 M0–M6 发布门禁 |
-| [Threat Model](security/threat-model.md) | 保护资产、攻击输入、信任边界、保证与未保证边界 |
+| [Threat Model](security/threat-model.md) | 保护资产、攻击输入、信任边界、当前保证与未完成边界 |
 | [Known Unknowns](known-unknowns.md) | 当前未承诺、未验证和后续必须复核的边界 |
 | [ADR Index](adr/README.md) | 已接受的 Runtime、安全、恢复、schema、类型和发布决策 |
 | [Runtime Core Contracts](contracts/runtime-contracts.md) | Error、State、Tool、Checkpoint、Evidence、Recovery 与 ChangeJournal 合同 |
+| [Policy/Approval Contract](contracts/policy-approval.md) | M2-B 默认策略、规则优先级、Approval outcomes、隐私和 checkpoint handoff |
 | [State Transition Manifest](contracts/runtime-state-transitions.json) | 合法状态转换及 checkpoint/retry/approval/receipt 分母 |
 | [Versioned Schemas](schemas/README.md) | Error、Checkpoint、Evidence 与 ChangeJournal JSON Schema |
 | [Alpha Traceability](traceability/alpha-traceability.md) | Requirement → Milestone → PR → Test → Evidence 唯一追踪表 |
@@ -32,14 +33,16 @@
 | [M1 P0 三平台报告](testing/m1-p0-report.md) | Linux/macOS/Windows 集成态重复 Gate、失败历史和 artifact |
 | [M0 Closeout](roadmap/m0-closeout.md) | M0 Exit Gate、当前分支政策和异常直推纪律 |
 | [M1 Integrated Closeout](roadmap/m1-closeout.md) | PR #6–#10 合并态复验、M1 Exit Gate 和 M2 准入条件 |
-| [开源就绪执行计划](roadmap/open-source-readiness-plan.md) | Contract-first 的 M0–M6 开源阻断项清零计划 |
+| [M2-A ToolRegistry Closeout](roadmap/m2-a-closeout.md) | PR #14 合并态、失败/成功证据和 M2-B handoff |
+| [M2-B Policy/Approval Closeout](roadmap/m2-b-closeout.md) | PR #16 合并态、授权边界、失败/成功证据和 M2-C handoff |
+| [开源就绪执行计划](roadmap/open-source-readiness-plan.md) | Contract-first 的 M0–M6 开源阻断项清零计划；当前 v2.2.5 |
 
 ## 治理与维护
 
 | 文档 | 目的 |
 | --- | --- |
 | [`CONTRIBUTING.md`](../CONTRIBUTING.md) | PR-first 流程、异常直推纪律、检查命令和 Definition of Done |
-| [`SECURITY.md`](../SECURITY.md) | 安全范围、M1 控制状态、私密报告渠道、严重度和响应目标 |
+| [`SECURITY.md`](../SECURITY.md) | 安全范围、当前控制状态、私密报告渠道、严重度和响应目标 |
 | [`SUPPORT.md`](../SUPPORT.md) | 当前支持范围、问题入口和不支持场景 |
 | [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) | 社区行为与执行原则 |
 | [`NOTICE`](../NOTICE) | 源码沿革和归属声明 |
@@ -67,7 +70,7 @@
 | Partial | 存在局部实现、合同或证据，端到端能力不完整 |
 | Planned | PRD 已定义，当前未实现 |
 | Blocked | 存在 P0/P1 缺陷，不能作为可承诺能力发布 |
-| Verified | 有可复现自动化测试和可访问证据 |
+| Verified | 实现已合入开发基线，并有可复现自动化测试和可访问证据 |
 | Static-confirmed | 通过代码控制流或数据流审查确认，尚未动态执行 |
 | Not-run | 当前没有实际执行证据 |
 
@@ -82,12 +85,16 @@
 7. 发布报告只能引用可复现 CI、artifact 或批准的 RC 证据。
 8. README 只承担项目入口职责，不重复定义产品范围。
 9. PRD、测试、路线图或 Traceability 冲突时必须暂停实现，先修正文档。
-10. 默认走功能分支 → PR → CI → `develop`；异常直推必须记录问题原因和技术债务。
+10. 默认走功能分支 → Draft PR → CI → Ready → `develop`；异常直推必须记录问题原因和技术债务。
 
 ## 当前发布状态
 
-M1 已关闭。PR #13 的 Minimum CI run 82 与 M1 P0 Gate run 33 在完整合并态验证了 Linux/macOS/Windows 各 140/140，合计 420/420。`WS-001`、`WS-002`、`CHG-001`、`CHG-002`、`SES-007` 已标记为 `Verified`。
+M1 已关闭。PR #13 的 Minimum CI run 82 与 M1 P0 Gate run 33 在完整合并态验证 Linux/macOS/Windows 各 140/140，合计 420/420。
 
-M2 已获准执行。ToolRegistry、Policy、Approval、ExecutionAdapter、统一 Runtime lifecycle、预算/取消、Workspace P1 和 CLI contract 仍是当前阻断项。
+M2-A 已关闭。PR #14 建立 ToolRegistry 唯一 Runtime 工具入口，最终 runs 106/56 通过。
+
+M2-B 已关闭。PR #16 建立 `ToolRegistry → Policy → Approval → handler` 强制链，最终 Minimum CI run 129 与 M1 P0 Gate run 77 通过；`SEC-001`、`SEC-002`、`SEC-004` 为 Verified，`SEC-003`、`SEC-009` 因跨切片边界保持 Partial。
+
+M2-C ExecutionAdapter 是下一执行切片。子进程最小环境、timeout、byte output limit、process-tree cleanup、cancellation handoff 和结构化执行结果仍未完成。
 
 **当前结论：NO RELEASE。**
