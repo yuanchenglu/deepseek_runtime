@@ -82,8 +82,8 @@ def _run(argv: list[str]) -> int:
     parser.add_argument("--include-content", action="store_true", help="包含 prompt 和 response 原文（不安全，不适合日志）")
     args = parser.parse_args(argv)
 
-    # 默认启用工作区工具（read_file, search）
-    tools = {} if args.no_tools else WorkspaceTools(args.workspace).catalog()
+    # 默认启用工作区工具（read_file, search）；禁用时不保留裸 handler fallback。
+    tools = None if args.no_tools else WorkspaceTools(args.workspace).catalog()
 
     # 创建运行时并执行
     runtime = DeepSeekRuntime(DeepSeekClient(RuntimeSettings.from_env()))
