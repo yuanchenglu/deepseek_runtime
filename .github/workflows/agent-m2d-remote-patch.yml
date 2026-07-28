@@ -1,0 +1,55 @@
+name: Agent M2-D Remote Patch
+
+on:
+  push:
+    branches:
+      - agent/m2-runtime-lifecycle
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: agent-m2d-remote-patch-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/m2-runtime-lifecycle
+          fetch-depth: 0
+
+      - name: Patch resolved approval checkpoint handoff
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("src/deepseek_runtime/runtime.py")
+          text = path.read_text(encoding="utf-8")
+          old = """                        elif lifecycle.state is RuntimeState.TOOL_REQUESTED:\n                            transition(RuntimeState.TOOL_RUNNING, transition_step=step)\n"""
+          new = """                        elif lifecycle.state is RuntimeState.TOOL_REQUESTED:\n                            transition(RuntimeState.TOOL_RUNNING, transition_step=step)\n                        elif lifecycle.state is RuntimeState.TOOL_RUNNING:\n                            handoff_current_state(step)\n"""
+          if old not in text:
+              if new in text:
+                  print("Patch already present")
+              else:
+                  raise SystemExit("Expected Runtime on_authorized block was not found")
+          else:
+              path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet -- src/deepseek_runtime/runtime.py; then
+            echo "No patch commit required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/deepseek_runtime/runtime.py
+          git commit -m "fix(runtime): checkpoint resolved later-batch approvals"
+          git push origin HEAD:agent/m2-runtime-lifecycle
