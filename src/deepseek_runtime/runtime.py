@@ -1103,13 +1103,13 @@ class WorkspaceTools:
 
     def __post_init__(self) -> None:
         if (
-  not isinstance(self.read_max_bytes, int)
-  or isinstance(self.read_max_bytes, bool)
-  or self.read_max_bytes <= 0
+            not isinstance(self.read_max_bytes, int)
+            or isinstance(self.read_max_bytes, bool)
+            or self.read_max_bytes <= 0
         ):
-  raise ValueError("read_max_bytes must be a positive integer")
+            raise ValueError("read_max_bytes must be a positive integer")
         if not isinstance(self.search_budgets, WorkspaceSearchBudgets):
-  raise TypeError("search_budgets must be WorkspaceSearchBudgets")
+            raise TypeError("search_budgets must be WorkspaceSearchBudgets")
         self._resolver = WorkspaceResolver(self.root)
         self.root = self._resolver.root
 
@@ -1118,51 +1118,51 @@ class WorkspaceTools:
 
     def read_file(self, args: dict[str, Any]) -> dict[str, Any]:
         result = self._resolver.read_bounded(
-  str(args.get("input", "")),
-  max_bytes=self.read_max_bytes,
+            str(args.get("input", "")),
+            max_bytes=self.read_max_bytes,
         )
         return result.to_dict()
 
     def search(self, args: dict[str, Any]) -> dict[str, Any]:
         needle = str(args.get("input", ""))
         result = self._resolver.search_text(
-  needle,
-  budgets=self.search_budgets,
+            needle,
+            budgets=self.search_budgets,
         )
         return result.to_dict()
 
     def catalog(self) -> ToolRegistry:
         input_schema = {
-  "type": "object",
-  "properties": {"input": {"type": "string", "minLength": 1}},
-  "required": ["input"],
-  "additionalProperties": False,
+            "type": "object",
+            "properties": {"input": {"type": "string", "minLength": 1}},
+            "required": ["input"],
+            "additionalProperties": False,
         }
         return ToolRegistry(
-  (
-      ToolSpec(
-          "read_file",
-          "Read one UTF-8 file inside the workspace with a byte limit and structured status.",
-          input_schema,
-          self.read_file,
-          risk="read",
-          side_effect=False,
-          timeout_seconds=30.0,
-          max_output_bytes=100_000,
-          recovery_policy=RecoveryPolicy.PURE,
-      ),
-      ToolSpec(
-          "search",
-          "Search UTF-8 workspace files with file, byte, time, and match budgets.",
-          input_schema,
-          self.search,
-          risk="read",
-          side_effect=False,
-          timeout_seconds=30.0,
-          max_output_bytes=100_000,
-          recovery_policy=RecoveryPolicy.PURE,
-      ),
-  )
+            (
+                ToolSpec(
+                    "read_file",
+                    "Read one UTF-8 file inside the workspace with a byte limit and structured status.",
+                    input_schema,
+                    self.read_file,
+                    risk="read",
+                    side_effect=False,
+                    timeout_seconds=30.0,
+                    max_output_bytes=100_000,
+                    recovery_policy=RecoveryPolicy.PURE,
+                ),
+                ToolSpec(
+                    "search",
+                    "Search UTF-8 workspace files with file, byte, time, and match budgets.",
+                    input_schema,
+                    self.search,
+                    risk="read",
+                    side_effect=False,
+                    timeout_seconds=30.0,
+                    max_output_bytes=100_000,
+                    recovery_policy=RecoveryPolicy.PURE,
+                ),
+            )
         )
 
     def registry(self) -> ToolRegistry:
