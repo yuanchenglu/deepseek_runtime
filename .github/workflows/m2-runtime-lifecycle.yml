@@ -8,40 +8,13 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: m2-runtime-lifecycle-${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
-  workspace-tests-patch:
-    if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: agent/m2-e-workspace-p1
-          fetch-depth: 0
-      - name: Add M2-E regression matrix
-        shell: python
-        run: |
-          import base64
-          import zlib
-          from pathlib import Path
-
-          payload = zlib.decompress(base64.b64decode("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")).decode("utf-8")
-          path = Path("tests/test_workspace_p1.py")
-          path.write_text(payload, encoding="utf-8")
-      - name: Commit M2-E tests
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add tests/test_workspace_p1.py
-          git commit -m "test(workspace): cover byte-safe reads and search budgets"
-          git push origin HEAD:agent/m2-e-workspace-p1
-
   lifecycle:
     name: ${{ matrix.os }} / Python 3.11
     strategy:
@@ -50,22 +23,27 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
+
       - name: Install package
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .
+
       - name: Run M2-D focused gate
         run: >-
           python scripts/m2_lifecycle_gate.py
           --output "m2-runtime-lifecycle-${{ runner.os }}.json"
+
       - name: Upload M2-D evidence
         if: always()
         uses: actions/upload-artifact@v4
