@@ -63,9 +63,9 @@ class ToolSpec:
         max_output_bytes: int = 100_000,
         recovery_policy: RecoveryPolicy = RecoveryPolicy.PURE,
     ) -> None:
-        if not _TOOL_NAME_RE.fullmatch(name):
+        if not isinstance(name, str) or not _TOOL_NAME_RE.fullmatch(name):
             raise ValueError("invalid tool name")
-        if not description or len(description) > 1024:
+        if not isinstance(description, str) or not description or len(description) > 1024:
             raise ValueError("tool description must contain 1..1024 characters")
         if not callable(handler):
             raise ValueError("tool handler must be callable")
@@ -84,10 +84,17 @@ class ToolSpec:
         if schema.get("type") != "object":
             raise ValueError("tool parameter schema root type must be object")
 
-        normalized_risk = str(risk).strip().lower()
+        if not isinstance(risk, str):
+            raise ValueError("tool risk must be a registered risk category")
+        normalized_risk = risk.strip().lower()
         if normalized_risk not in _TOOL_RISKS:
             raise ValueError("tool risk must be a registered risk category")
-        if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
+        if (
+            isinstance(timeout_seconds, bool)
+            or not isinstance(timeout_seconds, (int, float))
+            or not math.isfinite(float(timeout_seconds))
+            or timeout_seconds <= 0
+        ):
             raise ValueError("tool timeout_seconds must be finite and positive")
         if not isinstance(max_output_bytes, int) or isinstance(max_output_bytes, bool) or max_output_bytes <= 0:
             raise ValueError("tool max_output_bytes must be a positive integer")
@@ -112,10 +119,6 @@ class ToolSpec:
             "_parameters_json",
             json.dumps(schema, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
         )
-
-    def __call__(self, arguments: dict[str, Any]) -> Any:
-        """Allow compatibility callers to invoke a spec while retaining metadata."""
-        return self.handler(arguments)
 
     @property
     def parameters(self) -> dict[str, Any]:
@@ -191,7 +194,7 @@ def normalize_tool_result(value: Any, *, tool_name: str) -> str:
             separators=(",", ":"),
             allow_nan=False,
         )
-    except ValueError as exc:
+    except (TypeError, ValueError) as exc:
         raise ToolResultError(
             RuntimeErrorInfo(
                 ErrorCode.TOOL_RESULT_INVALID,
