@@ -50,7 +50,9 @@ class RuntimeResult:
             "ok": self.ok,
             "final_text": self._text_summary(self.final_text),
             "message_count": len(self.messages),
-            "message_evidence": request_evidence({"messages": self.messages})["messages"],
+            "message_evidence": request_evidence(
+                _request_for_evidence({"messages": self.messages})
+            )["messages"],
             "usage": self.usage,
             "evidence": redact(self.evidence),
             "diagnostics": redact(self.diagnostics),
