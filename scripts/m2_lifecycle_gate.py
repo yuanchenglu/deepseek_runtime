@@ -19,6 +19,7 @@ from deepseek_runtime import transition_manifest  # noqa: E402
 
 TEST_MODULES = (
     "test_runtime_lifecycle",
+    "test_runtime_lifecycle_review",
     "test_execution_runtime",
     "test_tool_registry_runtime",
     "test_policy_approval_runtime",
