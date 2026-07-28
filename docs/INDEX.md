@@ -1,8 +1,8 @@
 # DeepSeek Runtime 文档索引
 
-> 适用代码审查基线：`develop@59a634a`
+> 适用验证基线：PR #13 head `81643dca`
 > 文档修订：以各文件所在 Git commit 为准
-> 文档状态：Open-source Alpha Hardening；M1 integrated closeout
+> 文档状态：Open-source Alpha Hardening；M1 Closed；M2 authorized
 > 原则：PRD 是产品范围、优先级和验收标准的唯一事实源；架构、测试和路线图均引用 PRD Requirement ID。
 
 ## 核心文档
@@ -29,7 +29,7 @@
 | [测试用例](testing/test-cases.md) | 功能、安全、恢复、协议、性能和发布用例 |
 | [基线测试报告](testing/test-report-2026-07-27.md) | M0 基线证据、静态确认缺陷和发布结论 |
 | [M0 Minimum CI 验证](testing/m0-ci-validation.md) | Python 3.11 最小门禁的真实执行、发现、修复和边界 |
-| [M1 P0 三平台报告](testing/m1-p0-report.md) | Linux/macOS/Windows 重复 Gate、失败历史、artifact 和集成关闭状态 |
+| [M1 P0 三平台报告](testing/m1-p0-report.md) | Linux/macOS/Windows 集成态重复 Gate、失败历史和 artifact |
 | [M0 Closeout](roadmap/m0-closeout.md) | M0 Exit Gate、当前分支政策和异常直推纪律 |
 | [M1 Integrated Closeout](roadmap/m1-closeout.md) | PR #6–#10 合并态复验、M1 Exit Gate 和 M2 准入条件 |
 | [开源就绪执行计划](roadmap/open-source-readiness-plan.md) | Contract-first 的 M0–M6 开源阻断项清零计划 |
@@ -38,7 +38,7 @@
 
 | 文档 | 目的 |
 | --- | --- |
-| [`CONTRIBUTING.md`](../CONTRIBUTING.md) | 贡献流程、PR 内容、检查命令和 Definition of Done |
+| [`CONTRIBUTING.md`](../CONTRIBUTING.md) | PR-first 流程、异常直推纪律、检查命令和 Definition of Done |
 | [`SECURITY.md`](../SECURITY.md) | 安全范围、M1 控制状态、私密报告渠道、严重度和响应目标 |
 | [`SUPPORT.md`](../SUPPORT.md) | 当前支持范围、问题入口和不支持场景 |
 | [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) | 社区行为与执行原则 |
@@ -86,10 +86,8 @@
 
 ## 当前发布状态
 
-M1 的核心合同、Workspace containment、opaque durable rollback 和 side-effect-uncertain 实现已经通过 PR #6–#10 合入 `develop`。保留矩阵为 Linux/macOS/Windows 各 140/140。
+M1 已关闭。PR #13 的 Minimum CI run 82 与 M1 P0 Gate run 33 在完整合并态验证了 Linux/macOS/Windows 各 140/140，合计 420/420。`WS-001`、`WS-002`、`CHG-001`、`CHG-002`、`SES-007` 已标记为 `Verified`。
 
-本 closeout PR 正在对完整合并态重新执行 Minimum CI 与永久三平台 M1 P0 Gate；通过并记录新 artifact 后，M1 才能标记为 Closed/Verified。
-
-M2 的 ToolRegistry、Policy、Approval、ExecutionAdapter、统一 Runtime lifecycle、预算/取消、Workspace P1 和 CLI contract 仍未关闭。
+M2 已获准执行。ToolRegistry、Policy、Approval、ExecutionAdapter、统一 Runtime lifecycle、预算/取消、Workspace P1 和 CLI contract 仍是当前阻断项。
 
 **当前结论：NO RELEASE。**
