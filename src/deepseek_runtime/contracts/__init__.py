@@ -1,4 +1,4 @@
-"""Public M1 contracts for execution, recovery, evidence, and rollback."""
+"""Public contracts for execution, recovery, evidence, and rollback."""
 
 from .checkpoint import PublishableEvidence, RecoverableCheckpoint, ToolCallCheckpoint
 from .common import (
@@ -21,7 +21,14 @@ from .state import (
     transition_manifest,
     validate_transition,
 )
-from .tools import ToolArgumentError, ToolHandler, ToolSpec
+from .tools import (
+    ToolArgumentError,
+    ToolHandler,
+    ToolRegistry,
+    ToolResultError,
+    ToolSpec,
+    normalize_tool_result,
+)
 
 __all__ = [
     "CHANGE_JOURNAL_SCHEMA_VERSION",
@@ -44,8 +51,11 @@ __all__ = [
     "ToolArgumentError",
     "ToolCallCheckpoint",
     "ToolHandler",
+    "ToolRegistry",
+    "ToolResultError",
     "ToolSpec",
     "TransitionRule",
+    "normalize_tool_result",
     "transition_manifest",
     "validate_transition",
 ]
