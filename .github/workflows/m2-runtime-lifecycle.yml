@@ -8,78 +8,13 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: m2-runtime-lifecycle-${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
-  docs-sync-patch:
-    if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: agent/m2-runtime-lifecycle
-          fetch-depth: 0
-      - name: Synchronize authoritative M2-D implementation state
-        shell: python
-        run: |
-          from pathlib import Path
-          def rep(path: str, old: str, new: str) -> None:
-              file = Path(path)
-              text = file.read_text(encoding="utf-8")
-              if old in text:
-                  file.write_text(text.replace(old, new, 1), encoding="utf-8")
-              elif new not in text:
-                  raise SystemExit(f"anchor not found: {path}: {old[:80]}")
-          rep("docs/product/PRD.md", "> 文档版本：1.3\n> 产品阶段：Open-source Alpha Hardening\n> 适用验证基线：`develop@7793a10152a49fb815aac667906080a4e1a39920`；M2-D next", "> 文档版本：1.4\n> 产品阶段：Open-source Alpha Hardening\n> 适用验证基线：PR #20 M2-D implementation head；pending exact-head CI、merge 与 closeout")
-          rep("docs/product/PRD.md", "当前仓库已建立 ToolRegistry、Policy/Approval 和 ExecutionAdapter 生产链，但完整 Runtime lifecycle、任务预算、恢复、Provider 协议和发布工程仍未闭环。", "当前仓库已建立 ToolRegistry、Policy/Approval 和 ExecutionAdapter 生产链；PR #20 已实现 Runtime lifecycle、任务预算、Provider-before-call cancellation 与 tool-error policy，但尚未合入 `develop`，durable recovery、Provider 协议和发布工程仍未闭环。")
-          rep("docs/product/PRD.md", "| RUN-002 | P1 | 支持多轮 tool call | Fake Provider 三轮测试 | Partial |", "| RUN-002 | P1 | 支持多轮 tool call | Fake Provider 三轮测试 | Implemented |")
-          rep("docs/product/PRD.md", "| RUN-004 | P1 | 所有关键状态转换可 checkpoint | transition/event/checkpoint 测试 | Partial |", "| RUN-004 | P1 | 所有关键状态转换可 checkpoint | transition/event/checkpoint 测试 | Implemented |")
-          rep("docs/product/PRD.md", "| RUN-005 | P1 | max_steps 是明确预算 | 超限返回 `BUDGET_STEP_EXCEEDED` | Partial |", "| RUN-005 | P1 | max_steps 是明确预算 | 超限返回 `BUDGET_STEP_EXCEEDED` | Implemented |")
-          rep("docs/product/PRD.md", "| RUN-007 | P1 | 支持 token/cost/context/time budget | 达阈值停止并生成证据 | Planned |", "| RUN-007 | P1 | 支持 token/cost/context/time budget | 达阈值停止并生成证据 | Implemented |")
-          rep("docs/product/PRD.md", "| RUN-008 | P1 | Tool error 回传模型或终止策略可配置 | policy tests | Partial |", "| RUN-008 | P1 | Tool error 回传模型或终止策略可配置 | policy tests | Implemented |")
-          rep("docs/product/PRD.md", "| OBS-003 | P1 | 未知成本保持 unknown | missing-field test | Blocked |", "| OBS-003 | P1 | 未知成本保持 unknown | missing-field test | Implemented |")
-          rep("docs/product/PRD.md", "| OBS-007 | P1 | Runtime 可执行预算停止 | integration tests | Planned |", "| OBS-007 | P1 | Runtime 可执行预算停止 | integration tests | Implemented |")
-          rep("docs/product/PRD.md", "`SEC-003` 保持 Partial：内存 approval 闭环已验证，但 durable checkpoint timing、resume 和 migration 属 M2-D/M3。", "`SEC-003` 保持 Partial：PR #20 已覆盖 pending-before-I/O、approve-once、approve-session、deny、timeout、unavailable、invalid outcome 的内存 checkpoint handoff；durable store、resume 和 migration 属 M3。")
-          rep("docs/traceability/alpha-traceability.md", "> 版本：1.9\n> 适用验证基线：`develop@7793a10152a49fb815aac667906080a4e1a39920`；M2-C closeout PR #19", "> 版本：2.0\n> 适用验证基线：PR #20 M2-D implementation head；pending exact-head CI、merge 与 closeout")
-          rep("docs/traceability/alpha-traceability.md", "| RUN-001 | P1 | M2 | Runtime | M2-D PR | TC-RUN-001 | fake-provider integration CI | Implemented | 需接入统一 RuntimeResult/lifecycle |", "| RUN-001 | P1 | M2 | Runtime | PR #20 | TC-RUN-001 | M2-D focused/full CI | Implemented | 待 exact-head CI、merge 与 closeout |")
-          rep("docs/traceability/alpha-traceability.md", "| RUN-002 | P1 | M2 | Runtime | M2-D PR | TC-RUN-002/003 | multi-round integration CI | Partial | 生命周期未统一 |", "| RUN-002 | P1 | M2 | Runtime | PR #20 | TC-RUN-002/003 | multi-round integration + lifecycle CI | Implemented | 待 exact-head CI、merge 与 closeout |")
-          rep("docs/traceability/alpha-traceability.md", "| RUN-004 | P1 | M1/M2 | Runtime | PR #6 / M2-D PR | TC-RUN-005 | transition manifest CI | Partial | state/transition/checkpoint 合同已冻结；生产 Runtime 尚未强制全部转换 |", "| RUN-004 | P1 | M1/M2 | Runtime | PR #6/#20 | TC-RUN-005 | transition manifest + checkpoint timing CI | Implemented | durable checkpoint store 属 M3；待 M2-D merge/closeout |")
-          rep("docs/traceability/alpha-traceability.md", "| RUN-005 | P1 | M2 | Runtime | M2-D PR | TC-RUN-006 | budget integration CI | Partial | 仅 step 行为 |", "| RUN-005 | P1 | M2 | Runtime | PR #20 | TC-RUN-006 | step budget integration CI | Implemented | 待 exact-head CI、merge 与 closeout |")
-          rep("docs/traceability/alpha-traceability.md", "| RUN-007 | P1 | M2 | Runtime | M2-D PR | TC-RUN-007 | budget matrix CI | Planned | token/cost/context/time 未接入 |", "| RUN-007 | P1 | M2 | Runtime | PR #20 | TC-RUN-007 | token/cost/context/time threshold matrix | Implemented | 待 exact-head CI、merge 与 closeout |")
-          rep("docs/traceability/alpha-traceability.md", "| RUN-008 | P1 | M2 | Runtime | M2-D PR | TC-RUN-008 | tool-error policy CI | Partial | RecoveryPolicy 已实现；Runtime 级继续/终止策略未完成 |", "| RUN-008 | P1 | M2 | Runtime | PR #20 | TC-RUN-008 | continue/terminate policy CI | Implemented | 待 exact-head CI、merge 与 closeout |")
-          rep("docs/traceability/alpha-traceability.md", "| SEC-003 | P1 | M2 | Security | PR #16 / M2-D/M3 Recovery PR | TC-SEC-003 | run 129 | Partial | durable approval checkpoint timing、resume、migration 属 M2-D/M3 |", "| SEC-003 | P1 | M2/M3 | Security | PR #16/#20 / M3 Recovery PR | TC-SEC-003 | approval outcome + checkpoint timing matrix | Partial | M2-D 内存 pending/resolved handoff 已实现；durable store、resume、migration 属 M3 |")
-          rep("docs/traceability/alpha-traceability.md", "| OBS-003 | P1 | M3 | Runtime | M3 Observability PR | TC-OBS-002 | missing-field CI | Blocked | unknown 被转为 0 |", "| OBS-003 | P1 | M2/M3 | Runtime | PR #20 / M3 Observability PR | TC-OBS-002 | unknown usage/cost lifecycle CI | Implemented | M3 仍需完整 metrics aggregation closeout |")
-          rep("docs/security/threat-model.md", "> 版本：1.3\n> 适用代码审查基线：`develop@7793a10152a49fb815aac667906080a4e1a39920`；M2-D next", "> 版本：1.4\n> 适用代码审查基线：PR #20 M2-D implementation head；pending exact-head CI、merge 与 closeout")
-          rep("docs/security/threat-model.md", "| Approval durable checkpoint/resume | Partial | event contract 可 round-trip；持久化时机、resume、migration 属 M2-D/M3 |", "| Approval durable checkpoint/resume | Partial | PR #20 已实现 pending-before-I/O 与全部 resolved outcome 的内存 handoff；durable store、resume、migration 属 M3 |")
-          rep("docs/security/threat-model.md", "| Full Runtime lifecycle/budget/cancellation | Partial / M2-D next | Provider-before-cancel、state/event/checkpoint、budgets 未闭环 |", "| Full Runtime lifecycle/budget/cancellation | Implemented in PR #20 / pre-merge | state/event/checkpoint handoff、budgets、Provider-before-call 与 tool cancellation 已实现；待 exact-head CI、merge/closeout |")
-          rep("docs/security/threat-model.md", "因此，M2-C 合入不改变当前结论：**NO RELEASE**。", "因此，M2-D implementation 完成也不构成发布门禁通过；在 merge/closeout 及 M3–M6 完成前结论仍为 **NO RELEASE**。")
-          rep("docs/security/threat-model.md", "- M2-D 关闭 Provider-before-call cancellation；请求进行中的 transport cancellation 允许明确移交 M4。", "- PR #20 已实现 Provider-before-call cancellation；请求进行中的 transport cancellation 明确移交 M4。")
-          rep("docs/testing/test-plan.md", "> 版本：1.1\n> 适用代码审查基线：`develop@0e1e435`", "> 版本：1.2\n> 适用代码审查基线：PR #20 M2-D implementation head；pending exact-head CI、merge 与 closeout")
-          rep("docs/testing/test-plan.md", "### 8.2 合并后或 Nightly", "### 8.2 M2-D focused Gate\n\n`M2 Runtime Lifecycle Gate` 在 Linux、macOS、Windows + Python 3.11 上运行 Runtime lifecycle、strict review、ExecutionAdapter、ToolRegistry、Policy/Approval 与授权审计模块，并上传包含明确测试分母和失败详情的 JSON artifact。实现 PR 文档变更后必须重新取得同一 exact head 的三平台证据。\n\n### 8.3 合并后或 Nightly")
-          rep("docs/testing/test-plan.md", "### 8.3 Release", "### 8.4 Release")
-          rep("docs/roadmap/open-source-readiness-plan.md", "> 计划版本：2.3.1  ", "> 计划版本：2.3.2  ")
-          rep("docs/roadmap/open-source-readiness-plan.md", "> 计划状态：**Execution in progress — M0/M1/M2-A/M2-B/M2-C closed; M2-D in progress**  ", "> 计划状态：**Execution in progress — M0/M1/M2-A/M2-B/M2-C closed; M2-D implementation complete, pre-merge evidence synchronization in progress**  ")
-          rep("docs/roadmap/open-source-readiness-plan.md", "- 当前已知 blocker 是同一 tool batch 后续 ASK 的 resolved approval checkpoint 未在 Adapter 执行前可靠 handoff；", "- 原 M2-D blocker 已修复：同一 tool batch 后续 ASK 的 resolved outcome 在 Adapter 执行前 handoff；deny、timeout、unavailable、invalid outcome 在结构化返回前 handoff；")
-          rep("docs/roadmap/open-source-readiness-plan.md", "| M2-D Runtime Lifecycle、Budget、Cancellation | **IN PROGRESS** | 大部分实现已在 PR #20；存在 approval checkpoint blocker | PR #20 |", "| M2-D Runtime Lifecycle、Budget、Cancellation | **IMPLEMENTED / PRE-MERGE** | blocker 已关闭；代码与回归矩阵已实现，正在同步最终 exact-head 文档/证据 | PR #20 |")
-          rep("docs/roadmap/open-source-readiness-plan.md", "### 5.2 当前 blocker\n\n```text\ntests/test_runtime_lifecycle_review.py::\nRuntimeLifecycleReviewTests::\ntest_later_batch_approval_is_checkpointed_before_execution\n```\n\n问题：同一 Provider response 含多个需 ASK 的 tool call 时，后续 call 的 pending checkpoint 已 handoff，但 resolved approval outcome 和执行前 call checkpoint 尚未在 `ExecutionAdapter.execute()` 前可靠 handoff。\n\n不得删除或降低该回归测试。", "### 5.2 Blocker closure\n\n原严格回归 `test_later_batch_approval_is_checkpointed_before_execution` 已在不增加第二套生产状态机的前提下修复。新增矩阵覆盖 approve-session、deny、timeout、missing/failed ApprovalProvider 与 invalid outcome：pending 在 Provider I/O 前 handoff；resolved outcome 在 Adapter 执行或结构化返回前 handoff。该回归与断言均保留。")
-          rep("docs/roadmap/open-source-readiness-plan.md", "- [ ] 当前严格 approval checkpoint 回归通过；", "- [x] 当前严格 approval checkpoint 回归与 resolved outcome matrix 通过（实现态；最终 exact-head 文档 CI 待生成）；")
-      - name: Commit authoritative docs synchronization
-        shell: bash
-        run: |
-          if git diff --quiet; then
-            echo "No docs patch required"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/product/PRD.md docs/traceability/alpha-traceability.md docs/security/threat-model.md docs/testing/test-plan.md docs/roadmap/open-source-readiness-plan.md
-          git commit -m "docs(readiness): sync M2-D implementation evidence"
-          git push origin HEAD:agent/m2-runtime-lifecycle
-
   lifecycle:
     name: ${{ matrix.os }} / Python 3.11
     strategy:
@@ -88,22 +23,27 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
+
       - name: Install package
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .
+
       - name: Run M2-D focused gate
         run: >-
           python scripts/m2_lifecycle_gate.py
           --output "m2-runtime-lifecycle-${{ runner.os }}.json"
+
       - name: Upload M2-D evidence
         if: always()
         uses: actions/upload-artifact@v4
