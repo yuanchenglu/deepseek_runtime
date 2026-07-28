@@ -21,8 +21,13 @@ from .contracts import (
 )
 from .diagnostics import build_diagnostics
 from .evidence import redact, request_evidence, response_evidence, sha256_bytes, wire_json
+from .execution import (
+    CancellationToken,
+    ExecutionAdapter,
+    ExecutionContext,
+    NoIsolationLocalAdapter,
+)
 from .security import PermissionPolicy
-from .session import ToolExecutionResult
 from .workspace import WorkspaceResolver, WorkspaceViolation
 
 
@@ -144,55 +149,115 @@ def _invalid_tool_call(message: str, *, tool: str = "", cause: BaseException | N
     )
 
 
+def _is_execution_adapter(value: object) -> bool:
+    capabilities = getattr(value, "capabilities", None)
+    return (
+        isinstance(getattr(value, "name", None), str)
+        and callable(getattr(value, "execute", None))
+        and callable(getattr(capabilities, "to_dict", None))
+    )
+
+
+def _execution_failure_event(
+    adapter: ExecutionAdapter,
+    *,
+    tool_name: str,
+    code: ErrorCode,
+    cause_class: str | None = None,
+) -> dict[str, object]:
+    event: dict[str, object] = {
+        "event": "tool_execution",
+        "tool": tool_name,
+        "adapter": adapter.name,
+        "capabilities": adapter.capabilities.to_dict(),
+        "status": "failed",
+        "error_code": code.value,
+    }
+    if cause_class is not None:
+        event["cause_class"] = cause_class
+    return event
+
+
 def _execute_registered_tool(
     registry: ToolRegistry,
     authorization: AuthorizationSession,
+    execution_adapter: ExecutionAdapter,
+    execution_context: ExecutionContext,
     call: Any,
-) -> str:
+) -> tuple[str, dict[str, object] | None]:
     if not isinstance(call, Mapping):
-        return _invalid_tool_call("tool call must be an object")
+        return _invalid_tool_call("tool call must be an object"), None
     function = call.get("function")
     if not isinstance(function, Mapping):
-        return _invalid_tool_call("tool call function must be an object")
+        return _invalid_tool_call("tool call function must be an object"), None
 
     name_value = function.get("name")
     if not isinstance(name_value, str) or not name_value:
-        return _invalid_tool_call("tool call name must be non-empty text")
+        return _invalid_tool_call("tool call name must be non-empty text"), None
     name = name_value
 
     arguments_value = function.get("arguments")
     if not isinstance(arguments_value, str):
-        return _invalid_tool_call("tool call arguments must be JSON text", tool=name)
+        return _invalid_tool_call("tool call arguments must be JSON text", tool=name), None
 
     try:
         arguments = json.loads(arguments_value)
     except json.JSONDecodeError as exc:
-        return _invalid_tool_call("tool call arguments contain invalid JSON", tool=name, cause=exc)
+        return _invalid_tool_call(
+            "tool call arguments contain invalid JSON",
+            tool=name,
+            cause=exc,
+        ), None
 
     try:
         spec = registry.resolve(name)
         validated = spec.validate_arguments(arguments)
         authorization.authorize(spec, validated)
-        output = spec.handler(validated)
-        if isinstance(output, ToolExecutionResult):
-            output = output.value
-        return normalize_tool_result(output, tool_name=name)
     except ContractViolation as exc:
-        return _tool_error_content(exc.error)
-    except Exception as exc:
-        return _tool_error_content(
-            RuntimeErrorInfo(
-                ErrorCode.TOOL_EXECUTION_FAILED,
-                "tool handler raised an exception",
-                details={"tool": name},
-                cause_class=type(exc).__name__,
-            )
+        return _tool_error_content(exc.error), None
+
+    try:
+        outcome = execution_adapter.execute(spec, validated, execution_context)
+    except ContractViolation as exc:
+        return (
+            _tool_error_content(exc.error),
+            _execution_failure_event(
+                execution_adapter,
+                tool_name=name,
+                code=exc.error.code,
+                cause_class=exc.error.cause_class,
+            ),
         )
+    except Exception as exc:
+        error = RuntimeErrorInfo(
+            ErrorCode.TOOL_EXECUTION_FAILED,
+            "execution adapter raised an exception",
+            details={"tool": name, "adapter": execution_adapter.name},
+            cause_class=type(exc).__name__,
+        )
+        return (
+            _tool_error_content(error),
+            _execution_failure_event(
+                execution_adapter,
+                tool_name=name,
+                code=error.code,
+                cause_class=error.cause_class,
+            ),
+        )
+
+    execution_event = outcome.evidence(tool_name=name)
+    execution_event["status"] = "succeeded"
+    try:
+        return normalize_tool_result(outcome.value, tool_name=name), execution_event
+    except ContractViolation as exc:
+        execution_event["status"] = "failed"
+        execution_event["error_code"] = exc.error.code.value
+        return _tool_error_content(exc.error), execution_event
 
 
 @dataclass
 class DeepSeekRuntime:
-    """Execute the production Provider → Policy → Approval → tool-result loop."""
+    """Execute the production Provider → Policy → Approval → Adapter loop."""
 
     client: DeepSeekClient
     max_steps: int = 8
@@ -208,24 +273,32 @@ class DeepSeekRuntime:
         tools: ToolRegistry | None = None,
         policy: PermissionPolicy | None = None,
         approval_provider: ApprovalProvider | None = None,
+        execution_adapter: ExecutionAdapter | None = None,
+        cancellation: CancellationToken | None = None,
     ) -> RuntimeResult:
-        """Run a task through the Registry, Policy, and Approval production path.
+        """Run through Registry, Policy, Approval, and ExecutionAdapter.
 
-        READ tools are allowed by the default policy; every non-READ tool is denied
-        unless an explicit rule allows it or routes it through ApprovalProvider.
-        Passing a raw handler dictionary remains unsupported.
+        The default ``NoIsolationLocalAdapter`` preserves existing local behavior but
+        intentionally provides no timeout, output, process-tree, or kernel isolation.
+        Callers must explicitly select a restricted adapter for subprocess guarantees.
         """
         if tools is not None and not isinstance(tools, ToolRegistry):
             raise TypeError("tools must be a ToolRegistry; raw handler mappings are not supported")
         if policy is not None and not isinstance(policy, PermissionPolicy):
             raise TypeError("policy must be a PermissionPolicy")
+        if execution_adapter is not None and not _is_execution_adapter(execution_adapter):
+            raise TypeError("execution_adapter must implement ExecutionAdapter")
+        if cancellation is not None and not isinstance(cancellation, CancellationToken):
+            raise TypeError("cancellation must be a CancellationToken")
 
         registry = tools if tools is not None else ToolRegistry()
         authorization = AuthorizationSession(
             policy=policy if policy is not None else PermissionPolicy(),
             approval_provider=approval_provider,
         )
+        adapter = execution_adapter if execution_adapter is not None else NoIsolationLocalAdapter()
         workspace_path = Path(workspace)
+        execution_context = ExecutionContext(workspace_path, cancellation)
         active_messages = [dict(message) for message in messages]
         tool_definitions = registry.provider_definitions()
         total_usage: dict[str, int] = {}
@@ -257,6 +330,7 @@ class DeepSeekRuntime:
                 ),
                 "response_evidence": response_evidence(_response_for_evidence(result.body)),
                 "authorization_events": [],
+                "execution_events": [],
                 "error": result.error,
                 "error_class": result.error_class,
             }
@@ -329,13 +403,23 @@ class DeepSeekRuntime:
                         error_class=ErrorCode.PROVIDER_RESPONSE_INVALID.value,
                         step=step,
                     )
-                event_start = len(authorization.events)
-                output = _execute_registered_tool(registry, authorization, call)
+                authorization_start = len(authorization.events)
+                output, execution_event = _execute_registered_tool(
+                    registry,
+                    authorization,
+                    adapter,
+                    execution_context,
+                    call,
+                )
                 authorization_events = step_evidence["authorization_events"]
                 if isinstance(authorization_events, list):
                     authorization_events.extend(
-                        event.to_dict() for event in authorization.events[event_start:]
+                        event.to_dict()
+                        for event in authorization.events[authorization_start:]
                     )
+                execution_events = step_evidence["execution_events"]
+                if execution_event is not None and isinstance(execution_events, list):
+                    execution_events.append(execution_event)
                 active_messages.append(
                     {
                         "role": "tool",
