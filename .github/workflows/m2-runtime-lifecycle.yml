@@ -8,44 +8,13 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: m2-runtime-lifecycle-${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
-  workspace-indent-fix:
-    if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: agent/m2-e-workspace-p1
-          fetch-depth: 0
-      - name: Restore exact WorkspaceTools indentation
-        shell: python
-        run: |
-          import base64
-          from pathlib import Path
-
-          payload = base64.b64decode("QGRhdGFjbGFzcwpjbGFzcyBXb3Jrc3BhY2VUb29sczoKICAgICIiIkJ1aWx0LWluIGJvdW5kZWQgcmVhZC1vbmx5IHRvb2xzIGJlaGluZCB0aGUgc2luZ2xlIFdvcmtzcGFjZVJlc29sdmVyLiIiIgoKICAgIHJvb3Q6IHN0ciB8IFBhdGgKICAgIHJlYWRfbWF4X2J5dGVzOiBpbnQgPSAyMF8wMDAKICAgIHNlYXJjaF9idWRnZXRzOiBXb3Jrc3BhY2VTZWFyY2hCdWRnZXRzID0gZmllbGQoCiAgICAgICAgZGVmYXVsdF9mYWN0b3J5PVdvcmtzcGFjZVNlYXJjaEJ1ZGdldHMKICAgICkKICAgIF9yZXNvbHZlcjogV29ya3NwYWNlUmVzb2x2ZXIgPSBmaWVsZChpbml0PUZhbHNlLCByZXByPUZhbHNlKQoKICAgIGRlZiBfX3Bvc3RfaW5pdF9fKHNlbGYpIC0+IE5vbmU6CiAgICAgICAgaWYgKAogICAgICAgICAgICBub3QgaXNpbnN0YW5jZShzZWxmLnJlYWRfbWF4X2J5dGVzLCBpbnQpCiAgICAgICAgICAgIG9yIGlzaW5zdGFuY2Uoc2VsZi5yZWFkX21heF9ieXRlcywgYm9vbCkKICAgICAgICAgICAgb3Igc2VsZi5yZWFkX21heF9ieXRlcyA8PSAwCiAgICAgICAgKToKICAgICAgICAgICAgcmFpc2UgVmFsdWVFcnJvcigicmVhZF9tYXhfYnl0ZXMgbXVzdCBiZSBhIHBvc2l0aXZlIGludGVnZXIiKQogICAgICAgIGlmIG5vdCBpc2luc3RhbmNlKHNlbGYuc2VhcmNoX2J1ZGdldHMsIFdvcmtzcGFjZVNlYXJjaEJ1ZGdldHMpOgogICAgICAgICAgICByYWlzZSBUeXBlRXJyb3IoInNlYXJjaF9idWRnZXRzIG11c3QgYmUgV29ya3NwYWNlU2VhcmNoQnVkZ2V0cyIpCiAgICAgICAgc2VsZi5fcmVzb2x2ZXIgPSBXb3Jrc3BhY2VSZXNvbHZlcihzZWxmLnJvb3QpCiAgICAgICAgc2VsZi5yb290ID0gc2VsZi5fcmVzb2x2ZXIucm9vdAoKICAgIGRlZiBfcGF0aChzZWxmLCByYXc6IHN0cikgLT4gUGF0aDoKICAgICAgICByZXR1cm4gc2VsZi5fcmVzb2x2ZXIucmVzb2x2ZShyYXcpCgogICAgZGVmIHJlYWRfZmlsZShzZWxmLCBhcmdzOiBkaWN0W3N0ciwgQW55XSkgLT4gZGljdFtzdHIsIEFueV06CiAgICAgICAgcmVzdWx0ID0gc2VsZi5fcmVzb2x2ZXIucmVhZF9ib3VuZGVkKAogICAgICAgICAgICBzdHIoYXJncy5nZXQoImlucHV0IiwgIiIpKSwKICAgICAgICAgICAgbWF4X2J5dGVzPXNlbGYucmVhZF9tYXhfYnl0ZXMsCiAgICAgICAgKQogICAgICAgIHJldHVybiByZXN1bHQudG9fZGljdCgpCgogICAgZGVmIHNlYXJjaChzZWxmLCBhcmdzOiBkaWN0W3N0ciwgQW55XSkgLT4gZGljdFtzdHIsIEFueV06CiAgICAgICAgbmVlZGxlID0gc3RyKGFyZ3MuZ2V0KCJpbnB1dCIsICIiKSkKICAgICAgICByZXN1bHQgPSBzZWxmLl9yZXNvbHZlci5zZWFyY2hfdGV4dCgKICAgICAgICAgICAgbmVlZGxlLAogICAgICAgICAgICBidWRnZXRzPXNlbGYuc2VhcmNoX2J1ZGdldHMsCiAgICAgICAgKQogICAgICAgIHJldHVybiByZXN1bHQudG9fZGljdCgpCgogICAgZGVmIGNhdGFsb2coc2VsZikgLT4gVG9vbFJlZ2lzdHJ5OgogICAgICAgIGlucHV0X3NjaGVtYSA9IHsKICAgICAgICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgICAgICAgInByb3BlcnRpZXMiOiB7ImlucHV0IjogeyJ0eXBlIjogInN0cmluZyIsICJtaW5MZW5ndGgiOiAxfX0sCiAgICAgICAgICAgICJyZXF1aXJlZCI6IFsiaW5wdXQiXSwKICAgICAgICAgICAgImFkZGl0aW9uYWxQcm9wZXJ0aWVzIjogRmFsc2UsCiAgICAgICAgfQogICAgICAgIHJldHVybiBUb29sUmVnaXN0cnkoCiAgICAgICAgICAgICgKICAgICAgICAgICAgICAgIFRvb2xTcGVjKAogICAgICAgICAgICAgICAgICAgICJyZWFkX2ZpbGUiLAogICAgICAgICAgICAgICAgICAgICJSZWFkIG9uZSBVVEYtOCBmaWxlIGluc2lkZSB0aGUgd29ya3NwYWNlIHdpdGggYSBieXRlIGxpbWl0IGFuZCBzdHJ1Y3R1cmVkIHN0YXR1cy4iLAogICAgICAgICAgICAgICAgICAgIGlucHV0X3NjaGVtYSwKICAgICAgICAgICAgICAgICAgICBzZWxmLnJlYWRfZmlsZSwKICAgICAgICAgICAgICAgICAgICByaXNrPSJyZWFkIiwKICAgICAgICAgICAgICAgICAgICBzaWRlX2VmZmVjdD1GYWxzZSwKICAgICAgICAgICAgICAgICAgICB0aW1lb3V0X3NlY29uZHM9MzAuMCwKICAgICAgICAgICAgICAgICAgICBtYXhfb3V0cHV0X2J5dGVzPTEwMF8wMDAsCiAgICAgICAgICAgICAgICAgICAgcmVjb3ZlcnlfcG9saWN5PVJlY292ZXJ5UG9saWN5LlBVUkUsCiAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgVG9vbFNwZWMoCiAgICAgICAgICAgICAgICAgICAgInNlYXJjaCIsCiAgICAgICAgICAgICAgICAgICAgIlNlYXJjaCBVVEYtOCB3b3Jrc3BhY2UgZmlsZXMgd2l0aCBmaWxlLCBieXRlLCB0aW1lLCBhbmQgbWF0Y2ggYnVkZ2V0cy4iLAogICAgICAgICAgICAgICAgICAgIGlucHV0X3NjaGVtYSwKICAgICAgICAgICAgICAgICAgICBzZWxmLnNlYXJjaCwKICAgICAgICAgICAgICAgICAgICByaXNrPSJyZWFkIiwKICAgICAgICAgICAgICAgICAgICBzaWRlX2VmZmVjdD1GYWxzZSwKICAgICAgICAgICAgICAgICAgICB0aW1lb3V0X3NlY29uZHM9MzAuMCwKICAgICAgICAgICAgICAgICAgICBtYXhfb3V0cHV0X2J5dGVzPTEwMF8wMDAsCiAgICAgICAgICAgICAgICAgICAgcmVjb3ZlcnlfcG9saWN5PVJlY292ZXJ5UG9saWN5LlBVUkUsCiAgICAgICAgICAgICAgICApLAogICAgICAgICAgICApCiAgICAgICAgKQoKICAgIGRlZiByZWdpc3RyeShzZWxmKSAtPiBUb29sUmVnaXN0cnk6CiAgICAgICAgcmV0dXJuIHNlbGYuY2F0YWxvZygpCg==").decode("utf-8")
-          path = Path("src/deepseek_runtime/runtime.py")
-          text = path.read_text(encoding="utf-8")
-          marker = "@dataclass\nclass WorkspaceTools:"
-          start = text.find(marker)
-          if start < 0:
-              raise SystemExit("WorkspaceTools marker not found")
-          path.write_text(text[:start] + payload, encoding="utf-8")
-      - name: Commit indentation repair
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/deepseek_runtime/runtime.py
-          git commit -m "fix(workspace): preserve production tool indentation"
-          git push origin HEAD:agent/m2-e-workspace-p1
-
   lifecycle:
     name: ${{ matrix.os }} / Python 3.11
     strategy:
@@ -54,22 +23,27 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
+
       - name: Install package
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .
+
       - name: Run M2-D focused gate
         run: >-
           python scripts/m2_lifecycle_gate.py
           --output "m2-runtime-lifecycle-${{ runner.os }}.json"
+
       - name: Upload M2-D evidence
         if: always()
         uses: actions/upload-artifact@v4
