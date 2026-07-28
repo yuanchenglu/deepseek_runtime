@@ -1,5 +1,13 @@
 """Public package exports for DeepSeek Runtime."""
 
+from .approval import (
+    ApprovalOutcome,
+    ApprovalProvider,
+    ApprovalRequest,
+    AuthorizationEvent,
+    AuthorizationSession,
+    summarize_approval,
+)
 from .change_journal import ChangeJournalStore, default_change_journal_dir, workspace_identity
 from .client import DeepSeekClient, ProviderResult, RuntimeSettings
 from .contracts import (
@@ -54,6 +62,11 @@ __version__ = "0.1.1a1"
 
 __all__ = [
     "__version__",
+    "ApprovalOutcome",
+    "ApprovalProvider",
+    "ApprovalRequest",
+    "AuthorizationEvent",
+    "AuthorizationSession",
     "ChangeJournalEntry",
     "ChangeJournalStore",
     "ChangeManager",
@@ -100,6 +113,7 @@ __all__ = [
     "normalize_tool_result",
     "reconcile_tool_call",
     "resume_tool_calls",
+    "summarize_approval",
     "summarize_observability",
     "transition_manifest",
     "validate_transition",
