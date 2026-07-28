@@ -208,6 +208,80 @@ class RuntimeLifecycleReviewTests(unittest.TestCase):
         self.assertEqual(approved.approvals[-1]["approval_outcome"], "approve-once")
         self.assertEqual(approved.tool_calls[-1].state, RuntimeState.TOOL_RUNNING)
 
+    def test_cached_session_approval_is_checkpointed_before_later_execution(self) -> None:
+        class Approver:
+            def request_approval(self, request: Any) -> ApprovalOutcome:
+                return ApprovalOutcome.APPROVE_SESSION
+
+        checkpoints: list[Any] = []
+        result = self.run_runtime(
+            Client([tool_message(call("call-1"), call("call-2")), final_message()]),
+            tools=ToolRegistry((write_spec(),)),
+            policy=PermissionPolicy((PermissionRule(Risk.WRITE, Decision.ASK),)),
+            approval_provider=Approver(),
+            execution_adapter=FakeExecutionAdapter(("one", "two")),
+            checkpoint_sink=checkpoints.append,
+        )
+
+        self.assertTrue(result.ok)
+        cached = next(
+            checkpoint
+            for checkpoint in checkpoints
+            if len(checkpoint.approvals) == 2
+            and checkpoint.approvals[-1]["approval_outcome"] == "approve-session"
+            and checkpoint.approvals[-1]["cached_session_approval"]
+        )
+        self.assertIs(cached.runtime_state, RuntimeState.TOOL_RUNNING)
+        self.assertEqual(cached.tool_calls[-1].state, RuntimeState.TOOL_RUNNING)
+
+    def test_resolved_non_execution_approval_outcomes_are_checkpointed(self) -> None:
+        class StaticApprover:
+            def __init__(self, outcome: ApprovalOutcome) -> None:
+                self.outcome = outcome
+
+            def request_approval(self, request: Any) -> ApprovalOutcome:
+                return self.outcome
+
+        class RaisingApprover:
+            def request_approval(self, request: Any) -> ApprovalOutcome:
+                raise RuntimeError("private approval failure")
+
+        class InvalidApprover:
+            def request_approval(self, request: Any) -> Any:
+                return "approve-once"
+
+        cases = (
+            ("deny", StaticApprover(ApprovalOutcome.DENY), "deny"),
+            ("timeout", StaticApprover(ApprovalOutcome.TIMEOUT), "timeout"),
+            ("missing", None, "unavailable"),
+            ("provider-error", RaisingApprover(), "unavailable"),
+            ("invalid", InvalidApprover(), "invalid"),
+        )
+        for name, provider, expected_outcome in cases:
+            with self.subTest(name=name):
+                checkpoints: list[Any] = []
+                result = self.run_runtime(
+                    Client([tool_message(call("call-1")), final_message()]),
+                    tools=ToolRegistry((write_spec(),)),
+                    policy=PermissionPolicy((PermissionRule(Risk.WRITE, Decision.ASK),)),
+                    approval_provider=provider,
+                    execution_adapter=FakeExecutionAdapter(()),
+                    checkpoint_sink=checkpoints.append,
+                )
+
+                self.assertTrue(result.ok)
+                resolved = next(
+                    checkpoint
+                    for checkpoint in checkpoints
+                    if checkpoint.approvals
+                    and checkpoint.approvals[-1]["approval_outcome"] == expected_outcome
+                )
+                self.assertEqual(
+                    resolved.tool_calls[-1].approval["approval_outcome"],
+                    expected_outcome,
+                )
+                self.assertIsNot(resolved.tool_calls[-1].state, RuntimeState.TOOL_RUNNING)
+
     def test_equal_token_limit_stops_at_threshold(self) -> None:
         result = self.run_runtime(
             Client([final_message()], [{"total_tokens": 10}]),

@@ -902,6 +902,8 @@ class DeepSeekRuntime:
                         )
                     if checkpoint_call is not None and new_authorization_events:
                         checkpoint_call.approval = new_authorization_events[-1].to_dict()
+                        if outcome.error is not None and outcome.execution_event is None:
+                            handoff_current_state(step)
 
                     execution_events = step_evidence["execution_events"]
                     if outcome.execution_event is not None and isinstance(execution_events, list):
