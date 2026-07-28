@@ -174,32 +174,32 @@ class WorkspaceP1Tests(unittest.TestCase):
             self.assertGreaterEqual(result.elapsed_ms, 100)
 
     def test_search_reports_time_limit_when_last_read_crosses_budget(self) -> None:
-    class Clock:
-        def __init__(self) -> None:
-  self.values = iter((0.0, 0.01, 0.02, 0.2, 0.3))
+        class Clock:
+            def __init__(self) -> None:
+                self.values = iter((0.0, 0.01, 0.02, 0.2, 0.3))
 
-        def __call__(self) -> float:
-  return next(self.values, 0.3)
+            def __call__(self) -> float:
+                return next(self.values, 0.3)
 
-    with tempfile.TemporaryDirectory() as directory:
-        root = Path(directory)
-        (root / "one.txt").write_text("needle", encoding="utf-8")
-        result = WorkspaceResolver(root).search_text(
-  "needle",
-  budgets=WorkspaceSearchBudgets(
-      max_files=10,
-      max_bytes=1_000,
-      max_seconds=0.1,
-      max_matches=100,
-      max_file_bytes=1_000,
-  ),
-  clock=Clock(),
-        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "one.txt").write_text("needle", encoding="utf-8")
+            result = WorkspaceResolver(root).search_text(
+                "needle",
+                budgets=WorkspaceSearchBudgets(
+                    max_files=10,
+                    max_bytes=1_000,
+                    max_seconds=0.1,
+                    max_matches=100,
+                    max_file_bytes=1_000,
+                ),
+                clock=Clock(),
+            )
 
-        self.assertEqual(result.status, "budget-exhausted")
-        self.assertEqual(result.stop_reason, "time-limit")
-        self.assertEqual(result.files_scanned, 1)
-        self.assertGreaterEqual(result.bytes_scanned, 1)
+            self.assertEqual(result.status, "budget-exhausted")
+            self.assertEqual(result.stop_reason, "time-limit")
+            self.assertEqual(result.files_scanned, 1)
+            self.assertGreaterEqual(result.bytes_scanned, 1)
 
     def test_search_reports_binary_without_exposing_content(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
