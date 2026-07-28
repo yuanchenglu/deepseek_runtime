@@ -83,9 +83,37 @@ def _approval_key(spec: ToolSpec, arguments: dict[str, Any]) -> str:
     return f"{spec.name}:{spec.risk}:{digest}"
 
 
+def _permission_request(risk: Risk, arguments: dict[str, Any]) -> PermissionRequest:
+    """Extract only explicit policy selectors; absent paths use a non-specific sentinel."""
+    path_value = arguments.get("path")
+    path = path_value if isinstance(path_value, str) else ""
+
+    command_value = arguments.get("command")
+    command: tuple[str, ...] = ()
+    if isinstance(command_value, list) and all(isinstance(item, str) for item in command_value):
+        command = tuple(command_value)
+
+    return PermissionRequest(risk=risk, path=path, command=command)
+
+
+def _scrub_new_policy_audit_events(policy: PermissionPolicy, start: int) -> None:
+    """Retain decisions while removing raw path and command values from audit memory."""
+    for event in policy.audit_events[start:]:
+        path = event.get("path")
+        command = event.get("command")
+        event["path"] = None
+        event["path_present"] = isinstance(path, str) and bool(path)
+        event["command"] = []
+        event["command_present"] = isinstance(command, list) and bool(command)
+
+
 @dataclass
 class AuthorizationSession:
-    """Enforce one PermissionPolicy and ApprovalProvider for a Runtime.run session."""
+    """Enforce one PermissionPolicy and ApprovalProvider for a Runtime.run session.
+
+    PermissionPolicy retains its documented declaration-order behavior: every matching
+    rule is evaluated and the last matching rule overrides earlier matches.
+    """
 
     policy: PermissionPolicy = field(default_factory=PermissionPolicy)
     approval_provider: ApprovalProvider | None = None
@@ -106,7 +134,10 @@ class AuthorizationSession:
             ) from exc
 
         summary = summarize_approval(spec, arguments)
-        decision = self.policy.decide(PermissionRequest(risk=risk))
+        audit_start = len(self.policy.audit_events)
+        decision = self.policy.decide(_permission_request(risk, arguments))
+        _scrub_new_policy_audit_events(self.policy, audit_start)
+
         if decision is Decision.ALLOW:
             self.events.append(
                 AuthorizationEvent(spec.name, risk, decision, None, summary)
