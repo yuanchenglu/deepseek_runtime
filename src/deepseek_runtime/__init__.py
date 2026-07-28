@@ -1,5 +1,6 @@
 """Public package exports for DeepSeek Runtime."""
 
+from .change_journal import ChangeJournalStore, default_change_journal_dir, workspace_identity
 from .client import DeepSeekClient, ProviderResult, RuntimeSettings
 from .contracts import (
     ChangeJournalEntry,
@@ -45,6 +46,7 @@ __version__ = "0.1.1a1"
 __all__ = [
     "__version__",
     "ChangeJournalEntry",
+    "ChangeJournalStore",
     "ChangeManager",
     "ChangeSet",
     "ContractViolation",
@@ -81,8 +83,10 @@ __all__ = [
     "WorkspaceTools",
     "build_diagnostics",
     "content_sha256",
+    "default_change_journal_dir",
     "resume_tool_calls",
     "summarize_observability",
     "transition_manifest",
     "validate_transition",
+    "workspace_identity",
 ]
