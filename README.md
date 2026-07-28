@@ -2,7 +2,7 @@
 
 > 面向 DeepSeek API 的本地 Agent Runtime Kernel。
 >
-> **当前阶段：Open-source Alpha Hardening；M1 已通过集成态三平台门禁并关闭；当前发布结论：NO RELEASE。**
+> **当前阶段：Open-source Alpha Hardening；M1 已通过集成态三平台门禁并关闭；M2 正在执行；当前发布结论：NO RELEASE。**
 
 [English](README_en.md) | [简体中文](README.md)
 
@@ -10,7 +10,7 @@
 
 直接调用模型 API 并不等于获得一个可靠 Agent。Runtime 需要处理 Provider 协议、工具合同、权限审批、资源预算、状态恢复、证据隐私和发布验证。
 
-本仓库已经完成 M1 的核心合同、Workspace containment、受约束回滚和不确定副作用恢复，但尚未完成不可绕过的 ToolRegistry、Policy、Approval、ExecutionAdapter 与统一 Runtime lifecycle。首个公开 Alpha 的范围、优先级和验收标准以 [`docs/product/PRD.md`](docs/product/PRD.md) 为唯一事实源。
+本仓库已经完成 M1 的核心合同、Workspace containment、受约束回滚和不确定副作用恢复。M2-A 已在 PR #14 建立 `ToolRegistry` 唯一生产工具集合、JSON Schema 参数校验、结果规范化和 CLI Registry 迁移；Policy、Approval、ExecutionAdapter 与统一 Runtime lifecycle 仍未完成。首个公开 Alpha 的范围、优先级和验收标准以 [`docs/product/PRD.md`](docs/product/PRD.md) 为唯一事实源。
 
 ## 当前真实状态
 
@@ -18,7 +18,8 @@
 | --- | --- |
 | DeepSeek Provider 请求与基础响应处理 | Partial |
 | Text-only 与基础 Tool Loop | Partial |
-| ToolRegistry、参数校验、Policy、Approval 强制闭环 | Blocked，M2 首要工作 |
+| ToolRegistry 与参数/结果边界 | Implemented in PR #14；最终精确内容 CI、review、merge 待完成 |
+| Policy、Approval、ExecutionAdapter 强制闭环 | Blocked，后续 M2-B/M2-C |
 | Workspace containment 与 symlink/reparse-point 防护 | Verified for M1 P0；Linux/macOS/Windows 各 20/20 |
 | Checkpoint 与 Evidence | Partial；合同已冻结，生产存储仍需拆分 |
 | 副作用恢复 | Verified for M1 P0；`running` 非幂等副作用进入人工协调，不自动重试 |
