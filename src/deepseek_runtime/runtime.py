@@ -882,6 +882,8 @@ class DeepSeekRuntime:
                             )
                         elif lifecycle.state is RuntimeState.TOOL_REQUESTED:
                             transition(RuntimeState.TOOL_RUNNING, transition_step=step)
+                        elif lifecycle.state is RuntimeState.TOOL_RUNNING:
+                            handoff_current_state(step)
 
                     outcome = _execute_prepared_tool(
                         prepared,
