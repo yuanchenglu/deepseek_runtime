@@ -1,6 +1,8 @@
 name: M2 ExecutionAdapter Gate
 
 on:
+  push:
+    branches: [develop]
   pull_request:
     branches: [develop, master]
   workflow_dispatch:
@@ -10,7 +12,7 @@ permissions:
 
 concurrency:
   group: m2-execution-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   execution:
