@@ -2,15 +2,15 @@
 
 > A local Agent Runtime Kernel for the DeepSeek API.
 >
-> **Current phase: Open-source Alpha Hardening. M1 and M2-A are closed. M2-B Policy/Approval is the next execution slice. Current release decision: NO RELEASE.**
+> **Current phase: Open-source Alpha Hardening. M1, M2-A, and M2-B are closed. M2-C ExecutionAdapter is the next execution slice. Current release decision: NO RELEASE.**
 
 [English](README_en.md) | [简体中文](README.md)
 
 ## Positioning
 
-Calling a model API does not provide a reliable Agent. A Runtime must handle Provider protocols, tool contracts, policy and approval, budgets, recovery, evidence privacy, and release verification.
+Calling a model API does not provide a reliable Agent. A Runtime must handle Provider protocols, tool contracts, policy and approval, bounded execution, budgets, recovery, evidence privacy, and release verification.
 
-This repository has completed the M1 core contracts, Workspace containment, constrained rollback, and ambiguous side-effect recovery. M2-A was merged through PR #14: `ToolRegistry` is the production tool collection, arguments use JSON Schema validation, results and malformed tool calls have structured boundaries, and the CLI has completed the Registry migration. Policy, Approval, ExecutionAdapter, and the unified Runtime lifecycle remain incomplete. [`docs/product/PRD.md`](docs/product/PRD.md) is the sole source of truth for the first public Alpha scope, priority, and acceptance criteria.
+This repository has completed the M1 core contracts, Workspace containment, constrained rollback, and ambiguous side-effect recovery. M2-A established `ToolRegistry` as the production tool collection with JSON Schema validation and structured result/malformed-tool-call boundaries. M2-B attached `PermissionPolicy` and `ApprovalProvider` to the production Runtime tool-call path. ExecutionAdapter, the unified Runtime lifecycle, budgets, cancellation, and the complete release pipeline remain incomplete. [`docs/product/PRD.md`](docs/product/PRD.md) is the sole source of truth for the first public Alpha scope, priority, and acceptance criteria.
 
 ## Current factual status
 
@@ -19,15 +19,16 @@ This repository has completed the M1 core contracts, Workspace containment, cons
 | DeepSeek Provider request and basic response handling | Partial |
 | Text-only and basic tool loop | Partial |
 | ToolRegistry and argument/result boundaries | Verified for M2-A; PR #14, Minimum CI run 106, M1 P0 Gate run 56 |
-| Mandatory Policy and Approval path | Blocked; next M2-B slice |
-| Mandatory ExecutionAdapter path | Blocked; M2-C |
+| Mandatory Policy and Approval path | Verified for the M2-B in-memory production path; PR #16, Minimum CI run 129, M1 P0 Gate run 77 |
+| Durable approval checkpoint and resume | Partial; events round-trip through the contract, while persistence timing, resume, and migration remain M2-D/M3 |
+| Mandatory ExecutionAdapter path | Blocked; M2-C is next |
 | Workspace containment and symlink/reparse-point defense | Verified for the M1 P0 scope; 20/20 on Linux, macOS, and Windows |
 | Checkpoint and Evidence | Partial; contracts are frozen but production storage still requires separation |
 | Side-effect recovery | Verified for the M1 P0 scope; persisted running non-idempotent effects enter manual reconciliation and do not auto-retry |
 | File changes and rollback | Verified for the M1 P0 scope; opaque handles, durable journals, expiry, scope, and conflict checks are covered |
 | Evidence, diagnostics, usage, and cost | Partial |
 | Cross-platform CI | M1 P0 covers Linux/macOS/Windows with Python 3.11; the full release matrix remains Planned |
-| wheel/sdist, artifact provenance and integrity | Planned/Blocked |
+| wheel/sdist, artifact provenance, and integrity | Planned/Blocked |
 
 Evidence and plans:
 
@@ -36,15 +37,40 @@ Evidence and plans:
 - [M1 P0 Cross-platform Report](docs/testing/m1-p0-report.md)
 - [M1 Integrated Closeout](docs/roadmap/m1-closeout.md)
 - [M2-A ToolRegistry Closeout](docs/roadmap/m2-a-closeout.md)
+- [M2-B Policy/Approval Closeout](docs/roadmap/m2-b-closeout.md)
+- [Policy/Approval Contract](docs/contracts/policy-approval.md)
 - [Alpha Traceability](docs/traceability/alpha-traceability.md)
 - [Open-source Readiness Execution Plan](docs/roadmap/open-source-readiness-plan.md)
+
+## Verified authorization boundary
+
+The supported Runtime tool-call path is:
+
+```text
+Provider tool call
+→ ToolRegistry resolve
+→ JSON Schema validation
+→ PermissionPolicy
+→ ApprovalProvider (ASK only)
+→ handler
+→ result normalization
+```
+
+Current guarantees:
+
+- READ is allowed by default; every non-READ risk is denied by default.
+- Explicit rules use deterministic and tested declaration-order behavior.
+- ASK fails closed when ApprovalProvider is absent, raises, returns an invalid outcome, denies, or times out.
+- A handler is not called before final authorization.
+- Approval summaries, default Evidence, public errors, and policy audit records do not retain complete arguments, file content, raw paths, command bodies, or secrets.
+- Session approval applies only to the exact tool/risk/arguments request within one `Runtime.run()` call.
 
 ## Security boundary
 
 The current implementation is **not an operating-system security sandbox**.
 
-- `NoIsolationLocalAdapter` is for trusted local development only.
-- `RestrictedSubprocessAdapter` targets a minimal environment, explicit cwd, timeout, process-tree cleanup, cancellation, and output limits, but still does not provide kernel isolation.
+- M2-C plans to introduce `NoIsolationLocalAdapter` and `RestrictedSubprocessAdapter`; until that slice merges, the Runtime must not claim a bounded subprocess execution path.
+- A future `RestrictedSubprocessAdapter` may enforce a minimal environment, explicit cwd, timeout, process-tree cleanup, cancellation, and output limits, but it still will not provide kernel isolation.
 - Workspace containment does not promise protection against a malicious concurrent process with the same host-user permissions.
 - The durable ChangeJournal is owner-only local storage by default; owner-only is not encryption.
 - The current version is not suitable for untrusted multi-tenancy, arbitrary command execution, or high-value irreversible side effects.
@@ -109,6 +135,9 @@ Core documents:
 - [PRD](docs/product/PRD.md)
 - [Product Architecture](docs/architecture/product-architecture.md)
 - [Technical Architecture](docs/architecture/technical-architecture.md)
+- [Runtime Core Contracts](docs/contracts/runtime-contracts.md)
+- [Policy/Approval Contract](docs/contracts/policy-approval.md)
+- [Threat Model](docs/security/threat-model.md)
 - [ADR Index](docs/adr/README.md)
 - [Test Plan](docs/testing/test-plan.md)
 - [Test Cases](docs/testing/test-cases.md)
@@ -121,7 +150,7 @@ Core documents:
 - [Code of Conduct](CODE_OF_CONDUCT.md)
 - [Security Reporting](SECURITY.md)
 
-The default development flow is feature branch → PR → CI → `develop`. An exceptional direct push to `develop` is allowed only when the PR flow is persistently unavailable in the current environment, and the commit must record the root cause and remaining technical debt.
+The default development flow is feature branch → Draft PR → tests/Traceability/docs/CI → Ready → `develop`. An exceptional direct push to `develop` is allowed only when the PR flow is persistently unavailable, and the commit must record the root cause and remaining technical debt.
 
 Before the first Alpha, contributions should close a P0/P1 blocker, improve verification, or correct a factual documentation error.
 

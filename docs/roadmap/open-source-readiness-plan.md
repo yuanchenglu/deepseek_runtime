@@ -1,11 +1,11 @@
 # DeepSeek Runtime 开源就绪执行计划
 
-> 计划版本：2.2.4  
+> 计划版本：2.2.5  
 > 状态日期：2026-07-28  
-> 计划状态：**Execution in progress — M0/M1/M2-A closed, M2-B next**  
-> 当前开发基线：`develop@b012265c4f51238c97c26c22b76d1e5e043153dc`  
-> 当前工作分支：`agent/m2-a-closeout`  
-> 当前工作入口：Draft PR #15 `docs(roadmap): close M2-A and hand off M2-B`  
+> 计划状态：**Execution in progress — M0/M1/M2-A/M2-B closed, M2-C next**  
+> 当前开发基线：`develop@f8a5799ae50221a2830f3d0b2ed19f86852fccf4`  
+> 当前工作分支：`agent/m2-b-closeout`  
+> 当前工作入口：Draft PR #17 `docs(roadmap): close M2-B and hand off M2-C`  
 > 发布分支：`master`  
 > 发布结论：**NO RELEASE**
 
@@ -21,9 +21,10 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 | --- | --- | --- | --- |
 | M0 基线、治理、Traceability、最小 CI | **CLOSED** | 单一事实源、治理和最小 CI 已建立 | PR #1–#4、PR #13 |
 | M1 核心合同冻结与全部 P0 关闭 | **CLOSED** | Workspace、rollback authorization、uncertain side effect 已验证 | PR #6–#10、PR #13、Gate runs 33/40 |
-| M2-A ToolRegistry 唯一入口 | **CLOSED** | Registry-only Runtime path 已合入 `develop` | PR #14、Minimum CI run 106、M1 P0 Gate run 56 |
-| M2-B Policy 与 Approval | **NEXT** | 旧 Policy 未接入生产 Registry，ApprovalProvider 缺失 | `SEC-001`–`004/008` |
-| M2-C–M2-G | **NOT STARTED** | Adapter、lifecycle/budget/cancellation、Workspace P1、CLI、integrated closeout 未完成 | Traceability |
+| M2-A ToolRegistry 唯一入口 | **CLOSED** | Registry-only Runtime path 已合入 `develop` | PR #14、runs 106/56、PR #15 |
+| M2-B Policy 与 Approval | **CLOSED** | 每个受支持 Runtime tool call 强制经过 Policy/Approval | PR #16、runs 129/77、merge `f8a5799a` |
+| M2-C ExecutionAdapter | **NEXT** | Adapter 合同、子进程资源控制和清理尚未实现 | `SEC-006`–`008`、`TOOL-005`、`RUN-006` |
+| M2-D–M2-G | **NOT STARTED** | lifecycle/budget/cancellation、Workspace P1、CLI、integrated closeout 未完成 | Traceability |
 | M3 Recovery、Change、Evidence、Observability | **NOT STARTED** | P1 Requirement 仍有 Blocked/Partial | Traceability |
 | M4 Provider、配置与 CLI 协议收口 | **NOT STARTED** | Provider、streaming、配置和稳定协议未完成 | Traceability |
 | M5 完整 CI、Packaging 与治理 | **NOT STARTED** | 完整矩阵、构件和发布验证未建立 | Traceability |
@@ -31,8 +32,8 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 
 客观结论：
 
-- M0、M1、M2-A 已关闭；M2 总里程碑仍远未关闭；
-- M2-A 只关闭 ToolRegistry 唯一入口，不代表 Policy、Approval、Adapter 或 lifecycle 已完成；
+- M0、M1、M2-A、M2-B 已关闭；M2 总里程碑仍未关闭；
+- M2-B 只关闭内存中的生产授权链，不代表 ExecutionAdapter、durable checkpoint、budget 或 cancellation 已完成；
 - M2–M5 仍有大量 P1 Requirement 未 `Verified`；
 - 当前必须保持 **NO RELEASE**。
 
@@ -60,19 +61,18 @@ M1 证据：
 
 - Run 33：Linux/macOS/Windows 各 140/140，总计 420/420，0 failed/skipped/N/A；
 - Windows `TC-WS-003` 实际执行 junction/reparse-point 测试；
-- artifacts：Linux `8676238220`、macOS `8676237125`、Windows `8676241048`；
 - 最终精确内容：Minimum CI run 89 PASS，M1 P0 Gate run 40 三平台 PASS。
 
-### M2-A
+### M2-A：ToolRegistry
 
-M2-A 已由 PR #14 `feat(runtime): establish ToolRegistry production path` squash 合入 `develop`。
+PR #14 已 squash 合入 `develop`，PR #15 完成 docs-only closeout。
 
 合并态：
 
-- 最终 PR head：`a51d5b297d8233c654cc1569c5fe73b9730c28b6`；
+- PR head：`a51d5b297d8233c654cc1569c5fe73b9730c28b6`；
 - merge commit：`b012265c4f51238c97c26c22b76d1e5e043153dc`；
 - Minimum CI run 106：PASS；
-- M1 P0 Gate run 56：Linux/macOS/Windows 全部 PASS；
+- M1 P0 Gate run 56：三平台 PASS；
 - 严格 Code Review：未解决 P0/S0/S1 = 0；
 - closeout：`docs/roadmap/m2-a-closeout.md`。
 
@@ -80,106 +80,154 @@ M2-A 已由 PR #14 `feat(runtime): establish ToolRegistry production path` squas
 
 - `ToolRegistry` 是 Runtime 的生产工具集合；
 - `DeepSeekRuntime.run()` 只接受 `ToolRegistry | None`；
-- CLI 默认传 `WorkspaceTools(...).catalog()`，`--no-tools` 传 `None`；
-- 不保留裸 `{}` 或 `dict[str, handler]` production fallback；
-- duplicate、handler、risk、side-effect、limits、`RecoveryPolicy` 注册合同；
-- JSON Schema Draft 2020-12 参数校验；
-- Provider definitions 从 `ToolSpec` 生成；
-- unknown tool、invalid result、handler exception、malformed tool-call 的结构化边界；
-- malformed tool-call 不执行 handler，也不会使 Evidence 或 safe serialization 崩溃。
+- 不保留裸 `{}` 或 `dict[str, handler]` Runtime fallback；
+- ToolSpec 注册、JSON Schema 参数校验、Provider definition、结果规范化和 malformed tool-call 边界已建立。
 
 已 `Verified`：
 
-- `RUN-003` / `TC-RUN-004`；
-- `RUN-009` / `TC-RUN-009`；
-- `TOOL-001`–`004` / `TC-TOOL-001`–`004`；
-- `TOOL-007` / `TC-RUN-011`。
+- `RUN-003`、`RUN-009`；
+- `TOOL-001`–`004`、`TOOL-007`。
+
+保留失败证据：Minimum CI runs 92、98。
+
+### M2-B：Policy 与 Approval
+
+PR #16 `feat(security): enforce M2-B policy and approval path` 已 squash 合入 `develop`。
+
+合并态：
+
+- 最终 PR head：`7e2913204b89164ba10ec3c43c03ab7bd69435af`；
+- merge commit：`f8a5799ae50221a2830f3d0b2ed19f86852fccf4`；
+- Minimum CI run 129：PASS；
+- M1 P0 Gate run 77：Linux/macOS/Windows 全部 PASS；
+- 严格 Code Review：未解决 P0/S0/S1 = 0；
+- closeout：`docs/roadmap/m2-b-closeout.md`。
+
+生产调用链：
+
+```text
+Provider tool call
+→ ToolRegistry resolve
+→ JSON Schema validation
+→ PermissionPolicy
+→ ApprovalProvider（仅 ASK）
+→ handler
+→ result normalization
+```
+
+已关闭能力：
+
+- READ 默认 `ALLOW`，非 READ 默认 `DENY`；
+- 规则按声明顺序确定性执行，保留既有 last-match precedence；
+- 缺失 path 不匹配具体 path glob；
+- approve-once、exact-request approve-session、deny、timeout；
+- ASK 缺失 Provider、Provider exception、invalid outcome 均 fail-closed；
+- denial/approval failure 不执行 handler；
+- authorization event 进入 Runtime evidence，并可无转换写入 `RecoverableCheckpoint.approvals`；
+- approval summary、public error、evidence 和 policy audit 不保留参数值、正文、原始路径或命令正文；
+- 直接 Policy DENY 与 ASK 后人工 DENY 的 audit 语义分离。
+
+Requirement 状态：
+
+- `SEC-001`：Verified；
+- `SEC-002`：Verified；
+- `SEC-004`：Verified；
+- `SEC-003`：Partial，durable checkpoint timing/resume/migration 仍属 M2-D/M3；
+- `SEC-009`：Partial，Adapter 子进程环境和错误输出面仍属 M2-C。
 
 保留失败证据：
 
-1. Minimum CI run 92：CLI 裸 `{}` fallback 导致 Pyright 失败；
-2. Minimum CI run 98：malformed `function` 在校验前触发旧 Evidence helper 异常。
+1. run 114：ErrorCode/schema mismatch 导致 Pyright 失败；
+2. run 122：错误改变 Policy precedence 导致 unit regression；
+3. run 127：直接 Policy DENY 被错误记录为人工审批拒绝。
 
-两次失败均通过修复实现和补回归测试解决，未 rerun 掩盖、未降低规则、未降低断言。
+三次失败均通过修复实现/合同和补回归测试解决，未 rerun 掩盖、未降低规则或断言。
 
 ## 4. 当前 closeout 工作现场
 
-PR #15 只同步合并后的事实状态：
+PR #17 只同步 PR #16 合并后的事实状态：
 
-1. 新增 `docs/roadmap/m2-a-closeout.md`；
-2. 更新本路线图为 v2.2.4；
-3. 更新 `docs/traceability/alpha-traceability.md` 为 M2-A merged/Verified；
-4. 更新 `README.md` 与 `README_en.md`；
-5. 不修改生产代码；
-6. 不实现 M2-B 功能。
+1. 新增 `docs/roadmap/m2-b-closeout.md`；
+2. 更新本路线图为 v2.2.5；
+3. 更新 `docs/traceability/alpha-traceability.md` 为 M2-B merged 状态；
+4. 更新 Threat Model 的实施基线和剩余边界；
+5. 更新 `README.md`、`README_en.md` 与 `docs/INDEX.md`；
+6. 不修改生产代码；
+7. 不实现 M2-C 功能。
 
-PR #15 完成条件：
+PR #17 完成条件：
 
-- [x] 实际 PR、merge commit、失败与成功 CI evidence 写入文档；
-- [x] M2-A Requirement 状态与 Blocker 同步；
-- [x] 双语 README 不再声称 PR #14 待 merge；
-- [x] 明确 M2-B 是下一切片；
+- [x] PR #16、merge commit、失败与成功 CI evidence 写入 closeout；
+- [ ] Requirement 状态与 Blocker 同步；
+- [ ] 双语 README 与 Threat Model 同步；
+- [ ] 文档索引同步；
 - [ ] Minimum CI 全绿；
 - [ ] M1 P0 Gate 全绿；
 - [ ] 严格文档 review；
 - [ ] Ready 后合入 `develop`。
 
-## 5. M2-B：Policy 与 Approval
+## 5. M2-C：ExecutionAdapter
 
 ### 5.1 目标
 
-M2-B 必须把 Policy decision 与 Approval 强制接入 PR #14 建立的 Registry execution path，做到每一次工具执行都无法绕过：
+M2-C 必须建立唯一、可替换、可测试的执行边界，使 Runtime 不再直接把受授权工具实现等同于无限制宿主执行：
 
 ```text
-Provider tool call
-→ ToolRegistry resolve + argument validation
-→ PermissionRequest
-→ PermissionPolicy decision
-→ ALLOW / DENY / ASK
-→ ApprovalProvider（仅 ASK）
-→ approved execution 或 structured refusal
+authorized tool request
+→ ExecutionAdapter
+→ bounded execution
+→ structured execution result/error
+→ Runtime normalization
 ```
 
 ### 5.2 最小合同
 
-1. READ 默认 `ALLOW`；
-2. 非 READ 默认 `DENY`；
-3. 显式规则优先于默认值；
-4. overlap/priority 行为稳定、可测试；
-5. `ASK` 必须进入 `ApprovalProvider`；
-6. 支持 approve-once、approve-session、deny、timeout；
-7. 缺失 ApprovalProvider 时 `ASK` fail-closed；
-8. 用户摘要不得包含 secret、完整参数、命令正文或文件正文；
-9. policy decision 与 approval outcome 进入可发布 Evidence/Checkpoint 最小字段；
-10. handler 只有在最终 `ALLOW` 后才能执行。
+1. 定义 `ExecutionAdapter` Protocol/ABC；
+2. 提供 deterministic Fake Adapter；
+3. 提供明确标注风险的 `NoIsolationLocalAdapter`；
+4. 提供 `RestrictedSubprocessAdapter`，但不得称为 OS sandbox；
+5. 子进程使用最小环境，不继承 DeepSeek API Key、token、authorization 或任意宿主 secret；
+6. cwd 必须显式且经过 workspace containment；
+7. `timeout_seconds` 必须实际 enforcement；
+8. stdout/stderr 使用 byte-size limit，不能只按字符数；
+9. timeout/cancel 后必须清理 process tree；
+10. 返回 code、stdout、stderr、truncated、timed_out、cancelled 和结构化错误；
+11. Adapter exception 不泄露 secret 或任意私有异常正文；
+12. Runtime 所有需要 Adapter 的生产工具不得绕过该边界。
 
 ### 5.3 目标 Requirement/Test
 
-- `SEC-001` / `TC-SEC-001`：默认策略；
-- `SEC-002` / `TC-SEC-002`：规则优先级与 overlap；
-- `SEC-003` / `TC-SEC-003`：ApprovalProvider；
-- `SEC-004` / `TC-SEC-004`：不可绕过；
-- `SEC-009` / `TC-SEC-008`：摘要与 secret marker。
+- `SEC-006` / `TC-SEC-005`：minimal child environment；
+- `SEC-007` / `TC-SEC-006`：timeout 后 process-tree cleanup；
+- `SEC-008` / `TC-SEC-009`：Adapter 合同与非隔离声明；
+- `SEC-009` / `TC-SEC-008`：Adapter 错误/输出 secret marker；
+- `TOOL-005` / `TC-TOOL-005/006`：timeout 与 output-size enforcement；
+- `RUN-006` / `TC-RUN-013`：cancellation handoff 的 Adapter 接口准备。
 
 ### 5.4 明确不做
 
-M2-B 不混入：
+M2-C 不混入：
 
-- subprocess timeout/output/process-tree cleanup；
-- ExecutionAdapter；
-- cancellation；
-- token/cost/context/time budget；
-- Workspace P1；
+- Runtime 全状态机重构；
+- token/cost/context/time budgets；
+- durable checkpoint timing/store；
+- Workspace read/search P1 budgets；
 - CLI stdout/report/json 协议；
-- M3 checkpoint store 或 Evidence schema 重构。
+- Provider streaming/retry；
+- M3 Evidence 重构；
+- container、VM、seccomp、Seatbelt、Job Object 等内核隔离承诺。
+
+### 5.5 分支与 PR
+
+PR #17 合入后，从最新 `develop` 创建：
+
+```text
+agent/m2-execution-adapter
+```
+
+先开 Draft PR，再按“合同 → Fake → NoIsolation → RestrictedSubprocess → Runtime 接入 → 测试/Traceability/docs → CI → review”顺序推进。
 
 ## 6. 后续 M2 顺序
-
-### M2-C：ExecutionAdapter
-
-依赖 M2-A/B。实现 Fake、NoIsolation、RestrictedSubprocess；minimal env、cwd、timeout、process-tree cleanup、cancellation、output limits、structured failure；不承诺 kernel isolation。
-
-目标用例：`TC-SEC-005`–`007`、`TC-SEC-009`、`TC-TOOL-005/006`、`TC-RUN-013`。
 
 ### M2-D：Runtime Lifecycle、Budget、Cancellation
 
@@ -201,7 +249,7 @@ stdout 最终回答、stderr 进度、`--report`、`--json`、unsafe debug、稳
 
 ### M2-G：Integrated Closeout
 
-必须通过 `TC-RUN-001`–`013`、`TC-TOOL-001`–`007`、`TC-WS-004`–`006`、`TC-SEC-001`–`009`、`TC-CLI-001`–`006`；无裸 handler path；每次工具执行有 policy event；side-effect tool 有 recovery policy；transition 合法/非法类别覆盖 100%；Runtime 状态模块 branch coverage ≥95%；Active P1 Runtime/Tool/Security defect = 0；在 integrated `develop` 复跑 closeout。
+必须通过 `TC-RUN-001`–`013`、`TC-TOOL-001`–`007`、`TC-WS-004`–`006`、`TC-SEC-001`–`009`、`TC-CLI-001`–`006`；无裸 handler/Adapter bypass；每次工具执行有 policy event；side-effect tool 有 recovery policy；transition 合法/非法类别覆盖 100%；Runtime 状态模块 branch coverage ≥95%；Active P1 Runtime/Tool/Security defect = 0；在 integrated `develop` 复跑 closeout。
 
 ## 7. M3–M6 摘要
 
@@ -221,93 +269,28 @@ Ubuntu/macOS/Windows × Python 3.11/3.12/3.13；完整 lint/type/test/coverage�
 
 RC 只允许 P0/P1 fix、测试稳定性、文档事实、release pipeline fix。最终 Gate 要求所有 P0/P1 `Verified`，Active P0/P1/S0/S1 = 0，测试/矩阵/构件/claim traceability 全部通过。任一 Gate 不满足，结论必须是 `No Release`。
 
-## 8. 开发流程
+## 8. 执行纪律
 
-### 第一优先：PR
-
-1. 从最新 `develop` 创建 `agent/<scope>`；
-2. 创建 Draft PR；
-3. 补 tests、Traceability、文档和 CI；
-4. 转 Ready；
-5. CI 全绿后合入 `develop`；
-6. Release Gate 全通过后才执行 `develop → master → tag`。
-
-### 第二优先：异常直推 `develop`
-
-仅当 PR 流程持续因环境、依赖、规则冲突或 GitHub 基础设施问题无法完成时使用。不得用于绕过失败测试、review 或安全门禁。
+默认流程：
 
 ```text
-<type>(<scope>): <变更说明>
-
-## 问题原因
-<PR 流程无法通过的真实根因>
-
-## 技术债务
-- <遗留问题>
+latest develop
+→ agent/<scope>
+→ Draft PR
+→ tests / Traceability / docs / CI
+→ strict review
+→ Ready for Review
+→ required CI green
+→ squash merge to develop
 ```
 
-必要时同步 `docs/TECH_DEBT.md`：
+禁止：
 
-```text
-[YYYY-MM-DD] 描述 | 遗留原因 | 状态
-```
+- 在 `master` 直接开发；
+- 用 rerun 覆盖失败证据；
+- 降低 Pyright/Ruff/test assertion；
+- 用 cast 或 fallback 掩盖真实合同错误；
+- 将后续里程碑工作混入当前 PR；
+- 在 M6 Gate 前发布、打正式 tag 或把 `master` 当开发分支。
 
-## 9. Definition of Done
-
-- 实现符合 PRD Requirement；
-- 对应 Test Case 自动化；
-- happy/failure/adversarial/fault path 按风险覆盖；
-- lint、type-check、tests、import、secret scan、traceability 全绿；
-- 不通过 rerun 隐藏失败；
-- public API、error code、schema、versioning 同步；
-- README、PRD、architecture、Threat Model、Known Unknowns 按需同步；
-- Traceability 写入实际 PR/Test/Evidence/Status/Blocker；
-- 默认日志和 Evidence 无 key、prompt、response、reasoning、工具正文；
-- PR 描述包含根因、设计、边界、风险、测试和回滚。
-
-## 10. No-Go
-
-workspace 外读写、密钥泄漏、artifact secret、重复高价值副作用、P0 失败/跳过、Registry/Policy/Adapter 绕过、checkpoint 状态不清、rollback handle 可伪造/跨 workspace、artifact 来源或 digest 不明、CI 只能靠 rerun、README 超过 Verified、降低断言或文档/测试/计划冲突，均必须暂停推进。
-
-## 11. 新会话交接提示词
-
-```text
-你现在接手 GitHub 仓库 yuanchenglu/deepseek_runtime 的 Open-source Alpha Hardening 工作。
-
-首先读取：
-1. docs/roadmap/open-source-readiness-plan.md（v2.2.4）
-2. docs/roadmap/m2-a-closeout.md
-3. docs/product/PRD.md
-4. docs/traceability/alpha-traceability.md
-5. docs/testing/test-cases.md
-6. docs/testing/test-plan.md
-7. docs/security/threat-model.md
-8. CONTRIBUTING.md
-
-当前事实：
-- develop：b012265c4f51238c97c26c22b76d1e5e043153dc（如 PR #15 已合入，直接读取最新 develop）
-- M0：CLOSED
-- M1：CLOSED
-- M2-A：CLOSED
-- M2-B：NEXT
-- M2-A 实施 PR #14：merged
-- M2-A merge commit：b012265c4f51238c97c26c22b76d1e5e043153dc
-- Minimum CI run 106：PASS
-- M1 P0 Gate run 56：PASS
-- Release：NO RELEASE
-
-先核对 PR #15 closeout 是否已完成；若未完成，完成 CI/review/merge。随后从最新 develop 创建 agent/m2-policy-approval 和 Draft PR。
-
-M2-B 只处理 Policy 与 Approval：READ 默认 ALLOW、非 READ 默认 DENY、稳定规则优先级、ASK→ApprovalProvider、approve-once/session、deny、timeout、缺 provider fail-closed、安全摘要、decision/approval evidence、handler 仅在最终 allow 后执行。
-
-目标用例：TC-SEC-001–004、TC-SEC-008。不得混入 ExecutionAdapter、timeout/output enforcement、Budget、Cancellation、Workspace P1、CLI 输出协议或 M3。
-
-流程：功能分支 → Draft PR → tests/Traceability/docs/CI → Ready → develop。禁止直接开发 master。保持 NO RELEASE。
-```
-
-## 12. 当前结论
-
-- M0、M1、M2-A 已有合并态与可访问证据；
-- PR #15 正在同步 M2-A closeout 的权威文档；
-- closeout 合入后，立即从最新 `develop` 启动独立 M2-B Policy/Approval Draft PR；
-- M2-B–M2-G、M3–M6 完成前保持 **NO RELEASE**。
+当前结论：**NO RELEASE**。
