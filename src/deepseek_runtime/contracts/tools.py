@@ -1,4 +1,4 @@
-"""Tool registration and argument-validation contract."""
+"""Tool registration, lookup, argument validation, and result normalization."""
 
 from __future__ import annotations
 
@@ -6,8 +6,9 @@ import copy
 import json
 import math
 import re
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
-from typing import Any, Callable, Mapping
+from typing import Any, Callable
 
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError
@@ -16,15 +17,30 @@ from .common import ContractViolation, ErrorCode, RuntimeErrorInfo, assert_json_
 from .state import RecoveryPolicy
 
 _TOOL_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]{0,127}$")
+_TOOL_RISKS = {
+    "read",
+    "write",
+    "delete",
+    "shell-safe",
+    "shell-dangerous",
+    "network",
+    "git-mutating",
+}
 ToolHandler = Callable[[dict[str, Any]], Any]
 
 
 class ToolArgumentError(ContractViolation):
-    pass
+    """Raised when model-supplied arguments violate a registered schema."""
+
+
+class ToolResultError(ContractViolation):
+    """Raised when a handler returns a value that cannot enter the Runtime protocol."""
 
 
 @dataclass(frozen=True, init=False)
 class ToolSpec:
+    """Immutable registration contract for one production tool."""
+
     name: str
     description: str
     handler: ToolHandler = field(repr=False, compare=False)
@@ -51,8 +67,11 @@ class ToolSpec:
             raise ValueError("invalid tool name")
         if not description or len(description) > 1024:
             raise ValueError("tool description must contain 1..1024 characters")
+        if not callable(handler):
+            raise ValueError("tool handler must be callable")
         if not isinstance(parameters, Mapping):
             raise ValueError("tool parameters must be a JSON Schema object")
+
         schema = copy.deepcopy(dict(parameters))
         try:
             Draft202012Validator.check_schema(schema)
@@ -60,23 +79,28 @@ class ToolSpec:
             raise ValueError(f"invalid tool parameter schema: {exc.message}") from exc
         if schema.get("type") != "object":
             raise ValueError("tool parameter schema root type must be object")
-        if not risk or len(risk) > 64:
-            raise ValueError("tool risk must contain 1..64 characters")
+
+        normalized_risk = str(risk).strip().lower()
+        if normalized_risk not in _TOOL_RISKS:
+            raise ValueError("tool risk must be a registered risk category")
         if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
             raise ValueError("tool timeout_seconds must be finite and positive")
-        if max_output_bytes <= 0:
-            raise ValueError("tool max_output_bytes must be positive")
+        if not isinstance(max_output_bytes, int) or isinstance(max_output_bytes, bool) or max_output_bytes <= 0:
+            raise ValueError("tool max_output_bytes must be a positive integer")
+        if side_effect and normalized_risk == "read":
+            raise ValueError("side-effect tools must declare a non-read risk")
         if side_effect and recovery_policy is RecoveryPolicy.PURE:
             raise ValueError("side-effect tools cannot use PURE recovery")
         if not side_effect and recovery_policy is not RecoveryPolicy.PURE:
             raise ValueError("non-side-effect tools must use PURE recovery")
+
         assert_json_compatible(schema)
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "description", description)
         object.__setattr__(self, "handler", handler)
-        object.__setattr__(self, "risk", risk)
+        object.__setattr__(self, "risk", normalized_risk)
         object.__setattr__(self, "side_effect", side_effect)
-        object.__setattr__(self, "timeout_seconds", timeout_seconds)
+        object.__setattr__(self, "timeout_seconds", float(timeout_seconds))
         object.__setattr__(self, "max_output_bytes", max_output_bytes)
         object.__setattr__(self, "recovery_policy", recovery_policy)
         object.__setattr__(
@@ -84,6 +108,10 @@ class ToolSpec:
             "_parameters_json",
             json.dumps(schema, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
         )
+
+    def __call__(self, arguments: dict[str, Any]) -> Any:
+        """Allow compatibility callers to invoke a spec while retaining metadata."""
+        return self.handler(arguments)
 
     @property
     def parameters(self) -> dict[str, Any]:
@@ -132,3 +160,90 @@ class ToolSpec:
                 )
             )
         return dict(arguments)
+
+
+def normalize_tool_result(value: Any, *, tool_name: str) -> str:
+    """Convert supported handler results to deterministic tool-message text."""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, bytes):
+        try:
+            return value.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ToolResultError(
+                RuntimeErrorInfo(
+                    ErrorCode.TOOL_RESULT_INVALID,
+                    "tool returned non-UTF-8 bytes",
+                    details={"tool": tool_name},
+                    cause_class=type(exc).__name__,
+                )
+            ) from exc
+    try:
+        assert_json_compatible(value)
+        return json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+    except ValueError as exc:
+        raise ToolResultError(
+            RuntimeErrorInfo(
+                ErrorCode.TOOL_RESULT_INVALID,
+                "tool returned an unsupported result",
+                details={"tool": tool_name, "result_type": type(value).__name__},
+                cause_class=type(exc).__name__,
+            )
+        ) from exc
+
+
+class ToolRegistry(Mapping[str, ToolSpec]):
+    """The only supported production collection of executable tools."""
+
+    def __init__(self, specs: Iterable[ToolSpec] = ()) -> None:
+        self._specs: dict[str, ToolSpec] = {}
+        for spec in specs:
+            self.register(spec)
+
+    def register(self, spec: ToolSpec) -> ToolSpec:
+        if not isinstance(spec, ToolSpec):
+            raise TypeError("ToolRegistry accepts ToolSpec instances only")
+        if spec.name in self._specs:
+            raise ValueError(f"duplicate tool name: {spec.name}")
+        self._specs[spec.name] = spec
+        return spec
+
+    def __getitem__(self, name: str) -> ToolSpec:
+        return self._specs[name]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._specs)
+
+    def __len__(self) -> int:
+        return len(self._specs)
+
+    @property
+    def names(self) -> tuple[str, ...]:
+        return tuple(sorted(self._specs))
+
+    def provider_definitions(self) -> list[dict[str, Any]]:
+        return [self._specs[name].provider_definition() for name in sorted(self._specs)]
+
+    def resolve(self, name: str) -> ToolSpec:
+        try:
+            return self._specs[name]
+        except KeyError as exc:
+            raise ContractViolation(
+                RuntimeErrorInfo(
+                    ErrorCode.TOOL_NOT_FOUND,
+                    "requested tool is not registered",
+                    details={"tool": name},
+                    cause_class=type(exc).__name__,
+                )
+            ) from exc
+
+    def execute(self, name: str, arguments: Any) -> Any:
+        spec = self.resolve(name)
+        validated = spec.validate_arguments(arguments)
+        return spec.handler(validated)
