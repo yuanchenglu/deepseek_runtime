@@ -1,7 +1,7 @@
 # DeepSeek Runtime Alpha Traceability Matrix
 
-> 版本：1.3
-> 适用验证基线：PR #13 head `81643dca`
+> 版本：1.4
+> 适用验证基线：PR #14（动态 head 以 PR 页面为准）
 > 文档修订：以本文件所在 Git commit 为准
 > 作用：`Requirement → Milestone → PR → Test → Evidence` 的唯一追踪表。
 
@@ -42,6 +42,17 @@
 - M1 Closeout：`docs/roadmap/m1-closeout.md`；
 - M1 scoped P0 Requirements are `Verified`; M2–M6 Requirements remain independently gated.
 
+### M2-A 当前实际证据
+
+- 实际实施 PR：#14 `feat: start M2 ToolRegistry production path`；
+- 失败证据：Minimum CI run 98 (`30329722848`)；Pyright 已为 0 error，但 unit tests 暴露 malformed tool-call 在 Evidence 前置处理处抛异常；该失败未 rerun 或删除；
+- 修复根因：Runtime 为 Evidence 构造非执行的安全结构视图，再执行 ToolRegistry lookup、schema validation 和 handler boundary；原始 Provider 消息不被篡改；
+- 代码与测试验证：Minimum CI run 99 (`30329999768`) `success`；
+- M1 回归验证：M1 P0 Gate run 49 (`30329999810`) `success`；
+- 自动化覆盖：`TC-TOOL-001`–`004`、`TC-RUN-004`、`TC-RUN-009`、`TC-RUN-011`，以及 malformed JSON、function 非 object、arguments 非 string、unknown tool 零执行、invalid result、non-UTF-8 bytes、handler exception、tool-call ID 类型异常；
+- PR #14 仍须在文档同步后的最终精确内容上再次通过 Minimum CI，完成严格 Code Review 后才可转 Ready 和合入 `develop`；
+- 发布结论仍为 **NO RELEASE**。
+
 ## 2. 配置与版本
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
@@ -72,26 +83,26 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | RUN-001 | P1 | M2 | Runtime | PR-09 | TC-RUN-001 | fake-provider integration CI | Implemented | 需接入统一 RuntimeResult |
 | RUN-002 | P1 | M2 | Runtime | PR-09 | TC-RUN-002/003 | multi-round integration CI | Partial | 生命周期未统一 |
-| RUN-003 | P1 | M2 | Runtime | PR-02/09 | TC-RUN-004 | architecture/negative API test | Blocked | 裸 handler 路径存在 |
+| RUN-003 | P1 | M2 | Runtime | PR #14 | TC-RUN-004 | Minimum CI run 99; raw mapping rejected before Provider | Implemented | 最终精确内容 CI、严格 review 与 merge 待完成 |
 | RUN-004 | P1 | M1/M2 | Runtime | PR #6 / PR-09 | TC-RUN-005 | transition manifest CI | Partial | state/transition/checkpoint 合同已冻结；生产 Runtime 尚未强制执行全部转换 |
 | RUN-005 | P1 | M2 | Runtime | PR-09 | TC-RUN-006 | budget integration CI | Partial | 仅部分 step 行为 |
 | RUN-006 | P1 | M2/M4 | Runtime | PR-08/09/16 | TC-RUN-012/013、TC-PROV-015 | cancellation integration CI | Planned | cancellation token 未实现 |
 | RUN-007 | P1 | M2 | Runtime | PR-09 | TC-RUN-007 | budget matrix CI | Planned | token/cost/context/time 未接入 |
 | RUN-008 | P1 | M2 | Runtime | PR-09 | TC-RUN-008 | tool-error policy CI | Partial | RecoveryPolicy 已实现；Runtime 级继续/终止策略未完成 |
-| RUN-009 | P1 | M2 | Runtime | PR-02/09 | TC-RUN-009 | result-normalization CI | Blocked | handler 返回值未统一接入生产 Runtime |
-| RUN-010 | P1 | M2/M4 | Runtime | PR-09/15 | TC-RUN-010 | malformed Provider integration CI | Blocked | evidence 先于 normalize |
+| RUN-009 | P1 | M2 | Runtime | PR #14 | TC-RUN-009 | Minimum CI run 99; deterministic result normalization | Implemented | timeout/output-size enforcement 属 M2-C，未在本 PR 混入 |
+| RUN-010 | P1 | M2/M4 | Runtime | PR #14 / PR-09/15 | TC-RUN-010 | run 98 failure retained; run 99 malformed tool-call regression PASS | Partial | tool-call 子集已 fail-closed；arbitrary root、choices/message 全矩阵仍属后续 Provider/Runtime PR |
 
 ## 5. Tool Contract
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| TOOL-001 | P1 | M1/M2 | Runtime | PR #6 / PR-02 | TC-TOOL-001 | public API unit CI | Implemented | `ToolSpec` 类型和 schema 已实现；唯一 Registry 入口仍属 M2 |
-| TOOL-002 | P1 | M2 | Runtime | PR-02 | TC-TOOL-002 | registry unit CI | Planned | Registry 未实现 |
-| TOOL-003 | P1 | M2 | Runtime | PR #6 / PR-02 | TC-TOOL-003 | invalid fixture CI | Implemented | JSON Schema 验证合同已实现；生产 Runtime 尚未强制走 Registry |
-| TOOL-004 | P1 | M1/M2 | Security | PR #6 / PR-02 | TC-TOOL-004 | registration negative CI | Partial | ToolSpec 合同包含 risk/side-effect；Registry 注册拒绝仍未实现 |
-| TOOL-005 | P1 | M2 | Runtime | PR-02/08 | TC-TOOL-005/006 | timeout/output integration CI | Planned | limits 未接入 |
-| TOOL-006 | P1 | M1/M2 | Recovery | PR #6/#9 / PR-02 | TC-TOOL-004/007 | recovery-policy CI | Partial | RecoveryPolicy 类型与恢复路径已实现；Registry 注册强制仍属 M2 |
-| TOOL-007 | P1 | M2 | Runtime | PR #9 / PR-02/09 | TC-RUN-011 | unknown-tool integration CI | Partial | Session 恢复路径返回 `TOOL_NOT_FOUND`；统一 RuntimeResult 仍未完成 |
+| TOOL-001 | P1 | M1/M2 | Runtime | PR #6/#14 | TC-TOOL-001 | Minimum CI run 99; public API and Provider definition assertions | Implemented | 最终精确内容 CI 与 merge 待完成 |
+| TOOL-002 | P1 | M2 | Runtime | PR #14 | TC-TOOL-002 | Minimum CI run 99; duplicate-name negative test | Implemented | 最终精确内容 CI 与 merge 待完成 |
+| TOOL-003 | P1 | M2 | Runtime | PR #6/#14 | TC-TOOL-003 | Minimum CI run 99; handler call count remains zero for invalid fixtures | Implemented | 最终精确内容 CI 与 merge 待完成 |
+| TOOL-004 | P1 | M1/M2 | Security | PR #6/#14 | TC-TOOL-004 | Minimum CI run 99; risk/side-effect/recovery registration negatives | Implemented | 最终精确内容 CI 与 merge 待完成 |
+| TOOL-005 | P1 | M2 | Runtime | PR #14 / PR-08 | TC-TOOL-005/006 | timeout/output integration CI | Planned | limits 已进入 ToolSpec 合同，但实际 enforcement 属 M2-C |
+| TOOL-006 | P1 | M1/M2 | Recovery | PR #6/#9/#14 | TC-TOOL-004/007 | run 99 registration enforcement; later idempotency/retry evidence | Partial | recovery-policy 注册强制已实现；执行期 receipt/idempotency/retry 属后续 PR |
+| TOOL-007 | P1 | M2 | Runtime | PR #9/#14 | TC-RUN-011 | Minimum CI run 99; unknown tool returns `TOOL_NOT_FOUND`, zero handler calls | Implemented | 最终精确内容 CI 与 merge 待完成 |
 
 ## 6. Workspace
 
@@ -110,7 +121,7 @@
 | SEC-001 | P1 | M2 | Security | PR-07 | TC-SEC-001 | policy unit CI | Implemented | 需接入 Runtime |
 | SEC-002 | P1 | M2 | Security | PR-07 | TC-SEC-002 | overlap fixture CI | Partial | 优先级未冻结 |
 | SEC-003 | P1 | M2 | Security | PR-07 | TC-SEC-003 | approval integration CI | Blocked | ApprovalProvider 缺失 |
-| SEC-004 | P1 | M2 | Security | PR-07/09 | TC-SEC-004 | no-bypass integration CI | Blocked | Runtime 直接调用 handler |
+| SEC-004 | P1 | M2 | Security | PR-07/09 | TC-SEC-004 | no-bypass integration CI | Blocked | ToolRegistry 已成为唯一工具集合，但 Policy/Approval 尚未接入生产路径 |
 | SEC-005 | P1 | M0/M2 | Security | PR-00/08 | TC-SEC-007 | docs/type/help snapshot | Partial | README/Threat Model/ADR 已修正；生产类型与 CLI 命名尚待 M2 |
 | SEC-006 | P1 | M2 | Security | PR-08 | TC-SEC-005 | child-env subprocess CI | Blocked | 继承宿主环境 |
 | SEC-007 | P1 | M2 | Security | PR-08 | TC-SEC-006 | process-tree platform CI | Planned | cleanup 未实现 |
@@ -223,6 +234,8 @@ M0 已关闭并建立 PR-first、异常直推需留痕的开发政策。
 
 M1 已关闭：核心合同、Workspace containment、rollback authorization、side-effect uncertain 和永久 P0 Gate 已通过 PR #6–#10 合入 `develop`，并由 PR #13 的 Minimum CI run 82 与 M1 P0 Gate run 33 在集成态复验。`WS-001`、`WS-002`、`CHG-001`、`CHG-002`、`SES-007` 已提升为 `Verified`。
 
-M2 的 ToolRegistry、Policy、Approval、ExecutionAdapter、统一 Runtime lifecycle、budget/cancellation、Workspace P1 和 CLI contract 是当前最高优先级阻断项。
+M2-A 的 ToolRegistry 唯一生产集合、参数校验、结果规范化、未知工具错误和 CLI Registry 迁移已在 PR #14 实现并由 Minimum CI run 99 验证；PR 尚未完成最终精确内容 CI、严格 review 和 merge，因此 M2 仍为执行中。
+
+M2-B Policy/Approval、M2-C ExecutionAdapter、M2-D lifecycle/budget/cancellation、M2-E Workspace P1、M2-F CLI contract 与 M2-G integrated closeout 仍是当前阻断项。
 
 因此当前发布结论继续保持：**NO RELEASE**。
