@@ -38,6 +38,7 @@ from .lifecycle import (
     LifecycleTrace,
     RuntimeBudgets,
     ToolErrorPolicy,
+    safe_usage_evidence,
 )
 from .security import PermissionPolicy
 from .workspace import WorkspaceResolver, WorkspaceViolation
@@ -128,7 +129,6 @@ class _ToolOutcome:
     content: str
     error: RuntimeErrorInfo | None
     execution_event: dict[str, object] | None
-    raw_value: Any = None
     receipt: dict[str, Any] | None = None
 
 
@@ -283,11 +283,6 @@ def _prepare_tool_call(registry: ToolRegistry, call: Any, call_id: str) -> _Prep
     except ContractViolation as exc:
         return _PreparedToolCall(call_id, tool_name=name, error=exc.error)
 
-    if not isinstance(parsed, dict):
-        try:
-            spec.validate_arguments(parsed)
-        except ContractViolation as exc:
-            return _PreparedToolCall(call_id, tool_name=name, spec=spec, error=exc.error)
     try:
         validated = spec.validate_arguments(parsed)
     except ContractViolation as exc:
@@ -376,14 +371,12 @@ def _execute_prepared_tool(
             _tool_error_content(exc.error),
             exc.error,
             execution_event,
-            raw_value=outcome.value,
             receipt=dict(outcome.private_receipt) if outcome.private_receipt else None,
         )
     return _ToolOutcome(
         content,
         None,
         execution_event,
-        raw_value=outcome.value,
         receipt=dict(outcome.private_receipt) if outcome.private_receipt else None,
     )
 
@@ -402,12 +395,10 @@ def _checkpoint_call(prepared: _PreparedToolCall) -> ToolCallCheckpoint | None:
     )
 
 
-def _aggregate_legacy_usage(total: dict[str, int], usage: Any) -> None:
-    if not isinstance(usage, Mapping):
-        return
-    for key, value in usage.items():
+def _aggregate_legacy_usage(total: dict[str, int], usage_value: Any) -> None:
+    for key, value in safe_usage_evidence(usage_value).items():
         if isinstance(value, int) and not isinstance(value, bool):
-            total[str(key)] = total.get(str(key), 0) + value
+            total[key] = total.get(key, 0) + value
 
 
 def _error_result(
@@ -518,6 +509,7 @@ class DeepSeekRuntime:
         budget_tracker = BudgetTracker(effective_budgets)
         current_tool_calls: list[ToolCallCheckpoint] = []
         receipts: list[dict[str, Any]] = []
+        provider_continuation: dict[str, Any] | None = None
         last_checkpoint: RecoverableCheckpoint | None = None
         sink_enabled = checkpoint_sink is not None
         run_session_id = session_id or uuid.uuid4().hex
@@ -529,35 +521,22 @@ class DeepSeekRuntime:
                 runtime_state=target,
                 step=checkpoint_step,
                 messages=copy.deepcopy(active_messages),
+                provider_continuation=copy.deepcopy(provider_continuation),
                 tool_calls=copy.deepcopy(current_tool_calls),
                 approvals=[event.to_dict() for event in authorization.events],
                 receipts=copy.deepcopy(receipts),
                 budgets=copy.deepcopy(budget_tracker.snapshot()),
                 recovery_metadata={
                     "handoff": "in-memory",
-                    "lifecycle_event_count": len(lifecycle.events) + 1,
+                    "lifecycle_event_count": len(lifecycle.events),
+                    "tool_error_policy": tool_error_policy.value,
+                    "execution_adapter": adapter.name,
                 },
             )
 
-        def transition(
-            target: RuntimeState,
-            *,
-            transition_step: int,
-            approval_present: bool = False,
-            receipt_present: bool = False,
-            side_effect: bool = False,
-        ) -> None:
+        def handoff_current_state(checkpoint_step: int) -> None:
             nonlocal last_checkpoint, sink_enabled
-            rule = lifecycle.transition(
-                target,
-                step=transition_step,
-                approval_present=approval_present,
-                receipt_present=receipt_present,
-                side_effect=side_effect,
-            )
-            if not rule.checkpoint:
-                return
-            checkpoint = build_checkpoint(target, transition_step)
+            checkpoint = build_checkpoint(lifecycle.state, checkpoint_step)
             checkpoint.validate()
             last_checkpoint = checkpoint
             if sink_enabled and checkpoint_sink is not None:
@@ -569,10 +548,28 @@ class DeepSeekRuntime:
                         RuntimeErrorInfo(
                             ErrorCode.INTERNAL_ERROR,
                             "checkpoint handoff failed",
-                            details={"runtime_state": target.value},
+                            details={"runtime_state": lifecycle.state.value},
                             cause_class=type(exc).__name__,
                         )
                     ) from exc
+
+        def transition(
+            target: RuntimeState,
+            *,
+            transition_step: int,
+            approval_present: bool = False,
+            receipt_present: bool = False,
+            side_effect: bool = False,
+        ) -> None:
+            rule = lifecycle.transition(
+                target,
+                step=transition_step,
+                approval_present=approval_present,
+                receipt_present=receipt_present,
+                side_effect=side_effect,
+            )
+            if rule.checkpoint:
+                handoff_current_state(transition_step)
 
         def fail_transition(error: RuntimeErrorInfo, *, failure_step: int) -> RuntimeResult:
             nonlocal sink_enabled
@@ -586,7 +583,7 @@ class DeepSeekRuntime:
                     transition(RuntimeState.FAILED, transition_step=failure_step)
                 elif lifecycle.state is not RuntimeState.FAILED and not lifecycle.state.terminal:
                     transition(RuntimeState.FAILED, transition_step=failure_step)
-            except ContractViolation:
+            except (ContractViolation, ValueError):
                 pass
             return _error_result(
                 error,
@@ -677,6 +674,7 @@ class DeepSeekRuntime:
                     )
 
                 usage_value = result.usage
+                safe_usage = safe_usage_evidence(usage_value)
                 _aggregate_legacy_usage(total_usage, usage_value)
                 budget_tracker.record_provider(usage_value, step=step)
 
@@ -686,7 +684,7 @@ class DeepSeekRuntime:
                     "elapsed_ms": result.elapsed_ms,
                     "request_fingerprint": result.request_fingerprint,
                     "request_id": result.request_id,
-                    "usage": usage_value if isinstance(usage_value, Mapping) else {},
+                    "usage": safe_usage,
                     "budget": budget_tracker.snapshot(),
                     "request_evidence": request_evidence(
                         _request_for_evidence(result.request_payload or payload)
@@ -716,23 +714,6 @@ class DeepSeekRuntime:
                         runtime_state=lifecycle.state,
                         lifecycle_events=[event.to_dict() for event in lifecycle.events],
                         budget=budget_tracker.snapshot(),
-                        checkpoint=last_checkpoint,
-                    )
-
-                transition(RuntimeState.PROVIDER_COMPLETED, transition_step=step)
-
-                budget_error = budget_tracker.after_provider()
-                if budget_error is not None:
-                    transition(RuntimeState.BUDGET_EXCEEDED, transition_step=step)
-                    return _error_result(
-                        budget_error,
-                        lifecycle=lifecycle,
-                        messages=active_messages,
-                        usage=total_usage,
-                        evidence=evidence,
-                        diagnostics=diagnostics,
-                        step=step,
-                        budget=budget_tracker,
                         checkpoint=last_checkpoint,
                     )
 
@@ -768,6 +749,27 @@ class DeepSeekRuntime:
                     )
 
                 active_messages.append(message)
+                provider_continuation = {
+                    "request_id": result.request_id,
+                    "message": copy.deepcopy(message),
+                }
+                transition(RuntimeState.PROVIDER_COMPLETED, transition_step=step)
+
+                budget_error = budget_tracker.after_provider()
+                if budget_error is not None:
+                    transition(RuntimeState.BUDGET_EXCEEDED, transition_step=step)
+                    return _error_result(
+                        budget_error,
+                        lifecycle=lifecycle,
+                        messages=active_messages,
+                        usage=total_usage,
+                        evidence=evidence,
+                        diagnostics=diagnostics,
+                        step=step,
+                        budget=budget_tracker,
+                        checkpoint=last_checkpoint,
+                    )
+
                 calls_value = message.get("tool_calls")
                 calls = [] if calls_value is None else calls_value
                 if not calls:
@@ -839,13 +841,6 @@ class DeepSeekRuntime:
                 ]
                 transition(RuntimeState.TOOL_REQUESTED, transition_step=step)
 
-                single_executable = len(prepared_calls) == 1 and prepared_calls[0].executable
-                if not single_executable and any(item.executable for item in prepared_calls):
-                    for checkpoint_call in current_tool_calls:
-                        checkpoint_call.state = RuntimeState.TOOL_RUNNING
-                        checkpoint_call.attempt_count = 1
-                    transition(RuntimeState.TOOL_RUNNING, transition_step=step)
-
                 batch_failed = False
                 any_side_effect = False
                 all_side_effect_receipts = True
@@ -857,12 +852,23 @@ class DeepSeekRuntime:
                         (item for item in current_tool_calls if item.call_id == prepared.call_id),
                         None,
                     )
+
+                    if cancellation is not None and cancellation.cancelled:
+                        cancellation_error = RuntimeErrorInfo(
+                            ErrorCode.CANCELLED,
+                            "Runtime was cancelled before the next tool call",
+                        )
+                        break
+
                     authorization_start = len(authorization.events)
 
                     def on_pending() -> None:
                         if checkpoint_call is not None:
                             checkpoint_call.state = RuntimeState.APPROVAL_PENDING
-                        transition(RuntimeState.APPROVAL_PENDING, transition_step=step)
+                        if lifecycle.state is RuntimeState.TOOL_REQUESTED:
+                            transition(RuntimeState.APPROVAL_PENDING, transition_step=step)
+                        elif lifecycle.state is RuntimeState.TOOL_RUNNING:
+                            handoff_current_state(step)
 
                     def on_authorized() -> None:
                         if checkpoint_call is not None:
@@ -882,8 +888,8 @@ class DeepSeekRuntime:
                         authorization,
                         adapter,
                         execution_context,
-                        on_approval_pending=on_pending if single_executable else None,
-                        on_authorized=on_authorized if single_executable else None,
+                        on_approval_pending=on_pending,
+                        on_authorized=on_authorized,
                     )
 
                     new_authorization_events = authorization.events[authorization_start:]
@@ -911,7 +917,7 @@ class DeepSeekRuntime:
                         any_side_effect = any_side_effect or checkpoint_call.side_effect
                         if outcome.error is None:
                             checkpoint_call.state = RuntimeState.TOOL_SUCCEEDED
-                            checkpoint_call.result = copy.deepcopy(outcome.raw_value)
+                            checkpoint_call.result = outcome.content
                             checkpoint_call.receipt = copy.deepcopy(outcome.receipt)
                             if checkpoint_call.side_effect and outcome.receipt is None:
                                 all_side_effect_receipts = False
@@ -981,16 +987,21 @@ class DeepSeekRuntime:
                     if tool_error_policy is ToolErrorPolicy.TERMINATE:
                         transition(RuntimeState.FAILED, transition_step=step)
                         error = next(
-                            (
-                                item.error
-                                for item in current_tool_calls
-                                if item.error is not None
-                            ),
-                            RuntimeErrorInfo(
-                                ErrorCode.TOOL_EXECUTION_FAILED,
-                                "tool batch failed",
-                            ),
+                            (item.error for item in prepared_calls if item.error is not None),
+                            None,
                         )
+                        if error is None:
+                            error = next(
+                                (
+                                    item.error
+                                    for item in current_tool_calls
+                                    if item.error is not None
+                                ),
+                                RuntimeErrorInfo(
+                                    ErrorCode.TOOL_EXECUTION_FAILED,
+                                    "tool batch failed",
+                                ),
+                            )
                         return _error_result(
                             error,
                             lifecycle=lifecycle,
