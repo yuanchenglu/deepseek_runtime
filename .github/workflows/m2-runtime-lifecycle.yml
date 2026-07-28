@@ -30,26 +30,21 @@ jobs:
 
           workspace = Path("src/deepseek_runtime/workspace.py")
           text = workspace.read_text(encoding="utf-8")
-          old = '''                        bytes_scanned += result.bytes_read
-
-                        if result.status in skipped:
-          '''
-          new = '''                        bytes_scanned += result.bytes_read
-                        if elapsed() >= active.max_seconds:
-                            stop_reason = "time-limit"
-                            break
-
-                        if result.status in skipped:
-          '''
-          if old in text:
-              workspace.write_text(text.replace(old, new, 1), encoding="utf-8")
-          elif new not in text:
-              raise SystemExit("post-read time-budget anchor not found")
+          needle = "                        bytes_scanned += result.bytes_read\n"
+          addition = (
+              needle
+              + "                        if elapsed() >= active.max_seconds:\n"
+              + "                            stop_reason = \"time-limit\"\n"
+              + "                            break\n"
+          )
+          if "if elapsed() >= active.max_seconds:\n                            stop_reason = \"time-limit\"\n                            break\n\n                        if result.status" not in text:
+              if needle not in text:
+                  raise SystemExit("bytes-scanned anchor not found")
+              workspace.write_text(text.replace(needle, addition, 1), encoding="utf-8")
 
           tests = Path("tests/test_workspace_p1.py")
           text = tests.read_text(encoding="utf-8")
-          anchor = '''    def test_search_reports_binary_without_exposing_content(self) -> None:
-          '''
+          marker = "    def test_search_reports_binary_without_exposing_content(self) -> None:\n"
           addition = '''    def test_search_reports_time_limit_when_last_read_crosses_budget(self) -> None:
               class Clock:
                   def __init__(self) -> None:
@@ -79,10 +74,14 @@ jobs:
                   self.assertGreaterEqual(result.bytes_scanned, 1)
 
           '''
-          if addition not in text:
-              if anchor not in text:
-                  raise SystemExit("time-budget test anchor not found")
-              tests.write_text(text.replace(anchor, addition + anchor, 1), encoding="utf-8")
+          addition = "\n".join(
+              line[10:] if line.startswith("          ") else line
+              for line in addition.splitlines()
+          ) + "\n"
+          if "test_search_reports_time_limit_when_last_read_crosses_budget" not in text:
+              if marker not in text:
+                  raise SystemExit("test insertion marker not found")
+              tests.write_text(text.replace(marker, addition + marker, 1), encoding="utf-8")
       - name: Commit time-budget correction
         shell: bash
         run: |
