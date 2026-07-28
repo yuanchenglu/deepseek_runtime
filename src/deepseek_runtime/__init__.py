@@ -76,7 +76,14 @@ from .session import (
     reconcile_tool_call,
     resume_tool_calls,
 )
-from .workspace import WorkspaceResolver, WorkspaceViolation
+from .workspace import (
+    WorkspacePathMissing,
+    WorkspaceReadResult,
+    WorkspaceResolver,
+    WorkspaceSearchBudgets,
+    WorkspaceSearchResult,
+    WorkspaceViolation,
+)
 
 __version__ = "0.1.1a1"
 
@@ -139,7 +146,11 @@ __all__ = [
     "ToolResultError",
     "ToolSpec",
     "TransitionRule",
+    "WorkspacePathMissing",
+    "WorkspaceReadResult",
     "WorkspaceResolver",
+    "WorkspaceSearchBudgets",
+    "WorkspaceSearchResult",
     "WorkspaceSandbox",
     "WorkspaceViolation",
     "WorkspaceTools",

@@ -41,7 +41,7 @@ from .lifecycle import (
     safe_usage_evidence,
 )
 from .security import PermissionPolicy
-from .workspace import WorkspaceResolver, WorkspaceViolation
+from .workspace import WorkspaceResolver, WorkspaceSearchBudgets, WorkspaceViolation
 
 
 @dataclass
@@ -1092,72 +1092,77 @@ class DeepSeekRuntime:
 
 @dataclass
 class WorkspaceTools:
-    """Built-in read-only tools registered through the production ToolRegistry."""
+    """Built-in bounded read-only tools behind the single WorkspaceResolver."""
 
     root: str | Path
+    read_max_bytes: int = 20_000
+    search_budgets: WorkspaceSearchBudgets = field(
+        default_factory=WorkspaceSearchBudgets
+    )
     _resolver: WorkspaceResolver = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
+        if (
+  not isinstance(self.read_max_bytes, int)
+  or isinstance(self.read_max_bytes, bool)
+  or self.read_max_bytes <= 0
+        ):
+  raise ValueError("read_max_bytes must be a positive integer")
+        if not isinstance(self.search_budgets, WorkspaceSearchBudgets):
+  raise TypeError("search_budgets must be WorkspaceSearchBudgets")
         self._resolver = WorkspaceResolver(self.root)
         self.root = self._resolver.root
 
     def _path(self, raw: str) -> Path:
         return self._resolver.resolve(raw)
 
-    def read_file(self, args: dict[str, Any]) -> str:
-        return self._resolver.read_text(str(args.get("input", "")), max_chars=20_000)
+    def read_file(self, args: dict[str, Any]) -> dict[str, Any]:
+        result = self._resolver.read_bounded(
+  str(args.get("input", "")),
+  max_bytes=self.read_max_bytes,
+        )
+        return result.to_dict()
 
-    def search(self, args: dict[str, Any]) -> str:
+    def search(self, args: dict[str, Any]) -> dict[str, Any]:
         needle = str(args.get("input", ""))
-        if not needle:
-            raise ValueError("search input must not be empty")
-        matches: list[str] = []
-        for path in self._resolver.iter_files():
-            try:
-                if path.stat(follow_symlinks=False).st_size >= 1_000_000:
-                    continue
-                content = self._resolver.read_text(path)
-                for number, line in enumerate(content.splitlines(), 1):
-                    if needle in line:
-                        matches.append(f"{self._resolver.relative(path)}:{number}:{line[:200]}")
-                        if len(matches) >= 100:
-                            return "\n".join(matches)
-            except (UnicodeDecodeError, OSError, WorkspaceViolation):
-                continue
-        return "\n".join(matches) or "No matches"
+        result = self._resolver.search_text(
+  needle,
+  budgets=self.search_budgets,
+        )
+        return result.to_dict()
 
     def catalog(self) -> ToolRegistry:
         input_schema = {
-            "type": "object",
-            "properties": {"input": {"type": "string", "minLength": 1}},
-            "required": ["input"],
-            "additionalProperties": False,
+  "type": "object",
+  "properties": {"input": {"type": "string", "minLength": 1}},
+  "required": ["input"],
+  "additionalProperties": False,
         }
         return ToolRegistry(
-            (
-                ToolSpec(
-                    "read_file",
-                    "Read one UTF-8 text file inside the workspace.",
-                    input_schema,
-                    self.read_file,
-                    risk="read",
-                    side_effect=False,
-                    timeout_seconds=30.0,
-                    max_output_bytes=100_000,
-                    recovery_policy=RecoveryPolicy.PURE,
-                ),
-                ToolSpec(
-                    "search",
-                    "Search UTF-8 text files inside the workspace.",
-                    input_schema,
-                    self.search,
-                    risk="read",
-                    side_effect=False,
-                    timeout_seconds=30.0,
-                    max_output_bytes=100_000,
-                    recovery_policy=RecoveryPolicy.PURE,
-                ),
-            )
+  (
+      ToolSpec(
+          "read_file",
+          "Read one UTF-8 file inside the workspace with a byte limit and structured status.",
+          input_schema,
+          self.read_file,
+          risk="read",
+          side_effect=False,
+          timeout_seconds=30.0,
+          max_output_bytes=100_000,
+          recovery_policy=RecoveryPolicy.PURE,
+      ),
+      ToolSpec(
+          "search",
+          "Search UTF-8 workspace files with file, byte, time, and match budgets.",
+          input_schema,
+          self.search,
+          risk="read",
+          side_effect=False,
+          timeout_seconds=30.0,
+          max_output_bytes=100_000,
+          recovery_policy=RecoveryPolicy.PURE,
+      ),
+  )
         )
 
     def registry(self) -> ToolRegistry:
