@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sys
 import tempfile
+import threading
 import unittest
 from collections.abc import Iterable
 from pathlib import Path
@@ -234,31 +235,21 @@ class RuntimeExecutionAdapterTests(unittest.TestCase):
     def test_cancelled_restricted_execution_is_structured_and_content_free(self) -> None:
         token = CancellationToken()
 
-        class CancellingClient(SequencedClient):
-            def chat(self, payload: dict[str, Any]) -> ProviderResult:
-                result = super().chat(payload)
-                token.cancel()
-                return result
-
-        policy = PermissionPolicy(
-            [PermissionRule(Risk.SHELL_SAFE, Decision.ALLOW, path_glob="*")]
-        )
-        registry = ToolRegistry(
-            (
-                shell_spec(
-                    lambda arguments: SubprocessRequest(
-                        (sys.executable, "-c", "import time;time.sleep(5)")
-                    )
-                ),
+        def builder(arguments: dict[str, Any]) -> SubprocessRequest:
+            timer = threading.Timer(0.1, token.cancel)
+            timer.daemon = True
+            timer.start()
+            return SubprocessRequest(
+                (sys.executable, "-c", "import time;time.sleep(5)")
             )
-        )
-        client = CancellingClient((tool_message({"value": "x"}),))
+
+        registry = ToolRegistry((read_spec(builder),))
+        client = SequencedClient((tool_message({"value": "x"}),))
         with tempfile.TemporaryDirectory() as workspace:
             result = DeepSeekRuntime(client).run(
                 [{"role": "user", "content": "test"}],
                 workspace=Path(workspace),
                 tools=registry,
-                policy=policy,
                 execution_adapter=RestrictedSubprocessAdapter(),
                 cancellation=token,
             )
