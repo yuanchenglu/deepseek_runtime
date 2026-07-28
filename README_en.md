@@ -2,7 +2,7 @@
 
 > A local Agent Runtime Kernel for the DeepSeek API.
 >
-> **Current phase: Open-source Alpha Hardening. M1 P0 implementation is merged and the integrated closeout gate is running. Current release decision: NO RELEASE.**
+> **Current phase: Open-source Alpha Hardening. M1 is closed after passing the integrated three-platform gate. Current release decision: NO RELEASE.**
 
 [English](README_en.md) | [简体中文](README.md)
 
@@ -19,10 +19,10 @@ This repository has completed the M1 core contracts, Workspace containment, cons
 | DeepSeek Provider request and basic response handling | Partial |
 | Text-only and basic tool loop | Partial |
 | Mandatory ToolRegistry, validation, policy, and approval path | Blocked; first M2 priority |
-| Workspace containment and symlink/reparse-point defense | Implemented; integrated three-platform closeout gate is running |
+| Workspace containment and symlink/reparse-point defense | Verified for the M1 P0 scope; 20/20 on Linux, macOS, and Windows |
 | Checkpoint and Evidence | Partial; contracts are frozen but production storage still requires separation |
-| Side-effect recovery | Implemented for the M1 P0 scope; persisted running non-idempotent effects enter manual reconciliation and do not auto-retry |
-| File changes and rollback | Implemented for the M1 P0 scope; opaque handles, durable journals, expiry, scope, and conflict checks are covered |
+| Side-effect recovery | Verified for the M1 P0 scope; persisted running non-idempotent effects enter manual reconciliation and do not auto-retry |
+| File changes and rollback | Verified for the M1 P0 scope; opaque handles, durable journals, expiry, scope, and conflict checks are covered |
 | Evidence, diagnostics, usage, and cost | Partial |
 | Cross-platform CI | M1 P0 covers Linux/macOS/Windows with Python 3.11; the full release matrix remains Planned |
 | wheel/sdist, artifact provenance and integrity | Planned/Blocked |
