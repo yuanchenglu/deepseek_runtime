@@ -28,7 +28,6 @@ from deepseek_runtime import (
     RuntimeErrorInfo,
     RuntimeState,
     ToolErrorPolicy,
-    ToolExecutionResult,
     ToolRegistry,
     ToolSpec,
 )
@@ -66,7 +65,7 @@ def provider(message: Any, *, usage: Any = None, body: Any = None) -> ProviderRe
         status=200,
         elapsed_ms=1,
         body=response_body,  # type: ignore[arg-type]
-        request_fingerprint="lifecycle-test",
+        request_fingerprint="lifecycle-fingerprint",
         request_payload={"messages": []},
     )
 
@@ -128,7 +127,7 @@ class RuntimeLifecycleTests(unittest.TestCase):
     def run_runtime(self, client: SequencedClient, **kwargs: Any) -> Any:
         with tempfile.TemporaryDirectory() as directory:
             return DeepSeekRuntime(client).run(
-                [{"role": "user", "content": "test"}],
+                [{"role": "user", "content": "private-lifecycle-marker"}],
                 workspace=Path(directory),
                 **kwargs,
             )
@@ -148,7 +147,7 @@ class RuntimeLifecycleTests(unittest.TestCase):
         self.assertEqual(result.checkpoint.runtime_state, RuntimeState.COMPLETED)
         self.assertEqual(checkpoints[-1].runtime_state, RuntimeState.COMPLETED)
         self.assertEqual(result.budget["observed"]["total_tokens"], 3)
-        self.assertNotIn("test", json.dumps(result.to_safe_dict()))
+        self.assertNotIn("private-lifecycle-marker", json.dumps(result.to_safe_dict()))
 
     def test_pre_provider_cancellation_sends_no_request(self) -> None:
         token = CancellationToken()
@@ -340,7 +339,7 @@ class RuntimeLifecycleTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertIs(result.runtime_state, RuntimeState.TOOL_SIDE_EFFECT_UNCERTAIN)
         self.assertEqual(result.error_class, ErrorCode.TOOL_SIDE_EFFECT_UNCERTAIN.value)
-        self.assertNotIn("CANCELLED", states(result)[-1])
+        self.assertNotEqual(states(result)[-1], "CANCELLED")
 
     def test_malformed_provider_root_returns_structured_result(self) -> None:
         client = SequencedClient((provider({}, body=[]),))
