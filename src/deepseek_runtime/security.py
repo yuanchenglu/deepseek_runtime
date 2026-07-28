@@ -24,12 +24,13 @@ import base64
 import difflib  # 生成文件差异对比（diff）
 import fnmatch  # 文件名模式匹配（类似于 *.txt 的 glob 模式）
 import hashlib  # 哈希计算
+import math
 import os
 import stat
-import subprocess  # 执行系统命令
 import tempfile  # 临时文件
 import time
 import uuid  # 唯一 ID
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum  # 枚举类型（有限个选项）
 from pathlib import Path
@@ -41,39 +42,40 @@ from .contracts import (
     ContractViolation,
     ErrorCode,
     JournalFileRecord,
+    RecoveryPolicy,
     RollbackHandle,
     RuntimeErrorInfo,
+    ToolSpec,
+)
+from .execution import (
+    ExecutionAdapter,
+    ExecutionContext,
+    RestrictedSubprocessAdapter,
+    SubprocessRequest,
 )
 from .workspace import WorkspaceResolver, WorkspaceViolation
 
 
 # ===== Risk（风险等级）=====
 
-# ❓ 问：为什么要把操作分类成不同风险？
-# 💡 答：就像过马路要看红绿灯一样——
-#   绿灯（READ）= 安全，可以直接走
-#   黄灯（SHELL_SAFE）= 需要注意
-#   红灯（DELETE/SHELL_DANGEROUS）= 必须停下来检查
-#   分类的目的是让 Agent 和安全策略能快速判断每个操作的危险程度。
-
 class Risk(str, Enum):
     """操作的风险分类——决定了安全策略该如何应对"""
-    READ = "read"  # 只读操作（读文件）。最安全
-    WRITE = "write"  # 写操作（修改文件）。中等风险
-    DELETE = "delete"  # 删除操作。高风险——数据可能丢失
-    SHELL_SAFE = "shell-safe"  # 相对安全的 shell 命令
-    SHELL_DANGEROUS = "shell-dangerous"  # 危险 shell 命令（rm、sudo 等）
-    NETWORK = "network"  # 网络操作（curl、wget 等）
-    GIT_MUTATING = "git-mutating"  # 修改 Git 仓库（commit、push 等）
+    READ = "read"
+    WRITE = "write"
+    DELETE = "delete"
+    SHELL_SAFE = "shell-safe"
+    SHELL_DANGEROUS = "shell-dangerous"
+    NETWORK = "network"
+    GIT_MUTATING = "git-mutating"
 
 
 # ===== Decision（权限决策结果）=====
 
 class Decision(str, Enum):
     """权限策略的三种决策结果"""
-    ALLOW = "allow"  # 绿灯：允许执行
-    ASK = "ask"  # 黄灯：询问用户意见
-    DENY = "deny"  # 红灯：拒绝执行
+    ALLOW = "allow"
+    ASK = "ask"
+    DENY = "deny"
 
 
 # ===== PermissionRequest（权限请求）=====
@@ -81,25 +83,20 @@ class Decision(str, Enum):
 @dataclass(frozen=True)
 class PermissionRequest:
     """一次权限请求——包含了"谁想做什么"的信息"""
-    risk: Risk  # 操作的风险等级
-    path: str | None = None  # 操作涉及的文件路径
-    command: tuple[str, ...] = ()  # 要执行的命令
+    risk: Risk
+    path: str | None = None
+    command: tuple[str, ...] = ()
 
 
 # ===== PermissionRule（权限规则）=====
 
-# ❓ 问：一条权限规则是怎么工作的？
-# 💡 答：它把"什么条件下允许/拒绝/询问"编码成一条规则。
-#   比如：先写默认 DENY，再写 docs/* 的 ALLOW。
-#   规则按声明顺序检查，后匹配规则覆盖前匹配规则。
-
 @dataclass(frozen=True)
 class PermissionRule:
     """一条权限规则——定义了在什么条件下采取什么决策"""
-    risk: Risk  # 匹配的风险类型
-    decision: Decision  # 匹配后的决策
-    path_glob: str = "*"  # 文件路径通配符（默认匹配所有）
-    command_prefix: tuple[str, ...] = ()  # 命令前缀匹配
+    risk: Risk
+    decision: Decision
+    path_glob: str = "*"
+    command_prefix: tuple[str, ...] = ()
 
     def matches(self, request: PermissionRequest) -> bool:
         """判断这条规则是否匹配给定的请求"""
@@ -115,8 +112,6 @@ class PermissionRule:
         return True
 
 
-# ===== 命令脱敏 =====
-
 def _sanitize_command(command: Sequence[str]) -> list[str]:
     """只保留可执行文件名与参数数量，不记录参数正文。"""
     if not command:
@@ -129,11 +124,7 @@ def _sanitize_command(command: Sequence[str]) -> list[str]:
 
 @dataclass
 class PermissionPolicy:
-    """
-    权限策略的执行者。默认拒绝所有非只读操作，
-    rules 按声明顺序检查，最后一条匹配规则覆盖默认行为和较早规则。
-    参考 llm-harness-agent 论文 A5 中关于 Agent 治理（Governance）的讨论。
-    """
+    """默认拒绝非只读操作；最后一条匹配规则覆盖较早规则。"""
     rules: list[PermissionRule] = field(default_factory=list)
     audit_events: list[dict[str, object]] = field(default_factory=list)
 
@@ -156,46 +147,32 @@ class PermissionPolicy:
         return decision
 
 
-# ===== 自定义异常 =====
-
 class SandboxViolation(WorkspaceViolation):
     """路径越过了工作区边界"""
     pass
+
 
 class PermissionDenied(PermissionError):
     """权限策略拒绝了操作"""
     pass
 
 
-# ===== CommandResult（命令执行结果）=====
-
 @dataclass(frozen=True)
 class CommandResult:
-    """命令执行的结果封装"""
-    returncode: int  # 退出码（0=成功）
-    stdout: str  # 标准输出
-    stderr: str  # 错误输出
-    truncated: bool  # 是否被截断
+    """命令执行的兼容结果封装。"""
+    returncode: int
+    stdout: str
+    stderr: str
+    truncated: bool
 
-
-# ===== WorkspaceSandbox（工作区沙箱）=====
-
-# ❓ 问：沙箱（Sandbox）在计算机里是什么意思？
-# 💡 答：就像儿童玩的沙箱——你可以在沙箱里尽情玩，
-#   但你不能跑出沙箱的范围。沙箱是一种隔离机制，
-#   限制 Agent 能做什么、能去哪里。
 
 class WorkspaceSandbox:
-    """
-    ❓ 问：WorkspaceSandbox 提供了哪些保护？
-    💡 答：三个保护——
-       1. 路径隔离（resolve()）：确保文件路径不会越界
-       2. 命令分类（classify_command()）：判断命令的危险等级
-       3. 命令执行（run()）：在沙箱内安全执行命令
+    """Workspace containment、Policy 与 ExecutionAdapter 的兼容入口。
 
-    参考 llm-harness-agent 论文 C3: OpenHands ——
-    沙箱化执行环境是 Harness 安全层的参考实现。
+    该类型不是内核级 sandbox。命令执行统一委托 ExecutionAdapter；默认
+    `RestrictedSubprocessAdapter` 只提供进程资源边界，不提供 OS 隔离。
     """
+
     NETWORK_COMMANDS = {"curl", "wget", "nc", "ncat", "ssh", "scp", "sftp", "ftp", "telnet"}
     DANGEROUS_COMMANDS = {"rm", "dd", "mkfs", "mount", "umount", "shutdown", "reboot", "sudo", "su"}
     GIT_MUTATING = {
@@ -204,14 +181,19 @@ class WorkspaceSandbox:
         "restore", "rm", "stash", "switch", "tag",
     }
 
-    def __init__(self, root: Path, policy: PermissionPolicy | None = None):
-        """初始化沙箱：指定工作区根目录和权限策略"""
+    def __init__(
+        self,
+        root: Path,
+        policy: PermissionPolicy | None = None,
+        execution_adapter: ExecutionAdapter | None = None,
+    ):
         try:
             self._resolver = WorkspaceResolver(root)
         except WorkspaceViolation as exc:
             raise SandboxViolation(str(exc)) from exc
         self.root = self._resolver.root
         self.policy = policy or PermissionPolicy()
+        self.execution_adapter = execution_adapter or RestrictedSubprocessAdapter()
 
     def resolve(self, raw: str | Path) -> Path:
         """使用唯一 WorkspaceResolver 解析路径并拒绝链接/重解析点。"""
@@ -228,7 +210,7 @@ class WorkspaceSandbox:
             raise SandboxViolation(str(exc)) from exc
 
     def classify_command(self, command: Sequence[str]) -> Risk:
-        """根据可执行文件名判断命令的风险等级"""
+        """根据可执行文件名判断命令的风险等级。分类不等于隔离。"""
         if not command:
             raise SandboxViolation("command must not be empty")
         executable = Path(command[0]).name
@@ -248,60 +230,100 @@ class WorkspaceSandbox:
         timeout: float = 30.0,
         max_output: int = 100_000,
     ) -> CommandResult:
-        """在沙箱内安全执行命令（禁止字符串命令防注入）"""
+        """通过 Policy 和 ExecutionAdapter 执行参数数组命令。"""
         if isinstance(command, (str, bytes)):
             raise SandboxViolation("shell commands must be an argument array")
+        if (
+            not isinstance(timeout, (int, float))
+            or isinstance(timeout, bool)
+            or not math.isfinite(float(timeout))
+            or timeout <= 0
+        ):
+            raise ValueError("timeout must be finite and positive")
+        if not isinstance(max_output, int) or isinstance(max_output, bool) or max_output <= 0:
+            raise ValueError("max_output must be a positive integer")
+
         normalized = tuple(str(item) for item in command)
         risk = self.classify_command(normalized)
         resolved_cwd = self.resolve(cwd)
+        relative_cwd = self.relative(resolved_cwd)
         decision = self.policy.decide(
-            PermissionRequest(risk=risk, path=self.relative(resolved_cwd), command=normalized)
+            PermissionRequest(risk=risk, path=relative_cwd, command=normalized)
         )
         if decision is not Decision.ALLOW:
             raise PermissionDenied(f"{risk.value} command requires {decision.value}")
-        completed = subprocess.run(
-            normalized, cwd=resolved_cwd, shell=False,
-            capture_output=True, text=True, timeout=timeout, check=False,
+
+        def build_request(arguments: dict[str, object]) -> SubprocessRequest:
+            return SubprocessRequest(normalized, cwd=relative_cwd)
+
+        spec = ToolSpec(
+            "workspace_command",
+            "Execute one authorized command through the configured ExecutionAdapter.",
+            {"type": "object", "additionalProperties": False},
+            build_request,
+            risk=risk,
+            side_effect=True,
+            timeout_seconds=float(timeout),
+            max_output_bytes=max_output,
+            recovery_policy=RecoveryPolicy.NON_IDEMPOTENT,
         )
-        stdout = completed.stdout
-        stderr = completed.stderr
-        truncated = len(stdout) + len(stderr) > max_output
-        if truncated:
-            remaining = max_output
-            stdout = stdout[:remaining]
-            remaining -= len(stdout)
-            stderr = stderr[:max(0, remaining)]
-        return CommandResult(completed.returncode, stdout, stderr, truncated)
+        outcome = self.execution_adapter.execute(
+            spec,
+            {},
+            ExecutionContext(self.root),
+        )
+        value = outcome.value
+        if not isinstance(value, Mapping):
+            raise ContractViolation(
+                RuntimeErrorInfo(
+                    ErrorCode.TOOL_RESULT_INVALID,
+                    "execution adapter returned an invalid command result",
+                    details={"adapter": outcome.adapter},
+                )
+            )
+        returncode = value.get("returncode")
+        stdout = value.get("stdout")
+        stderr = value.get("stderr")
+        truncated = value.get("truncated")
+        if (
+            not isinstance(returncode, int)
+            or isinstance(returncode, bool)
+            or not isinstance(stdout, str)
+            or not isinstance(stderr, str)
+            or not isinstance(truncated, bool)
+        ):
+            raise ContractViolation(
+                RuntimeErrorInfo(
+                    ErrorCode.TOOL_RESULT_INVALID,
+                    "execution adapter command result fields are invalid",
+                    details={"adapter": outcome.adapter},
+                )
+            )
+        return CommandResult(returncode, stdout, stderr, truncated)
 
-
-# ===== content_sha256（文件内容哈希）=====
 
 def content_sha256(content: bytes) -> str:
-    """计算文件内容的 SHA-256 指纹，用于验证文件在修改前未被其他操作改动"""
+    """计算内容 SHA-256，用于冲突验证。"""
     return hashlib.sha256(content).hexdigest()
 
 
-# ===== FileChange / ChangeSet / RollbackToken =====
-
 @dataclass(frozen=True)
 class FileChange:
-    """一次文件修改的描述：路径、修改前的哈希（验证用）、新内容"""
+    """一次文件修改的描述。"""
     path: str
-    original_sha256: str | None  # None = 创建新文件
+    original_sha256: str | None
     new_content: str
+
 
 @dataclass(frozen=True)
 class ChangeSet:
-    """一组原子化的文件修改。要么全部成功，要么全部回滚。"""
+    """一组 best-effort 补偿式文件修改。"""
     changes: tuple[FileChange, ...]
     change_set_id: str = field(default_factory=lambda: uuid.uuid4().hex)
 
-# Backward-compatible name only. The production authority is the opaque handle ID;
-# callers cannot supply paths or original bytes.
+
 RollbackToken = RollbackHandle
 
-
-# ===== ChangeManager（变更管理器）=====
 
 class ChangeManager:
     """文件变更管理器：预览 → 持久化 Journal → 应用 → 受约束回滚。"""
