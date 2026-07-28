@@ -34,6 +34,18 @@ from .contracts import (
     validate_transition,
 )
 from .diagnostics import build_diagnostics
+from .execution import (
+    CancellationToken,
+    ExecutionAdapter,
+    ExecutionCapabilities,
+    ExecutionContext,
+    ExecutionOutcome,
+    FakeExecutionAdapter,
+    IsolationLevel,
+    NoIsolationLocalAdapter,
+    RestrictedSubprocessAdapter,
+    SubprocessRequest,
+)
 from .observability import summarize_observability
 from .runtime import DeepSeekRuntime, RuntimeResult, WorkspaceTools
 from .security import (
@@ -67,6 +79,7 @@ __all__ = [
     "ApprovalRequest",
     "AuthorizationEvent",
     "AuthorizationSession",
+    "CancellationToken",
     "ChangeJournalEntry",
     "ChangeJournalStore",
     "ChangeManager",
@@ -76,8 +89,15 @@ __all__ = [
     "DeepSeekRuntime",
     "Decision",
     "ErrorCode",
+    "ExecutionAdapter",
+    "ExecutionCapabilities",
+    "ExecutionContext",
+    "ExecutionOutcome",
+    "FakeExecutionAdapter",
     "FileChange",
+    "IsolationLevel",
     "JournalFileRecord",
+    "NoIsolationLocalAdapter",
     "OperatorAction",
     "PermissionPolicy",
     "PermissionRequest",
@@ -87,6 +107,7 @@ __all__ = [
     "ReceiptRequirement",
     "RecoverableCheckpoint",
     "RecoveryPolicy",
+    "RestrictedSubprocessAdapter",
     "Risk",
     "RollbackHandle",
     "RollbackToken",
@@ -95,6 +116,7 @@ __all__ = [
     "RuntimeSettings",
     "RuntimeState",
     "SessionState",
+    "SubprocessRequest",
     "ToolArgumentError",
     "ToolCallRecord",
     "ToolExecutionResult",
