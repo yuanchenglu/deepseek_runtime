@@ -181,6 +181,33 @@ class RuntimeLifecycleReviewTests(unittest.TestCase):
         self.assertEqual(targets.count(RuntimeState.TOOL_RUNNING.value), 1)
         self.assertEqual(targets.count(RuntimeState.TOOL_SUCCEEDED.value), 1)
 
+    def test_later_batch_approval_is_checkpointed_before_execution(self) -> None:
+        class Approver:
+            def request_approval(self, request: Any) -> ApprovalOutcome:
+                return ApprovalOutcome.APPROVE_ONCE
+
+        checkpoints: list[Any] = []
+        result = self.run_runtime(
+            Client([tool_message(call("call-1"), call("call-2")), final_message()]),
+            tools=ToolRegistry((write_spec(),)),
+            policy=PermissionPolicy((PermissionRule(Risk.WRITE, Decision.ASK),)),
+            approval_provider=Approver(),
+            execution_adapter=FakeExecutionAdapter(("one", "two")),
+            checkpoint_sink=checkpoints.append,
+        )
+
+        self.assertTrue(result.ok)
+        second_pending_index = next(
+            index
+            for index, checkpoint in enumerate(checkpoints)
+            if len(checkpoint.approvals) == 2
+            and checkpoint.approvals[-1]["approval_outcome"] == "pending"
+        )
+        approved = checkpoints[second_pending_index + 1]
+        self.assertIs(approved.runtime_state, RuntimeState.TOOL_RUNNING)
+        self.assertEqual(approved.approvals[-1]["approval_outcome"], "approve-once")
+        self.assertEqual(approved.tool_calls[-1].state, RuntimeState.TOOL_RUNNING)
+
     def test_equal_token_limit_stops_at_threshold(self) -> None:
         result = self.run_runtime(
             Client([final_message()], [{"total_tokens": 10}]),
