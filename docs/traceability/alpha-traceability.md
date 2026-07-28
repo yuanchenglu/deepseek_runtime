@@ -1,7 +1,7 @@
 # DeepSeek Runtime Alpha Traceability Matrix
 
-> 版本：2.0
-> 适用验证基线：PR #20 M2-D implementation head；pending exact-head CI、merge 与 closeout
+> 版本：2.1
+> 适用验证基线：`develop@2fe059d900c4e04fab05ca92f421a41d7ff0aa01`；M2-D closeout PR #21
 > 文档修订：以本文件所在 Git commit 为准
 > 作用：`Requirement → Milestone → PR → Test → Evidence` 的唯一追踪表。
 
@@ -75,6 +75,17 @@
 - Closeout：`docs/roadmap/m2-c-closeout.md`；
 - 发布结论：**NO RELEASE**。
 
+### M2-D 已形成的实际证据
+
+- implementation PR：#20 `feat(runtime): establish M2-D lifecycle and budget path`；
+- final head：`10f5240d8c82df8c41aa609c96a40c3ab7f65242`；squash merge：`2fe059d900c4e04fab05ca92f421a41d7ff0aa01`；
+- final Minimum CI run 229、M1 P0 Gate run 173、M2 ExecutionAdapter Gate run 79、M2 Runtime Lifecycle Gate run 44 全部 success；
+- M1 P0：140/140 × 3 OS；M2 Adapter：36/36 × 3 OS；M2 Lifecycle：64/64 × 3 OS；
+- retained failures：Minimum CI 184/199/205/207/211，Lifecycle Gate 1/13/16/20/22/26；
+- strict review unresolved P0/S0/S1 = 0；review threads = 0；
+- Closeout：`docs/roadmap/m2-d-closeout.md`；
+- 发布结论：**NO RELEASE**。
+
 ## 2. 配置与版本
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
@@ -103,14 +114,14 @@
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| RUN-001 | P1 | M2 | Runtime | PR #20 | TC-RUN-001 | M2-D focused/full CI | Implemented | 待 exact-head CI、merge 与 closeout |
-| RUN-002 | P1 | M2 | Runtime | PR #20 | TC-RUN-002/003 | multi-round integration + lifecycle CI | Implemented | 待 exact-head CI、merge 与 closeout |
+| RUN-001 | P1 | M2 | Runtime | PR #20/#21 | TC-RUN-001 | runs 229/44；merge `2fe059d9` | Verified | 无 M2-D blocker |
+| RUN-002 | P1 | M2 | Runtime | PR #20/#21 | TC-RUN-002/003 | run 44 lifecycle 64/64 × 3 OS | Verified | 无 M2-D blocker |
 | RUN-003 | P1 | M2 | Runtime | PR #14/#18 | TC-RUN-004 | run 106 Registry-only；run 15 Adapter ordering/bypass negatives | Verified | 无 M2-A/M2-C blocker |
-| RUN-004 | P1 | M1/M2 | Runtime | PR #6/#20 | TC-RUN-005 | transition manifest + checkpoint timing CI | Implemented | durable checkpoint store 属 M3；待 M2-D merge/closeout |
-| RUN-005 | P1 | M2 | Runtime | PR #20 | TC-RUN-006 | step budget integration CI | Implemented | 待 exact-head CI、merge 与 closeout |
-| RUN-006 | P1 | M2/M4 | Runtime | PR #18 / M2-D PR | TC-RUN-012/013、TC-PROV-015 | run 15 Adapter cancellation + cleanup PASS | Partial | Tool-during-cancel handoff 已实现；Provider 前/请求中 cancellation 与 durable lifecycle 属 M2-D/M4 |
-| RUN-007 | P1 | M2 | Runtime | PR #20 | TC-RUN-007 | token/cost/context/time threshold matrix | Implemented | 待 exact-head CI、merge 与 closeout |
-| RUN-008 | P1 | M2 | Runtime | PR #20 | TC-RUN-008 | continue/terminate policy CI | Implemented | 待 exact-head CI、merge 与 closeout |
+| RUN-004 | P1 | M1/M2 | Runtime | PR #6/#20/#21 | TC-RUN-005 | run 44 transition/checkpoint timing PASS | Verified | durable store/migration 独立由 M3 验收 |
+| RUN-005 | P1 | M2 | Runtime | PR #20/#21 | TC-RUN-006 | run 44 step budget PASS | Verified | 无 M2-D blocker |
+| RUN-006 | P1 | M2/M4 | Runtime | PR #18/#20 / M4 Provider PR | TC-RUN-012/013、TC-PROV-015 | runs 79/44 tool + Provider-before-call PASS | Partial | Provider in-flight transport cancellation 属 M4 |
+| RUN-007 | P1 | M2 | Runtime | PR #20/#21 | TC-RUN-007 | run 44 budget matrix PASS | Verified | 无 M2-D blocker |
+| RUN-008 | P1 | M2 | Runtime | PR #20/#21 | TC-RUN-008 | run 44 continue/terminate PASS | Verified | 无 M2-D blocker |
 | RUN-009 | P1 | M2 | Runtime | PR #14/#18 | TC-RUN-009、TC-TOOL-005/006 | run 106 normalization；run 15 timeout/output PASS | Verified | NoIsolation capability 明确不提供 limit；bounded path 由 Restricted Adapter 保证 |
 | RUN-010 | P1 | M2/M4 | Runtime | PR #14 / M2-D/M4 Provider PR | TC-RUN-010 | run 98 retained；run 106 malformed subset PASS | Partial | arbitrary root、choices/message 全矩阵仍属后续 Provider/Runtime PR |
 
@@ -199,11 +210,11 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | OBS-001 | P1 | M3 | Runtime | PR #18 / M3 Observability PR | TC-OBS-007 | Adapter duration metadata | Partial | 完整 lifecycle latency 未接入 |
 | OBS-002 | P1 | M3 | Runtime | M3 Observability PR | TC-OBS-001 | usage/cost fixture CI | Partial | 分类语义混合 |
-| OBS-003 | P1 | M2/M3 | Runtime | PR #20 / M3 Observability PR | TC-OBS-002 | unknown usage/cost lifecycle CI | Implemented | M3 仍需完整 metrics aggregation closeout |
+| OBS-003 | P1 | M2/M3 | Runtime | PR #20/#21 / M3 Observability PR | TC-OBS-002 | run 44 unknown usage/cost PASS | Verified | M3 metrics aggregation 为独立 Requirement 范围 |
 | OBS-004 | P1 | M3 | Runtime | M3 Observability PR | TC-OBS-003 | prompt-token fixture CI | Blocked | 输入成本漏算 |
 | OBS-005 | P1 | M3 | Runtime | M3 Observability PR | TC-OBS-004 | validation CI | Planned | 非法数值未拒绝 |
 | OBS-006 | P1 | M3 | Runtime | M3 Observability PR | TC-OBS-005 | partial-data CI | Blocked | 分母包含未知值 |
-| OBS-007 | P1 | M2/M3 | Runtime | M2-D / M3 Observability PR | TC-OBS-006 | budget-stop integration CI | Planned | 预算未驱动 Runtime |
+| OBS-007 | P1 | M2/M3 | Runtime | PR #20/#21 / M3 Observability PR | TC-OBS-006 | run 44 budget-stop integration PASS | Verified | M3 仅扩展观测聚合 |
 
 ## 12. CLI 与文档
 

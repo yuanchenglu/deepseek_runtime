@@ -1,8 +1,8 @@
 # DeepSeek Runtime 产品需求文档（PRD）
 
-> 文档版本：1.4
+> 文档版本：1.5
 > 产品阶段：Open-source Alpha Hardening
-> 适用验证基线：PR #20 M2-D implementation head；pending exact-head CI、merge 与 closeout
+> 适用验证基线：`develop@2fe059d900c4e04fab05ca92f421a41d7ff0aa01`；M2-D closeout PR #21
 > 文档修订：以本文件所在 Git commit 为准
 > 唯一目标：以最少新增功能，把项目做到可以真实、可信、可持续地开源。
 
@@ -21,7 +21,7 @@
 
 直接调用 DeepSeek API 不能自动解决 Agent 产品所需的工具治理、状态恢复、文件变更、证据隐私、成本控制和发布验证。
 
-当前仓库已建立 ToolRegistry、Policy/Approval 和 ExecutionAdapter 生产链；PR #20 已实现 Runtime lifecycle、任务预算、Provider-before-call cancellation 与 tool-error policy，但尚未合入 `develop`，durable recovery、Provider 协议和发布工程仍未闭环。
+当前仓库已在 `develop` 合入 ToolRegistry、Policy/Approval、ExecutionAdapter，以及 M2-D Runtime lifecycle、任务预算、Provider-before-call cancellation 与 tool-error policy。Workspace P1、durable recovery、Provider 协议、CLI 和发布工程仍未闭环。
 
 ## 2. 产品目标
 
@@ -126,14 +126,14 @@
 
 | ID | P | 需求 | 验收标准 | 当前 |
 | --- | --- | --- | --- | --- |
-| RUN-001 | P1 | 支持 text-only 完成 | 一步返回 final result | Implemented |
-| RUN-002 | P1 | 支持多轮 tool call | Fake Provider 三轮测试 | Implemented |
+| RUN-001 | P1 | 支持 text-only 完成 | 一步返回 final result | Verified |
+| RUN-002 | P1 | 支持多轮 tool call | Fake Provider 三轮测试 | Verified |
 | RUN-003 | P1 | 所有工具调用必须经 ToolRegistry | 无裸 handler 或 Adapter bypass 生产路径 | Verified |
-| RUN-004 | P1 | 所有关键状态转换可 checkpoint | transition/event/checkpoint 测试 | Implemented |
-| RUN-005 | P1 | max_steps 是明确预算 | 超限返回 `BUDGET_STEP_EXCEEDED` | Implemented |
+| RUN-004 | P1 | 所有关键状态转换可 checkpoint | transition/event/checkpoint 测试 | Verified |
+| RUN-005 | P1 | max_steps 是明确预算 | 超限返回 `BUDGET_STEP_EXCEEDED` | Verified |
 | RUN-006 | P1 | 支持 cancellation | Provider 前不发送请求；tool 执行可取消并清理 | Partial |
-| RUN-007 | P1 | 支持 token/cost/context/time budget | 达阈值停止并生成证据 | Implemented |
-| RUN-008 | P1 | Tool error 回传模型或终止策略可配置 | policy tests | Implemented |
+| RUN-007 | P1 | 支持 token/cost/context/time budget | 达阈值停止并生成证据 | Verified |
+| RUN-008 | P1 | Tool error 回传模型或终止策略可配置 | policy tests | Verified |
 | RUN-009 | P1 | 非字符串工具结果被规范化或拒绝 | JSON/object/binary tests | Verified |
 | RUN-010 | P1 | malformed Provider 不抛未处理异常 | fixtures 全部返回 RuntimeResult | Partial |
 | RUN-011 | P2 | 支持生命周期 hook | hook 顺序和异常策略稳定 | Planned |
@@ -228,11 +228,11 @@
 | --- | --- | --- | --- | --- |
 | OBS-001 | P1 | 统计 provider/tool/step latency | fake clock test | Partial |
 | OBS-002 | P1 | 统计 token/cache/cost | fixture tests | Partial |
-| OBS-003 | P1 | 未知成本保持 unknown | missing-field test | Implemented |
+| OBS-003 | P1 | 未知成本保持 unknown | missing-field test | Verified |
 | OBS-004 | P1 | 输入 token 无拆分时不漏算 | provider fixture | Blocked |
 | OBS-005 | P1 | 负数、NaN 和非法价格拒绝 | validation test | Planned |
 | OBS-006 | P1 | success/first-completion 分母只使用已知值 | partial-data test | Blocked |
-| OBS-007 | P1 | Runtime 可执行预算停止 | integration tests | Implemented |
+| OBS-007 | P1 | Runtime 可执行预算停止 | integration tests | Verified |
 | OBS-008 | P2 | 输出稳定 JSON schema | snapshot | Partial |
 
 ### 6.11 CLI 与诊断

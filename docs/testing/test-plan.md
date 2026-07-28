@@ -1,7 +1,7 @@
 # DeepSeek Runtime 测试计划
 
 > 版本：1.2
-> 适用代码审查基线：PR #20 M2-D implementation head；pending exact-head CI、merge 与 closeout
+> 适用代码审查基线：`develop@2fe059d900c4e04fab05ca92f421a41d7ff0aa01`；M2-D closeout PR #21
 > 文档修订：以本文件所在 Git commit 为准
 > 目标：证明 Open-source Alpha 的功能、边界、安全、恢复和发布过程，而不是只证明 Happy Path。
 

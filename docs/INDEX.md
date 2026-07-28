@@ -1,8 +1,8 @@
 # DeepSeek Runtime 文档索引
 
-> 适用验证基线：PR #20 M2-D implementation head；pending exact-head CI、merge 与 closeout
+> 适用验证基线：`develop@2fe059d900c4e04fab05ca92f421a41d7ff0aa01`；M2-D closeout PR #21
 > 文档修订：以各文件所在 Git commit 为准
-> 文档状态：Open-source Alpha Hardening；M1、M2-A、M2-B、M2-C Closed；M2-D implemented/pre-merge
+> 文档状态：Open-source Alpha Hardening；M1、M2-A、M2-B、M2-C、M2-D Closed；M2-E next
 > 原则：PRD 是产品范围、优先级和验收标准的唯一事实源；架构、测试和路线图均引用 PRD Requirement ID。
 
 ## 核心文档
@@ -13,7 +13,7 @@
 | [M1 Code Review Closeout](reviews/2026-07-28-m1-closeout-review.md) | M1 对原始 P0/P1 finding 的关闭、保留和下一阶段判断 |
 | [产品架构](architecture/product-architecture.md) | 产品定位、用户、能力域、使用链路和边界 |
 | [技术架构](architecture/technical-architecture.md) | 当前生产链、Adapter、生命周期目标、信任边界和非功能约束 |
-| [PRD](product/PRD.md) | 产品需求、优先级、验收标准、非目标和 M0–M6 发布门禁；当前 v1.4 |
+| [PRD](product/PRD.md) | 产品需求、优先级、验收标准、非目标和 M0–M6 发布门禁；当前 v1.5 |
 | [Threat Model](security/threat-model.md) | 保护资产、攻击输入、当前保证与明确非保证；当前 v1.4 |
 | [Known Unknowns](known-unknowns.md) | 当前未承诺、未验证和后续必须复核的边界 |
 | [ADR Index](adr/README.md) | 已接受的 Runtime、安全、恢复、schema、类型和发布决策 |
@@ -23,7 +23,7 @@
 | [Runtime Lifecycle Contract](contracts/runtime-lifecycle.md) | M2-D state/event/checkpoint、budget、cancellation 与 tool-error policy 合同 |
 | [State Transition Manifest](contracts/runtime-state-transitions.json) | 合法状态转换及 checkpoint/retry/approval/receipt 分母 |
 | [Versioned Schemas](schemas/README.md) | Error、Checkpoint、Evidence 与 ChangeJournal JSON Schema |
-| [Alpha Traceability](traceability/alpha-traceability.md) | Requirement → Milestone → PR → Test → Evidence 唯一追踪表；当前 v2.0 |
+| [Alpha Traceability](traceability/alpha-traceability.md) | Requirement → Milestone → PR → Test → Evidence 唯一追踪表；当前 v2.1 |
 | [M1-A Contract Evidence](traceability/m1-core-contracts.md) | PR #6 合同实现、Run 38、状态与剩余阻塞 |
 | [M1 Workspace Evidence](traceability/m1-workspace-p0.md) | PR #7 containment 实现和对抗测试证据 |
 | [M1 Rollback Evidence](traceability/m1-rollback-p0.md) | PR #8 opaque handle、ChangeJournal 和回滚约束证据 |
@@ -41,7 +41,8 @@
 | [M2-B Policy/Approval Closeout](roadmap/m2-b-closeout.md) | PR #16 合并态、授权边界、失败/成功证据和 M2-C handoff |
 | [M2-C ExecutionAdapter Closeout](roadmap/m2-c-closeout.md) | PR #18 合并态、三平台证据、非保证和 M2-D handoff |
 | [M2-D Worklog](roadmap/m2-d-worklog.md) | PR #20 实现范围、blocker closure、exact-head evidence 和 closeout handoff |
-| [开源就绪执行计划](roadmap/open-source-readiness-plan.md) | Contract-first 的 M0–M6 阻断项清零计划；当前 v2.3.2，M2-D pre-merge |
+| [M2-D Runtime Lifecycle Closeout](roadmap/m2-d-closeout.md) | PR #20 合并态、最终四套 Gate、artifacts、retained failures 和 M2-E handoff |
+| [开源就绪执行计划](roadmap/open-source-readiness-plan.md) | Contract-first 的 M0–M6 阻断项清零计划；当前 v2.3.3，M2-D closed / M2-E next |
 
 ## 治理与维护
 
@@ -99,6 +100,6 @@
 - M2-A 已关闭；PR #14 建立 ToolRegistry 唯一 Runtime 工具入口，runs 106/56 通过。
 - M2-B 已关闭；PR #16 建立 Registry → Policy → Approval 强制链，runs 129/77 通过。
 - M2-C 已关闭；PR #18 建立统一 ExecutionAdapter 边界，最终 runs 165/111/15 通过，M2 Gate 三平台各 36/36；merge `7793a101`。
-- M2-D Runtime Lifecycle、Budget、Cancellation 已在 PR #20 实现；正在完成 exact-head CI、merge 和 docs-only closeout，随后进入 M2-E。
+- M2-D 已关闭；PR #20 merge `2fe059d9`，runs 229/173/79/44 通过，Lifecycle 三平台各 64/64；M2-E 为下一切片。
 
 **当前结论：NO RELEASE。**

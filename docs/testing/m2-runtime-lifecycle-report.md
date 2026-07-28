@@ -1,6 +1,6 @@
 # M2-D Runtime Lifecycle Test Report
 
-> 状态：Implementation complete / pre-merge evidence finalization
+> 状态：CLOSED / VERIFIED
 > PR：#20 `feat(runtime): establish M2-D lifecycle and budget path`
 > 分支：`agent/m2-runtime-lifecycle`
 > 发布结论：**NO RELEASE**
@@ -73,7 +73,7 @@ test_policy_approval_runtime
 test_policy_approval_audit_semantics
 ```
 
-新增 approval matrix 后的预期测试分母为每个平台 64；最终 exact-head run、实际分母、artifact ID 和 digest 在 PR #20 的 final evidence 记录中锁定。文档更新后不得引用较早绿色 head 作为最终证据。
+最终 exact-head `10f5240d8c82df8c41aa609c96a40c3ab7f65242` 的 run 44 在 Linux、macOS、Windows 各 64/64，总计 192/192，0 failures/errors/skips；artifact ID 和 digest 记录于 PR #20 与 M2-D closeout。
 
 ## 4. 已验证的实现边界
 
@@ -161,4 +161,4 @@ Implementation scope 已完成；在以下条件满足前不得将 M2-D 标记�
 - PR #20 Ready 并 squash merge 到 `develop`；
 - docs-only closeout 在合并态更新 Requirement 为 `Verified`。
 
-当前判断：**IMPLEMENTED / PRE-MERGE / NO RELEASE**。
+当前判断：**CLOSED / VERIFIED / NO RELEASE**。
