@@ -2,7 +2,7 @@
 
 > A local Agent Runtime Kernel for the DeepSeek API.
 >
-> **Current phase: Open-source Alpha Hardening. M1 is closed after passing the integrated three-platform gate. M2 is in progress. Current release decision: NO RELEASE.**
+> **Current phase: Open-source Alpha Hardening. M1 and M2-A are closed. M2-B Policy/Approval is the next execution slice. Current release decision: NO RELEASE.**
 
 [English](README_en.md) | [简体中文](README.md)
 
@@ -10,7 +10,7 @@
 
 Calling a model API does not provide a reliable Agent. A Runtime must handle Provider protocols, tool contracts, policy and approval, budgets, recovery, evidence privacy, and release verification.
 
-This repository has completed the M1 core contracts, Workspace containment, constrained rollback, and ambiguous side-effect recovery. M2-A in PR #14 establishes `ToolRegistry` as the production tool collection, JSON Schema argument validation, result normalization, and the CLI Registry migration. Policy, Approval, ExecutionAdapter, and the unified Runtime lifecycle remain incomplete. [`docs/product/PRD.md`](docs/product/PRD.md) is the sole source of truth for the first public Alpha scope, priority, and acceptance criteria.
+This repository has completed the M1 core contracts, Workspace containment, constrained rollback, and ambiguous side-effect recovery. M2-A was merged through PR #14: `ToolRegistry` is the production tool collection, arguments use JSON Schema validation, results and malformed tool calls have structured boundaries, and the CLI has completed the Registry migration. Policy, Approval, ExecutionAdapter, and the unified Runtime lifecycle remain incomplete. [`docs/product/PRD.md`](docs/product/PRD.md) is the sole source of truth for the first public Alpha scope, priority, and acceptance criteria.
 
 ## Current factual status
 
@@ -18,8 +18,9 @@ This repository has completed the M1 core contracts, Workspace containment, cons
 | --- | --- |
 | DeepSeek Provider request and basic response handling | Partial |
 | Text-only and basic tool loop | Partial |
-| ToolRegistry and argument/result boundaries | Implemented in PR #14; final exact-content CI, review, and merge remain |
-| Mandatory Policy, Approval, and ExecutionAdapter path | Blocked; later M2-B/M2-C work |
+| ToolRegistry and argument/result boundaries | Verified for M2-A; PR #14, Minimum CI run 106, M1 P0 Gate run 56 |
+| Mandatory Policy and Approval path | Blocked; next M2-B slice |
+| Mandatory ExecutionAdapter path | Blocked; M2-C |
 | Workspace containment and symlink/reparse-point defense | Verified for the M1 P0 scope; 20/20 on Linux, macOS, and Windows |
 | Checkpoint and Evidence | Partial; contracts are frozen but production storage still requires separation |
 | Side-effect recovery | Verified for the M1 P0 scope; persisted running non-idempotent effects enter manual reconciliation and do not auto-retry |
@@ -34,6 +35,7 @@ Evidence and plans:
 - [M1 Code Review Closeout](docs/reviews/2026-07-28-m1-closeout-review.md)
 - [M1 P0 Cross-platform Report](docs/testing/m1-p0-report.md)
 - [M1 Integrated Closeout](docs/roadmap/m1-closeout.md)
+- [M2-A ToolRegistry Closeout](docs/roadmap/m2-a-closeout.md)
 - [Alpha Traceability](docs/traceability/alpha-traceability.md)
 - [Open-source Readiness Execution Plan](docs/roadmap/open-source-readiness-plan.md)
 
