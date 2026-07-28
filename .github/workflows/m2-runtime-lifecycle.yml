@@ -8,13 +8,125 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: m2-runtime-lifecycle-${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
+  closeout-docs-sync:
+    if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m2-d-closeout
+          fetch-depth: 0
+      - name: Synchronize merged M2-D closeout claims
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def rep(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text(encoding="utf-8")
+              if old in text:
+                  file.write_text(text.replace(old, new, 1), encoding="utf-8")
+              elif new not in text:
+                  raise SystemExit(f"anchor not found: {path}: {old[:100]}")
+
+          rep("docs/product/PRD.md", "> 文档版本：1.4\n> 产品阶段：Open-source Alpha Hardening\n> 适用验证基线：PR #20 M2-D implementation head；pending exact-head CI、merge 与 closeout", "> 文档版本：1.5\n> 产品阶段：Open-source Alpha Hardening\n> 适用验证基线：`develop@2fe059d900c4e04fab05ca92f421a41d7ff0aa01`；M2-D closeout PR #21")
+          rep("docs/product/PRD.md", "当前仓库已建立 ToolRegistry、Policy/Approval 和 ExecutionAdapter 生产链；PR #20 已实现 Runtime lifecycle、任务预算、Provider-before-call cancellation 与 tool-error policy，但尚未合入 `develop`，durable recovery、Provider 协议和发布工程仍未闭环。", "当前仓库已在 `develop` 合入 ToolRegistry、Policy/Approval、ExecutionAdapter，以及 M2-D Runtime lifecycle、任务预算、Provider-before-call cancellation 与 tool-error policy。Workspace P1、durable recovery、Provider 协议、CLI 和发布工程仍未闭环。")
+          for req in ("RUN-001", "RUN-002", "RUN-004", "RUN-005", "RUN-007", "RUN-008", "OBS-003", "OBS-007"):
+              file = Path("docs/product/PRD.md")
+              text = file.read_text(encoding="utf-8")
+              lines = text.splitlines()
+              changed = False
+              for index, line in enumerate(lines):
+                  if line.startswith(f"| {req} |") and "| Implemented |" in line:
+                      lines[index] = line.replace("| Implemented |", "| Verified |")
+                      changed = True
+                  elif line.startswith(f"| {req} |") and req == "OBS-007" and "| Planned |" in line:
+                      lines[index] = line.replace("| Planned |", "| Verified |")
+                      changed = True
+              if changed:
+                  file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+          rep("docs/traceability/alpha-traceability.md", "> 版本：2.0\n> 适用验证基线：PR #20 M2-D implementation head；pending exact-head CI、merge 与 closeout", "> 版本：2.1\n> 适用验证基线：`develop@2fe059d900c4e04fab05ca92f421a41d7ff0aa01`；M2-D closeout PR #21")
+          rep("docs/traceability/alpha-traceability.md", "- 发布结论：**NO RELEASE**。\n\n## 2. 配置与版本", "- 发布结论：**NO RELEASE**。\n\n### M2-D 已形成的实际证据\n\n- implementation PR：#20 `feat(runtime): establish M2-D lifecycle and budget path`；\n- final head：`10f5240d8c82df8c41aa609c96a40c3ab7f65242`；squash merge：`2fe059d900c4e04fab05ca92f421a41d7ff0aa01`；\n- final Minimum CI run 229、M1 P0 Gate run 173、M2 ExecutionAdapter Gate run 79、M2 Runtime Lifecycle Gate run 44 全部 success；\n- M1 P0：140/140 × 3 OS；M2 Adapter：36/36 × 3 OS；M2 Lifecycle：64/64 × 3 OS；\n- retained failures：Minimum CI 184/199/205/207/211，Lifecycle Gate 1/13/16/20/22/26；\n- strict review unresolved P0/S0/S1 = 0；review threads = 0；\n- Closeout：`docs/roadmap/m2-d-closeout.md`；\n- 发布结论：**NO RELEASE**。\n\n## 2. 配置与版本")
+          rows = {
+              "| RUN-001 | P1 | M2 | Runtime | PR #20 | TC-RUN-001 | M2-D focused/full CI | Implemented | 待 exact-head CI、merge 与 closeout |": "| RUN-001 | P1 | M2 | Runtime | PR #20/#21 | TC-RUN-001 | runs 229/44；merge `2fe059d9` | Verified | 无 M2-D blocker |",
+              "| RUN-002 | P1 | M2 | Runtime | PR #20 | TC-RUN-002/003 | multi-round integration + lifecycle CI | Implemented | 待 exact-head CI、merge 与 closeout |": "| RUN-002 | P1 | M2 | Runtime | PR #20/#21 | TC-RUN-002/003 | run 44 lifecycle 64/64 × 3 OS | Verified | 无 M2-D blocker |",
+              "| RUN-004 | P1 | M1/M2 | Runtime | PR #6/#20 | TC-RUN-005 | transition manifest + checkpoint timing CI | Implemented | durable checkpoint store 属 M3；待 M2-D merge/closeout |": "| RUN-004 | P1 | M1/M2 | Runtime | PR #6/#20/#21 | TC-RUN-005 | run 44 transition/checkpoint timing PASS | Verified | durable store/migration 独立由 M3 验收 |",
+              "| RUN-005 | P1 | M2 | Runtime | PR #20 | TC-RUN-006 | step budget integration CI | Implemented | 待 exact-head CI、merge 与 closeout |": "| RUN-005 | P1 | M2 | Runtime | PR #20/#21 | TC-RUN-006 | run 44 step budget PASS | Verified | 无 M2-D blocker |",
+              "| RUN-007 | P1 | M2 | Runtime | PR #20 | TC-RUN-007 | token/cost/context/time threshold matrix | Implemented | 待 exact-head CI、merge 与 closeout |": "| RUN-007 | P1 | M2 | Runtime | PR #20/#21 | TC-RUN-007 | run 44 budget matrix PASS | Verified | 无 M2-D blocker |",
+              "| RUN-008 | P1 | M2 | Runtime | PR #20 | TC-RUN-008 | continue/terminate policy CI | Implemented | 待 exact-head CI、merge 与 closeout |": "| RUN-008 | P1 | M2 | Runtime | PR #20/#21 | TC-RUN-008 | run 44 continue/terminate PASS | Verified | 无 M2-D blocker |",
+              "| OBS-003 | P1 | M2/M3 | Runtime | PR #20 / M3 Observability PR | TC-OBS-002 | unknown usage/cost lifecycle CI | Implemented | M3 仍需完整 metrics aggregation closeout |": "| OBS-003 | P1 | M2/M3 | Runtime | PR #20/#21 / M3 Observability PR | TC-OBS-002 | run 44 unknown usage/cost PASS | Verified | M3 metrics aggregation 为独立 Requirement 范围 |",
+              "| OBS-007 | P1 | M2/M3 | Runtime | M2-D / M3 Observability PR | TC-OBS-006 | budget-stop integration CI | Planned | 预算未驱动 Runtime |": "| OBS-007 | P1 | M2/M3 | Runtime | PR #20/#21 / M3 Observability PR | TC-OBS-006 | run 44 budget-stop integration PASS | Verified | M3 仅扩展观测聚合 |",
+          }
+          for old, new in rows.items():
+              rep("docs/traceability/alpha-traceability.md", old, new)
+          rep("docs/traceability/alpha-traceability.md", "| RUN-006 | P1 | M2/M4 | Runtime | PR #18 / M2-D PR | TC-RUN-012/013、TC-PROV-015 | run 15 Adapter cancellation + cleanup PASS | Partial | Tool-during-cancel handoff 已实现；Provider 前/请求中 cancellation 与 durable lifecycle 属 M2-D/M4 |", "| RUN-006 | P1 | M2/M4 | Runtime | PR #18/#20 / M4 Provider PR | TC-RUN-012/013、TC-PROV-015 | runs 79/44 tool + Provider-before-call PASS | Partial | Provider in-flight transport cancellation 属 M4 |")
+
+          rep("README.md", "M1、M2-A、M2-B、M2-C 已关闭；M2-D Runtime Lifecycle、Budget、Cancellation 已在 PR #20 实现，正在完成 exact-head merge/closeout", "M1、M2-A、M2-B、M2-C、M2-D 已关闭；当前执行 M2-E Workspace P1")
+          rep("README.md", "PR #20 已实现 Runtime lifecycle、任务预算、Provider-before-call cancellation 与 tool-error policy，但尚未合入 `develop`；Provider in-flight cancellation、durable checkpoint、Workspace P1、CLI 协议和发布工程仍未完成。", "PR #20 已将 Runtime lifecycle、任务预算、Provider-before-call cancellation 与 tool-error policy 合入 `develop`；Provider in-flight cancellation、durable checkpoint、Workspace P1、CLI 协议和发布工程仍未完成。")
+          rep("README.md", "| Text-only 与基础 Tool Loop | Implemented in PR #20；待 exact-head merge/closeout |", "| Text-only 与基础 Tool Loop | Verified for M2-D；PR #20、merge `2fe059d9`、run 44 |")
+          rep("README.md", "| 多平台 CI | M1 P0 与 M2-C Adapter Gate 覆盖 Linux/macOS/Windows + Python 3.11；M2-D focused Gate 已建立，最终 implementation head 证据生成中；完整 release matrix 仍 Planned |", "| 多平台 CI | M1 P0、M2-C Adapter、M2-D Lifecycle Gate 覆盖 Linux/macOS/Windows + Python 3.11；完整 release matrix 仍 Planned |")
+          rep("README.md", "M2-D implementation 状态：", "M2-D 最终证据：")
+          rep("README.md", "- PR：#20；\n- 原 later-batch approval blocker 已修复；\n- approve-once、approve-session、deny、timeout、missing/failed ApprovalProvider、invalid outcome 的 checkpoint handoff 回归已保留；\n- 最终 exact-head CI、artifact、merge 与 docs-only closeout 尚未完成，因此当前只声明 `Implemented`，不声明 `Verified`。", "- implementation final head：`10f5240d8c82df8c41aa609c96a40c3ab7f65242`；merge：`2fe059d900c4e04fab05ca92f421a41d7ff0aa01`；\n- Minimum CI 229、M1 P0 173、M2 Adapter 79、M2 Lifecycle 44 全部 PASS；\n- Lifecycle 三平台各 64/64，总计 192/192；\n- closeout：`docs/roadmap/m2-d-closeout.md`；\n- 原 blocker 和全部失败 run 均保留。")
+          rep("README.md", "- [M2-C ExecutionAdapter Closeout](docs/roadmap/m2-c-closeout.md)\n", "- [M2-C ExecutionAdapter Closeout](docs/roadmap/m2-c-closeout.md)\n- [M2-D Runtime Lifecycle Closeout](docs/roadmap/m2-d-closeout.md)\n")
+
+          rep("README_en.md", "M1, M2-A, M2-B, and M2-C are closed. M2-D Runtime Lifecycle, Budget, and Cancellation is implemented in PR #20 and is completing exact-head merge/closeout", "M1, M2-A, M2-B, M2-C, and M2-D are closed. M2-E Workspace P1 is in progress")
+          rep("README_en.md", "PR #20 implements the Runtime lifecycle, task budgets, Provider-before-call cancellation, and tool-error policy but is not yet merged into `develop`.", "PR #20 merged the Runtime lifecycle, task budgets, Provider-before-call cancellation, and tool-error policy into `develop`.")
+          rep("README_en.md", "| Text-only and basic tool loop | Implemented in PR #20; pending exact-head merge/closeout |", "| Text-only and basic tool loop | Verified for M2-D; PR #20, merge `2fe059d9`, run 44 |")
+          rep("README_en.md", "| Cross-platform CI | M1 P0 and M2-C Adapter Gate cover Linux/macOS/Windows with Python 3.11; the M2-D focused gate exists and final implementation-head evidence is being generated; the full release matrix remains Planned |", "| Cross-platform CI | M1 P0, M2-C Adapter, and M2-D Lifecycle Gates cover Linux/macOS/Windows with Python 3.11; the full release matrix remains Planned |")
+          rep("README_en.md", "M2-D implementation state:", "M2-D final evidence:")
+          rep("README_en.md", "- PR: #20;\n- the later-batch approval blocker is fixed;\n- checkpoint-handoff regressions cover approve-once, approve-session, deny, timeout, missing/failed ApprovalProvider, and invalid outcomes;\n- final exact-head CI, artifacts, merge, and docs-only closeout are not complete, so the current claim is `Implemented`, not `Verified`.", "- implementation final head: `10f5240d8c82df8c41aa609c96a40c3ab7f65242`; merge: `2fe059d900c4e04fab05ca92f421a41d7ff0aa01`;\n- Minimum CI 229, M1 P0 173, M2 Adapter 79, and M2 Lifecycle 44 all passed;\n- Lifecycle passed 64/64 on each platform, 192/192 total;\n- closeout: `docs/roadmap/m2-d-closeout.md`;\n- the original blocker and all failed runs remain retained.")
+          rep("README_en.md", "- [M2-C ExecutionAdapter Closeout](docs/roadmap/m2-c-closeout.md)\n", "- [M2-C ExecutionAdapter Closeout](docs/roadmap/m2-c-closeout.md)\n- [M2-D Runtime Lifecycle Closeout](docs/roadmap/m2-d-closeout.md)\n")
+
+          rep("docs/INDEX.md", "> 适用验证基线：PR #20 M2-D implementation head；pending exact-head CI、merge 与 closeout", "> 适用验证基线：`develop@2fe059d900c4e04fab05ca92f421a41d7ff0aa01`；M2-D closeout PR #21")
+          rep("docs/INDEX.md", "> 文档状态：Open-source Alpha Hardening；M1、M2-A、M2-B、M2-C Closed；M2-D implemented/pre-merge", "> 文档状态：Open-source Alpha Hardening；M1、M2-A、M2-B、M2-C、M2-D Closed；M2-E next")
+          rep("docs/INDEX.md", "当前 v1.4", "当前 v1.5")
+          rep("docs/INDEX.md", "当前 v2.0", "当前 v2.1")
+          rep("docs/INDEX.md", "| [M2-D Worklog](roadmap/m2-d-worklog.md) | PR #20 实现范围、blocker closure、exact-head evidence 和 closeout handoff |", "| [M2-D Worklog](roadmap/m2-d-worklog.md) | PR #20 实现范围、blocker closure、exact-head evidence 和 closeout handoff |\n| [M2-D Runtime Lifecycle Closeout](roadmap/m2-d-closeout.md) | PR #20 合并态、最终四套 Gate、artifacts、retained failures 和 M2-E handoff |")
+          rep("docs/INDEX.md", "当前 v2.3.2，M2-D pre-merge", "当前 v2.3.3，M2-D closed / M2-E next")
+          rep("docs/INDEX.md", "- M2-D Runtime Lifecycle、Budget、Cancellation 已在 PR #20 实现；正在完成 exact-head CI、merge 和 docs-only closeout，随后进入 M2-E。", "- M2-D 已关闭；PR #20 merge `2fe059d9`，runs 229/173/79/44 通过，Lifecycle 三平台各 64/64；M2-E 为下一切片。")
+
+          rep("docs/security/threat-model.md", "适用代码审查基线：PR #20 M2-D implementation head；pending exact-head CI、merge 与 closeout", "适用代码审查基线：`develop@2fe059d900c4e04fab05ca92f421a41d7ff0aa01`；M2-D closeout PR #21")
+          rep("docs/testing/test-plan.md", "适用代码审查基线：PR #20 M2-D implementation head；pending exact-head CI、merge 与 closeout", "适用代码审查基线：`develop@2fe059d900c4e04fab05ca92f421a41d7ff0aa01`；M2-D closeout PR #21")
+          rep("docs/testing/m2-runtime-lifecycle-report.md", "> 状态：Implementation complete / pre-merge evidence finalization", "> 状态：CLOSED / VERIFIED")
+          rep("docs/testing/m2-runtime-lifecycle-report.md", "新增 approval matrix 后的预期测试分母为每个平台 64；最终 exact-head run、实际分母、artifact ID 和 digest 在 PR #20 的 final evidence 记录中锁定。文档更新后不得引用较早绿色 head 作为最终证据。", "最终 exact-head `10f5240d8c82df8c41aa609c96a40c3ab7f65242` 的 run 44 在 Linux、macOS、Windows 各 64/64，总计 192/192，0 failures/errors/skips；artifact ID 和 digest 记录于 PR #20 与 M2-D closeout。")
+          rep("docs/testing/m2-runtime-lifecycle-report.md", "当前判断：**IMPLEMENTED / PRE-MERGE / NO RELEASE**。", "当前判断：**CLOSED / VERIFIED / NO RELEASE**。")
+
+          rep("docs/roadmap/open-source-readiness-plan.md", "> 计划版本：2.3.2  ", "> 计划版本：2.3.3  ")
+          rep("docs/roadmap/open-source-readiness-plan.md", "> 计划状态：**Execution in progress — M0/M1/M2-A/M2-B/M2-C closed; M2-D implementation complete, pre-merge evidence synchronization in progress**  ", "> 计划状态：**Execution in progress — M0/M1/M2-A/M2-B/M2-C/M2-D closed; M2-E Workspace P1 next**  ")
+          rep("docs/roadmap/open-source-readiness-plan.md", "> 已合入开发基线：`develop@45b7c448d437df9ced5b5776f017a008376dabbb`  ", "> 已合入开发基线：`develop@2fe059d900c4e04fab05ca92f421a41d7ff0aa01`  ")
+          rep("docs/roadmap/open-source-readiness-plan.md", "> 当前远程工作分支：`agent/m2-runtime-lifecycle`  ", "> 当前远程工作分支：`agent/m2-d-closeout`  ")
+          rep("docs/roadmap/open-source-readiness-plan.md", "> 当前工作入口：Draft PR #20 `feat(runtime): establish M2-D lifecycle and budget path`  ", "> 当前工作入口：PR #21 `docs(readiness): close M2-D runtime lifecycle milestone`；merge 后立即创建 M2-E implementation PR  ")
+          rep("docs/roadmap/open-source-readiness-plan.md", "- M2-D 的代码、测试、workflow、合同、worklog、测试报告、计划和交接提示词均已保存到远程分支 `agent/m2-runtime-lifecycle`；\n- Draft PR #20 已存在并指向 `develop`；", "- M2-D implementation PR #20 已从 exact head `10f5240d` squash merge 为 `develop@2fe059d9`；\n- docs-only closeout PR #21 正在把合入态 Requirement 提升为 Verified；")
+          rep("docs/roadmap/open-source-readiness-plan.md", "| M2-D Runtime Lifecycle、Budget、Cancellation | **IMPLEMENTED / PRE-MERGE** | blocker 已关闭；代码与回归矩阵已实现，正在同步最终 exact-head 文档/证据 | PR #20 |", "| M2-D Runtime Lifecycle、Budget、Cancellation | **CLOSED** | exact-head 四套 Gate 全绿；implementation merge `2fe059d9`；closeout PR #21 | PR #20/#21、runs 229/173/79/44 |")
+          rep("docs/roadmap/open-source-readiness-plan.md", "| M2-E Workspace P1 | **NOT STARTED** | read/search byte/file/time 与结构化 I/O 未完成 | `WS-003`–`005` |", "| M2-E Workspace P1 | **NEXT** | read/search byte/file/time 与结构化 I/O 未完成 | `WS-003`–`005` |")
+          rep("docs/roadmap/open-source-readiness-plan.md", "- M2 Runtime/Tool/Security 主链中 A/B/C 已关闭，D 接近代码完成，E/F/G 未开始；", "- M2 Runtime/Tool/Security 主链中 A/B/C/D 已关闭，E 为当前唯一合法下一切片，F/G 未开始；")
+          rep("docs/roadmap/open-source-readiness-plan.md", "## 5. M2-D 当前实施状态", "## 5. M2-D 已关闭")
+          rep("docs/roadmap/open-source-readiness-plan.md", "### 5.1 已在远程分支实现", "### 5.1 合入态能力")
+          start = "### 5.3 M2-D 完成条件\n\n- [x] 当前严格 approval checkpoint 回归与 resolved outcome matrix 通过（实现态；最终 exact-head 文档 CI 待生成）；\n- [ ] Minimum CI 在最终精确 head 成功；\n- [ ] M1 P0 Gate 在最终精确 head三平台成功；\n- [ ] M2 ExecutionAdapter Gate 在最终精确 head三平台成功；\n- [ ] M2 Runtime Lifecycle Gate 在最终精确 head三平台成功；\n- [ ] 获取 M2-D artifact ID、digest 和测试分母；\n- [ ] 更新 PR #20 描述和 retained failures；\n- [ ] 核验 changed files、review threads、unresolved P0/S0/S1；\n- [ ] Draft → Ready；\n- [ ] squash merge 到 `develop`；\n- [ ] docs-only M2-D closeout 合入；\n- [ ] 合入态 Requirement 才提升为 `Verified`；\n- [ ] M2-E 成为下一执行切片。"
+          end = "### 5.3 M2-D Exit Gate\n\n- [x] approval checkpoint regression 与 resolved outcome matrix 通过；\n- [x] final exact-head Minimum CI run 229 成功；\n- [x] M1 P0 Gate run 173 三平台各 140/140；\n- [x] M2 ExecutionAdapter Gate run 79 三平台各 36/36；\n- [x] M2 Runtime Lifecycle Gate run 44 三平台各 64/64；\n- [x] artifact ID、digest、测试分母和 retained failures 已记录；\n- [x] changed files、reviews、threads、P0/S0/S1 strict review 完成；\n- [x] PR #20 Ready 并 squash merge 为 `2fe059d9`；\n- [x] docs-only closeout PR #21 建立并同步 Verified 状态；\n- [x] M2-E Workspace P1 成为下一执行切片。"
+          rep("docs/roadmap/open-source-readiness-plan.md", start, end)
+
+      - name: Commit closeout synchronization
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No docs changes required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md README_en.md docs
+          git commit -m "docs(readiness): verify merged M2-D milestone"
+          git push origin HEAD:agent/m2-d-closeout
+
   lifecycle:
     name: ${{ matrix.os }} / Python 3.11
     strategy:
@@ -23,27 +135,22 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
-
       - name: Install package
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .
-
       - name: Run M2-D focused gate
         run: >-
           python scripts/m2_lifecycle_gate.py
           --output "m2-runtime-lifecycle-${{ runner.os }}.json"
-
       - name: Upload M2-D evidence
         if: always()
         uses: actions/upload-artifact@v4
