@@ -3,14 +3,15 @@
 > Status date: 2026-07-28
 > Target branch: `develop`
 > Implementation PRs: #6, #7, #8, #9, #10
-> Closeout status: **PENDING INTEGRATED CI**
+> Closeout PR: #13
+> Closeout status: **CLOSED — INTEGRATED GATE PASS**
 > Release decision: **NO RELEASE**
 
 ## 1. Purpose
 
 M1 froze the minimum Error, Runtime State, Tool, Recovery, Checkpoint/Evidence, RollbackHandle, and ChangeJournal contracts and closed the scoped Workspace, rollback-authorization, and side-effect-replay P0 defects.
 
-This closeout does not rely only on the pre-merge stacked-branch matrix. It requires the permanent gate to execute again against a Pull Request whose base is the fully integrated `develop` state after PR #6–#10 merged.
+This closeout does not rely only on the pre-merge stacked-branch matrix. The permanent gate executed again from PR #13, whose base is the fully integrated `develop` state after PR #6–#10 merged.
 
 ## 2. Merged implementation stack
 
@@ -22,11 +23,22 @@ This closeout does not rely only on the pre-merge stacked-branch matrix. It requ
 | M1-D | #9 | Side-effect-uncertain recovery and reconciliation | Merged into `develop` |
 | M1-E | #10 | Versioned three-platform P0 gate and canonical report | Merged into `develop` |
 
-Integrated merge head before this closeout branch: `develop@59a634a5fdfef06240e48d3ae594b0d4dc3ffdc8`.
+Integrated merge head before the closeout branch: `develop@59a634a5fdfef06240e48d3ae594b0d4dc3ffdc8`.
 
-## 3. Existing technical evidence
+## 3. Integrated validation evidence
 
-The retained pre-merge matrix is documented in `docs/testing/m1-p0-report.md`:
+The first PR #13 head exposed a workflow-definition defect: workflow-level concurrency referenced `${{ matrix.os }}`, where the `matrix` context is unavailable. The invalid configuration prevented GitHub from creating an `M1 P0 Gate` run.
+
+PR #13 fixed the trigger by using a workflow-level group based only on `github.workflow` and `github.ref`. No test rule or denominator was weakened.
+
+Validated head: `81643dca45156e3f52d8b96d25a8a2d4310bc855`.
+
+| Gate | Run | Result |
+| --- | ---: | --- |
+| Minimum CI | 82 (`30327637525`) | PASS |
+| M1 P0 Gate | 33 (`30327637544`) | PASS |
+
+The integrated M1 P0 JSON artifacts report:
 
 ```text
 Linux:   140/140 passed
@@ -38,39 +50,32 @@ Skipped: 0
 N/A:     0
 ```
 
-The failed Windows run remains retained in the evidence history. It was corrected by capability-detecting `os.fchmod` and using byte-exact newline fixtures; no rerun was used to erase the failure.
+Each of the seven Test Case IDs passed 20/20 repetitions on every platform. Windows `TC-WS-003` executed `test_windows_junction_is_not_traversed`; it was not inferred from a skipped POSIX test.
 
-## 4. Integrated closeout gate
+## 4. Integrated artifacts
 
-This Pull Request must run both:
+| Platform | Artifact | Artifact ID | SHA-256 digest | Python |
+| --- | --- | ---: | --- | --- |
+| Linux | `m1-p0-Linux` | `8676238220` | `a3ca74a50e7ab6831fc352a24aaa1f94cdf99013784d515108ae134432c7fb03` | 3.11.15 |
+| macOS | `m1-p0-macOS` | `8676237125` | `4c9a7461d6a685df3c025297f79d9e799a146efe0c7303d6082a1fbbe1b0658e` | 3.11.9 |
+| Windows | `m1-p0-Windows` | `8676241048` | `6342d9a008b833848603d6d9c5067d5b512037cebecccee930f9c140184d7341` | 3.11.9 |
 
-- `Minimum CI / Python 3.11 baseline`;
-- permanent `M1 P0 Gate` on Linux, macOS, and Windows.
-
-The M1 P0 jobs must execute these seven Test Case IDs twenty times per platform:
-
-- `TC-WS-001`;
-- `TC-WS-002`;
-- `TC-WS-003`;
-- `TC-CHG-001`;
-- `TC-CHG-002`;
-- `TC-CHG-011`;
-- `TC-SES-007`.
-
-M1 cannot be marked closed until all jobs complete successfully and the final run identifiers are recorded in this file and Traceability.
+Artifacts are retained for 30 days from 2026-07-28.
 
 ## 5. Exit Gate evaluation
 
-| M1 exit condition | Current evidence | Status |
+| M1 exit condition | Integrated evidence | Status |
 | --- | --- | --- |
 | M1-A contracts implemented and reviewed | PR #6; contract schemas and tests | PASS |
-| Required seven P0 Test Case IDs pass | Pre-merge matrix run 67 | PASS; integrated rerun pending |
-| Applicable-platform P0 tests pass 20 consecutive repetitions | 140/140 per platform in retained artifacts | PASS; integrated rerun pending |
-| Failures are not hidden by rerun | Windows failure run 59 retained and corrected in later commits | PASS |
-| Active reproducible P0 defects in the scoped manifest | No remaining failure in retained matrix | PASS for current evidence |
+| Required seven P0 Test Case IDs pass | Run 33 JSON artifacts | PASS |
+| Applicable-platform P0 tests pass 20 consecutive repetitions | 140/140 per platform; 420/420 total | PASS |
+| Failures are not hidden by rerun | Windows failure run 59 remains retained; correction validated by later independent runs | PASS |
+| Active reproducible P0 defects in the scoped manifest | 0 failures in integrated manifest | PASS |
 | Active S0 defects | No S0 identified by M1 evidence | PASS for current evidence |
-| SECURITY, Known Unknowns, Code Review, README, Traceability synchronized | Included in this closeout branch | PENDING CI |
-| Integrated `develop` state validated | This PR | PENDING CI |
+| SECURITY, Known Unknowns, Code Review, README, Traceability synchronized | PR #13 | PASS |
+| Integrated `develop` state validated | Minimum CI run 82 + M1 P0 Gate run 33 | PASS |
+
+**M1 Exit Gate: PASS. M1 is CLOSED.**
 
 ## 6. Remaining boundaries
 
@@ -89,7 +94,7 @@ Those remain explicit later-milestone work.
 
 ## 7. Next executable milestone
 
-After the integrated gate passes and this PR merges, execute M2 in this order:
+M2 is authorized in this order:
 
 1. ToolRegistry as the only production tool entry;
 2. JSON Schema argument validation and ToolExecutionResult normalization;
