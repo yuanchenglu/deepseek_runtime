@@ -11,6 +11,7 @@ from pathlib import Path
 
 PATTERNS = (
     "test_execution_adapters.py",
+    "test_execution_adapter_limits.py",
     "test_execution_adapter_privacy.py",
     "test_execution_runtime.py",
     "test_workspace_execution_adapter.py",
