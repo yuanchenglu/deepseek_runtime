@@ -9,6 +9,10 @@ import unittest
 from pathlib import Path
 from typing import Any
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 
 def _tracebacks(values: list[tuple[unittest.case.TestCase, str]]) -> list[dict[str, str]]:
     return [{"test": test.id(), "traceback": traceback} for test, traceback in values]
@@ -19,7 +23,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 
-    suite = unittest.defaultTestLoader.discover("tests")
+    suite = unittest.defaultTestLoader.discover(str(ROOT / "tests"))
     stream = io.StringIO()
     result = unittest.TextTestRunner(stream=stream, verbosity=2).run(suite)
     print(stream.getvalue(), end="")
