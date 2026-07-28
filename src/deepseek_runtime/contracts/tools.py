@@ -71,6 +71,10 @@ class ToolSpec:
             raise ValueError("tool handler must be callable")
         if not isinstance(parameters, Mapping):
             raise ValueError("tool parameters must be a JSON Schema object")
+        if not isinstance(side_effect, bool):
+            raise ValueError("tool side_effect must be a boolean")
+        if not isinstance(recovery_policy, RecoveryPolicy):
+            raise ValueError("tool recovery_policy must be a RecoveryPolicy")
 
         schema = copy.deepcopy(dict(parameters))
         try:
