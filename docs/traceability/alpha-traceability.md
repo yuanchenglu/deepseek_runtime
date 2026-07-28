@@ -1,7 +1,7 @@
 # DeepSeek Runtime Alpha Traceability Matrix
 
-> 版本：1.1
-> 适用代码审查基线：`develop@0e1e435`
+> 版本：1.2
+> 适用代码审查基线：`develop@59a634a`
 > 文档修订：以本文件所在 Git commit 为准
 > 作用：`Requirement → Milestone → PR → Test → Evidence` 的唯一追踪表。
 
@@ -9,10 +9,11 @@
 
 - 本表只列 P0/P1 Requirement；P2 不阻塞首个 Alpha。
 - Requirement 的优先级和验收标准以 `docs/product/PRD.md` 为准。
-- `Planned PR` 是执行切片，不代表 PR 已创建。
+- `Planned PR` 是执行切片；实际 PR 产生后必须补充真实编号。
 - `Expected Evidence` 必须最终替换或补充为可复现 CI run、test report、artifact manifest 或批准的 RC 人工证据。
 - `Verified` 只能在对应 P0/P1 Test Case 全部自动化通过且证据可访问后使用。
-- `Partial` 可记录 M0 子门禁已经执行，但不得被解释为 Alpha Requirement 已验收。
+- `Implemented` 表示代码已存在，但集成门禁或后续里程碑条件尚未全部完成。
+- `Partial` 表示只有合同、局部实现或部分证据，不得解释为 Alpha Requirement 已验收。
 - 自动检查必须验证：ID 唯一、Requirement 存在、Test Case 存在、P0/P1 优先级一致、每项至少一个 Test、每项有 Milestone/PR/Evidence 字段。
 
 ### M0 已形成的实际证据
@@ -22,13 +23,25 @@
 - PR #2：`docs: close M0 governance baseline`；
 - `Minimum CI` run 30：commit `cf1c70c510fa0633b6c65199a772bf9415e37779`，结论 `success`；
 - M0 Closeout：`docs/roadmap/m0-closeout.md`；
-- 尚未完成：GitHub branch protection/ruleset 对 required check 的仓库级强制执行。
+- 当前开发策略：PR-first；`develop` 允许异常直推，但必须记录问题原因和技术债务；`master` 是发布分支；
+- `OSS-001` 仍为 `Partial`：异常直推意味着仓库级 required-check enforcement 不能被视为已验证发布能力。
+
+### M1 已形成的实际证据
+
+- PR #6：核心合同、schemas、transition manifest、ADR 与合同测试，已合入 `develop`；
+- PR #7：Workspace containment 与 symlink/reparse-point 防护，已合入 `develop`；
+- PR #8：opaque rollback handle、durable ChangeJournal 与 Windows 修复，已合入 `develop`；
+- PR #9：side-effect-uncertain、RecoveryPolicy 与人工 reconciliation，已合入 `develop`；
+- PR #10：永久三平台 P0 Gate、版本化 runner 与 `docs/testing/m1-p0-report.md`，已合入 `develop`；
+- matrix run 67：Linux/macOS/Windows 各 140/140，合计 420/420；
+- compacted-stack Minimum CI run 75：结论 `success`；
+- integrated closeout：`docs/roadmap/m1-closeout.md`，等待本 PR 在完整 `develop` 基线上执行永久 Gate。
 
 ## 2. 配置与版本
 
-| Requirement | P | Milestone | Owner | Planned PR | Test Case | Expected Evidence | Status | Blocker |
+| Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CFG-001 | P1 | M4/M5 | Release | PR-17/18 | TC-CFG-001 | 3 Python × 3 OS CI matrix | Partial | 完整矩阵未建立 |
+| CFG-001 | P1 | M4/M5 | Release | PR-17/18 | TC-CFG-001 | 3 Python × 3 OS CI matrix | Partial | M1 仅有 P0 Python 3.11 三 OS 矩阵；完整版本矩阵未建立 |
 | CFG-002 | P1 | M4/M5 | Release | PR-17/18 | TC-CFG-002 | version consistency CI + release manifest | Blocked | 多版本源 |
 | CFG-003 | P1 | M4 | Security | PR-17 | TC-CFG-003 | secret marker subprocess logs | Partial | 输出面未完全覆盖 |
 | CFG-004 | P1 | M4 | Runtime | PR-17 | TC-CFG-004 | config validation unit CI | Planned | 配置 schema 未冻结 |
@@ -36,58 +49,58 @@
 
 ## 3. Provider
 
-| Requirement | P | Milestone | Owner | Planned PR | Test Case | Expected Evidence | Status | Blocker |
+| Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| PROV-001 | P1 | M4 | Provider | PR-15 | TC-PROV-001 | mock transport CI | Implemented | 需动态复跑 |
+| PROV-001 | P1 | M4 | Provider | PR-15 | TC-PROV-001 | mock transport CI | Implemented | 需动态复跑并接入最终 RuntimeResult |
 | PROV-002 | P1 | M4 | Provider | PR-15 | TC-PROV-002 | property/fuzz artifact | Blocked | arbitrary root 未规范化 |
 | PROV-003 | P1 | M4 | Provider | PR-15 | TC-PROV-003/004 | malformed fixture manifest | Planned | schema 未定义 |
 | PROV-004 | P1 | M4 | Provider | PR-15 | TC-PROV-005 | error-code fixture manifest | Partial | 分类不完整 |
 | PROV-005 | P1 | M4 | Provider | PR-15 | TC-PROV-006/007 | fake-clock retry CI | Planned | retry contract 未实现 |
 | PROV-006 | P1 | M4 | Provider | PR-15 | TC-PROV-008 | response-size CI | Planned | 无 body limit |
-| PROV-007 | P1 | M1/M4 | Provider | PR-01/15 | TC-PROV-009/010 | canonical identity snapshot | Blocked | identity envelope 不完整 |
+| PROV-007 | P1 | M1/M4 | Provider | PR #6 / PR-15 | TC-PROV-009/010 | canonical identity snapshot | Partial | Evidence contract 已冻结；Provider identity envelope 仍不完整 |
 | PROV-008 | P1 | M4 | Provider | PR-16 | TC-PROV-011/012/013 | byte-split SSE CI | Blocked | 非真正增量 parser |
 | PROV-009 | P1 | M4 | Provider | PR-16 | TC-PROV-014 | stream consumer integration CI | Blocked | 无 iterator/callback 合同 |
 
 ## 4. Runtime
 
-| Requirement | P | Milestone | Owner | Planned PR | Test Case | Expected Evidence | Status | Blocker |
+| Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | RUN-001 | P1 | M2 | Runtime | PR-09 | TC-RUN-001 | fake-provider integration CI | Implemented | 需接入统一 RuntimeResult |
 | RUN-002 | P1 | M2 | Runtime | PR-09 | TC-RUN-002/003 | multi-round integration CI | Partial | 生命周期未统一 |
 | RUN-003 | P1 | M2 | Runtime | PR-02/09 | TC-RUN-004 | architecture/negative API test | Blocked | 裸 handler 路径存在 |
-| RUN-004 | P1 | M1/M2 | Runtime | PR-01/09 | TC-RUN-005 | transition manifest CI | Planned | state/checkpoint 合同未冻结 |
+| RUN-004 | P1 | M1/M2 | Runtime | PR #6 / PR-09 | TC-RUN-005 | transition manifest CI | Partial | state/transition/checkpoint 合同已冻结；生产 Runtime 尚未强制执行全部转换 |
 | RUN-005 | P1 | M2 | Runtime | PR-09 | TC-RUN-006 | budget integration CI | Partial | 仅部分 step 行为 |
 | RUN-006 | P1 | M2/M4 | Runtime | PR-08/09/16 | TC-RUN-012/013、TC-PROV-015 | cancellation integration CI | Planned | cancellation token 未实现 |
 | RUN-007 | P1 | M2 | Runtime | PR-09 | TC-RUN-007 | budget matrix CI | Planned | token/cost/context/time 未接入 |
-| RUN-008 | P1 | M2 | Runtime | PR-09 | TC-RUN-008 | tool-error policy CI | Partial | 策略合同未冻结 |
-| RUN-009 | P1 | M2 | Runtime | PR-02/09 | TC-RUN-009 | result-normalization CI | Blocked | handler 返回值未约束 |
+| RUN-008 | P1 | M2 | Runtime | PR-09 | TC-RUN-008 | tool-error policy CI | Partial | RecoveryPolicy 已实现；Runtime 级继续/终止策略未完成 |
+| RUN-009 | P1 | M2 | Runtime | PR-02/09 | TC-RUN-009 | result-normalization CI | Blocked | handler 返回值未统一接入生产 Runtime |
 | RUN-010 | P1 | M2/M4 | Runtime | PR-09/15 | TC-RUN-010 | malformed Provider integration CI | Blocked | evidence 先于 normalize |
 
 ## 5. Tool Contract
 
-| Requirement | P | Milestone | Owner | Planned PR | Test Case | Expected Evidence | Status | Blocker |
+| Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| TOOL-001 | P1 | M1/M2 | Runtime | PR-02 | TC-TOOL-001 | public API unit CI | Planned | ToolSpec 未实现 |
+| TOOL-001 | P1 | M1/M2 | Runtime | PR #6 / PR-02 | TC-TOOL-001 | public API unit CI | Implemented | `ToolSpec` 类型和 schema 已实现；唯一 Registry 入口仍属 M2 |
 | TOOL-002 | P1 | M2 | Runtime | PR-02 | TC-TOOL-002 | registry unit CI | Planned | Registry 未实现 |
-| TOOL-003 | P1 | M2 | Runtime | PR-02 | TC-TOOL-003 | invalid fixture CI | Planned | JSON Schema 方案已选，尚未实现 |
-| TOOL-004 | P1 | M1/M2 | Security | PR-02 | TC-TOOL-004 | registration negative CI | Planned | risk/side-effect 非必填 |
+| TOOL-003 | P1 | M2 | Runtime | PR #6 / PR-02 | TC-TOOL-003 | invalid fixture CI | Implemented | JSON Schema 验证合同已实现；生产 Runtime 尚未强制走 Registry |
+| TOOL-004 | P1 | M1/M2 | Security | PR #6 / PR-02 | TC-TOOL-004 | registration negative CI | Partial | ToolSpec 合同包含 risk/side-effect；Registry 注册拒绝仍未实现 |
 | TOOL-005 | P1 | M2 | Runtime | PR-02/08 | TC-TOOL-005/006 | timeout/output integration CI | Planned | limits 未接入 |
-| TOOL-006 | P1 | M1/M2 | Recovery | PR-02/06 | TC-TOOL-004/007 | recovery-policy CI | Planned | RecoveryPolicy ADR 已接受，类型未实现 |
-| TOOL-007 | P1 | M2 | Runtime | PR-02/09 | TC-RUN-011 | unknown-tool integration CI | Partial | 无统一结果类型 |
+| TOOL-006 | P1 | M1/M2 | Recovery | PR #6/#9 / PR-02 | TC-TOOL-004/007 | recovery-policy CI | Partial | RecoveryPolicy 类型与恢复路径已实现；Registry 注册强制仍属 M2 |
+| TOOL-007 | P1 | M2 | Runtime | PR #9 / PR-02/09 | TC-RUN-011 | unknown-tool integration CI | Partial | Session 恢复路径返回 `TOOL_NOT_FOUND`；统一 RuntimeResult 仍未完成 |
 
 ## 6. Workspace
 
-| Requirement | P | Milestone | Owner | Planned PR | Test Case | Expected Evidence | Status | Blocker |
+| Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| WS-001 | P0 | M1 | Security | PR-04 | TC-WS-001 | P0 adversarial CI ×20 | Partial | read/search resolver 不统一 |
-| WS-002 | P0 | M1 | Security | PR-04 | TC-WS-002/003 | POSIX + Windows P0 CI ×20 | Blocked | search 跟随外部链接 |
-| WS-003 | P1 | M2 | Runtime | PR-04/09 | TC-WS-004 | UTF-8 boundary CI | Partial | limit 语义不完整 |
-| WS-004 | P1 | M2 | Runtime | PR-04/09 | TC-WS-005 | large-workspace budget CI | Planned | 无 file/byte/time budget |
-| WS-005 | P1 | M2 | Runtime | PR-04/09 | TC-WS-006 | IO fixture CI | Partial | 错误结构不统一 |
+| WS-001 | P0 | M1 | Security | PR #7 | TC-WS-001 | run 67 + integrated P0 Gate | Implemented | 等待 integrated closeout PR 三平台 Gate 后提升为 Verified |
+| WS-002 | P0 | M1 | Security | PR #7 | TC-WS-002/003 | run 67 + integrated P0 Gate | Implemented | 等待 integrated closeout PR；Windows 使用实际 junction/reparse-point 测试 |
+| WS-003 | P1 | M2 | Runtime | PR #7 / PR-09 | TC-WS-004 | UTF-8 boundary CI | Partial | containment 已统一；read byte-limit/UTF-8 截断语义未完成 |
+| WS-004 | P1 | M2 | Runtime | PR #7 / PR-09 | TC-WS-005 | large-workspace budget CI | Planned | 无 file/byte/time budget |
+| WS-005 | P1 | M2 | Runtime | PR #7 / PR-09 | TC-WS-006 | IO fixture CI | Partial | no-follow traversal 已实现；错误结构仍未统一 |
 
 ## 7. Policy、Approval 与 Execution
 
-| Requirement | P | Milestone | Owner | Planned PR | Test Case | Expected Evidence | Status | Blocker |
+| Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | SEC-001 | P1 | M2 | Security | PR-07 | TC-SEC-001 | policy unit CI | Implemented | 需接入 Runtime |
 | SEC-002 | P1 | M2 | Security | PR-07 | TC-SEC-002 | overlap fixture CI | Partial | 优先级未冻结 |
@@ -101,50 +114,50 @@
 
 ## 8. ChangeManager
 
-| Requirement | P | Milestone | Owner | Planned PR | Test Case | Expected Evidence | Status | Blocker |
+| Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CHG-001 | P0 | M1 | Security | PR-03/05 | TC-CHG-001 | forged-handle P0 CI ×20 | Blocked | rollback payload 可构造 |
-| CHG-002 | P0 | M1 | Security | PR-04/05 | TC-CHG-002 | external-path P0 CI ×20 | Blocked | rollback 未重做 containment |
+| CHG-001 | P0 | M1 | Security | PR #8 | TC-CHG-001 | run 67 + integrated P0 Gate | Implemented | 等待 integrated closeout PR 后提升为 Verified |
+| CHG-002 | P0 | M1 | Security | PR #8 | TC-CHG-002 | run 67 + integrated P0 Gate | Implemented | 等待 integrated closeout PR 后提升为 Verified |
 | CHG-003 | P1 | M3 | Runtime | PR-13 | TC-CHG-003 | duplicate-path unit CI | Planned | 未拒绝重复路径 |
-| CHG-004 | P1 | M3 | Runtime | PR-13 | TC-CHG-004 | concurrent fixture CI | Planned | 无 lock/TOCTOU 控制 |
-| CHG-005 | P1 | M3 | Runtime | PR-05/13 | TC-CHG-005 | stale rollback CI | Blocked | 无 post-change hash 检查 |
+| CHG-004 | P1 | M3 | Runtime | PR-13 | TC-CHG-004 | concurrent fixture CI | Planned | 无 lock/完整 TOCTOU 控制 |
+| CHG-005 | P1 | M3 | Runtime | PR #8 / PR-13 | TC-CHG-005 | stale rollback CI | Implemented | post-change hash 冲突保护已实现；M3 仍需并发/恢复矩阵 |
 | CHG-006 | P1 | M3 | Runtime | PR-13 | TC-CHG-006 | platform metadata CI | Planned | mode/metadata 策略未定义 |
-| CHG-007 | P1 | M3 | Runtime | PR-13 | TC-CHG-007/008 | fault-injection artifact | Partial | parent fsync/补偿不完整 |
-| CHG-008 | P1 | M3 | Security | PR-13/14 | TC-CHG-009 | content-free audit CI | Partial | audit schema 未冻结 |
-| CHG-009 | P1 | M3 | Runtime | PR-13 | TC-CHG-010 | multi-file fault report | Blocked | 事务声明高于实际语义 |
-| CHG-010 | P1 | M1/M3 | Recovery | PR-03/05/13 | TC-CHG-011 | restart/expiry/scope CI | Planned | durable ChangeJournal 未实现 |
+| CHG-007 | P1 | M3 | Runtime | PR #8 / PR-13 | TC-CHG-007/008 | fault-injection artifact | Partial | Journal 原子保存已实现；parent fsync/补偿与 crash-during-restore 不完整 |
+| CHG-008 | P1 | M3 | Security | PR #8 / PR-13/14 | TC-CHG-009 | content-free audit CI | Partial | M1 测试证明默认 audit 不含正文；统一 audit schema 未冻结 |
+| CHG-009 | P1 | M3 | Runtime | PR-13 | TC-CHG-010 | multi-file fault report | Blocked | 必须保持 best-effort 声明；锁与补偿矩阵未完成 |
+| CHG-010 | P1 | M1/M3 | Recovery | PR #6/#8 / PR-13 | TC-CHG-011 | restart/expiry/scope CI | Partial | durable ChangeJournal、restart、expiry、scope 已实现；加密/锁/完整 lifecycle 属 M3 |
 
 ## 9. Session 与恢复
 
-| Requirement | P | Milestone | Owner | Planned PR | Test Case | Expected Evidence | Status | Blocker |
+| Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| SES-001 | P1 | M1/M3 | Recovery | PR-01/11 | TC-SES-001 | schema/API roundtrip CI | Blocked | checkpoint/evidence 混合 |
-| SES-002 | P1 | M1/M3 | Recovery | PR-01/11 | TC-SES-002 | continuation fixture CI | Blocked | reasoning 恢复语义损坏 |
+| SES-001 | P1 | M1/M3 | Recovery | PR #6 / PR-11 | TC-SES-001 | schema/API roundtrip CI | Partial | RecoverableCheckpoint 合同已冻结；生产 SessionStore 仍未完成 checkpoint/evidence 分离 |
+| SES-002 | P1 | M1/M3 | Recovery | PR #6 / PR-11 | TC-SES-002 | continuation fixture CI | Partial | continuation 合同已冻结；完整 reasoning/provider continuation 恢复仍属 M3 |
 | SES-003 | P1 | M3 | Security | PR-11 | TC-SES-003 | encrypted disk inspection | Planned | encryption injection 缺失 |
-| SES-004 | P1 | M3 | Recovery | PR-11 | TC-SES-004/011 | crash/corrupt/concurrent CI | Partial | lock/corruption 语义不足 |
-| SES-005 | P1 | M3 | Recovery | PR-01/11 | TC-SES-005 | migration fixture CI | Partial | future-version policy ADR 已冻结，迁移实现缺失 |
-| SES-006 | P1 | M3 | Recovery | PR-12 | TC-SES-006 | resume integration CI | Implemented | 需纳入新状态机 |
-| SES-007 | P0 | M1 | Recovery | PR-06 | TC-SES-007 | crash-after-effect P0 CI ×20 | Blocked | running 自动重试 |
-| SES-008 | P1 | M3 | Runtime | PR-02/12 | TC-SES-008 | missing-handler recovery CI | Blocked | 可能 KeyError |
-| SES-009 | P1 | M3 | Recovery | PR-06/12 | TC-SES-009 | fake-clock retry CI | Planned | retry budget 缺失 |
-| SES-010 | P1 | M3 | Recovery | PR-01/11/12 | TC-SES-010 | roundtrip integration CI | Planned | approvals/budgets/receipts 未持久化 |
+| SES-004 | P1 | M3 | Recovery | PR-11 | TC-SES-004/011 | crash/corrupt/concurrent CI | Partial | 原子保存原语存在；lock/corruption 语义不足 |
+| SES-005 | P1 | M3 | Recovery | PR #6/#9 / PR-11 | TC-SES-005 | migration fixture CI | Partial | schema 1.0→1.1 与 future-version rejection 已实现；RecoverableCheckpoint migration 仍未完成 |
+| SES-006 | P1 | M3 | Recovery | PR-12 | TC-SES-006 | resume integration CI | Implemented | 需纳入最终 Runtime 状态机 |
+| SES-007 | P0 | M1 | Recovery | PR #9 | TC-SES-007 | run 67 + integrated P0 Gate | Implemented | 等待 integrated closeout PR 后提升为 Verified |
+| SES-008 | P1 | M3 | Runtime | PR #9 / PR-12 | TC-SES-008 | missing-handler recovery CI | Implemented | 恢复路径已结构化为 `TOOL_NOT_FOUND`；最终 Runtime 集成仍属 M2/M3 |
+| SES-009 | P1 | M3 | Recovery | PR #9 / PR-12 | TC-SES-009 | fake-clock retry CI | Partial | attempt/max-attempt budget 已实现；backoff、time budget 与 fake-clock matrix 未完成 |
+| SES-010 | P1 | M3 | Recovery | PR #6/#9 / PR-11/12 | TC-SES-010 | roundtrip integration CI | Partial | recovery/attempt/receipt/operator metadata 已持久化；完整 approvals/budgets/checkpoint roundtrip 未完成 |
 
 ## 10. Evidence 与隐私
 
-| Requirement | P | Milestone | Owner | Planned PR | Test Case | Expected Evidence | Status | Blocker |
+| Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | EVD-001 | P1 | M3 | Security | PR-14 | TC-EVD-001 | key marker leak CI | Partial | 输出面未全覆盖 |
 | EVD-002 | P1 | M3 | Security | PR-14 | TC-EVD-001 | content marker leak CI | Implemented | 需动态复跑 |
-| EVD-003 | P1 | M1/M3 | Runtime | PR-01/14 | TC-EVD-002 | property/fuzz artifact | Blocked | 非 total function |
-| EVD-004 | P1 | M1/M3 | Runtime | PR-01/14 | TC-EVD-003 | canonical snapshot CI | Blocked | wire JSON 不稳定 |
+| EVD-003 | P1 | M1/M3 | Runtime | PR #6 / PR-14 | TC-EVD-002 | property/fuzz artifact | Partial | PublishableEvidence 合同已冻结；total-function 实现未完成 |
+| EVD-004 | P1 | M1/M3 | Runtime | PR #6 / PR-14 | TC-EVD-003 | canonical snapshot CI | Partial | schema 已冻结；wire JSON/canonical identity 仍不完整 |
 | EVD-005 | P1 | M3 | Security | PR-14 | TC-EVD-004 | low-entropy threat test | Planned | 裸 hash 风险 |
-| EVD-006 | P1 | M1/M3 | Runtime | PR-01/14 | TC-EVD-006 | schema compatibility CI | Partial | versioning ADR 已冻结，schema 实现未完成 |
+| EVD-006 | P1 | M1/M3 | Runtime | PR #6 / PR-14 | TC-EVD-006 | schema compatibility CI | Partial | versioned schema 已实现；生产 Evidence 迁移与兼容门禁仍属 M3 |
 | EVD-007 | P1 | M3 | Security | PR-10/14 | TC-EVD-007 | CLI/API debug gate CI | Partial | 危险开关语义不完整 |
 | EVD-008 | P1 | M3 | Security | PR-14 | TC-EVD-005 | exception secret CI | Blocked | error 字段未统一脱敏 |
 
 ## 11. Observability 与预算
 
-| Requirement | P | Milestone | Owner | Planned PR | Test Case | Expected Evidence | Status | Blocker |
+| Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | OBS-001 | P1 | M3 | Runtime | PR-14 | TC-OBS-007 | fake-clock latency CI | Partial | 未接入完整 lifecycle |
 | OBS-002 | P1 | M3 | Runtime | PR-14 | TC-OBS-001 | usage/cost fixture CI | Partial | 分类语义混合 |
@@ -156,7 +169,7 @@
 
 ## 12. CLI 与文档
 
-| Requirement | P | Milestone | Owner | Planned PR | Test Case | Expected Evidence | Status | Blocker |
+| Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | CLI-001 | P1 | M2/M4 | Runtime | PR-10 | TC-CLI-001 | subprocess CI | Implemented | 需保持无 Key |
 | CLI-002 | P1 | M2/M4 | Runtime | PR-10 | TC-CLI-002 | golden/subprocess CI | Blocked | 默认仅摘要 |
@@ -168,19 +181,19 @@
 
 ## 13. 开源与发布
 
-| Requirement | P | Milestone | Owner | Planned PR | Test Case | Expected Evidence | Status | Blocker |
+| Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| OSS-001 | P1 | M0/M5 | Release | PR-00/18 | TC-OSS-001 | required PR checks | Partial | Minimum CI 已在 PR #1/#2 运行通过；branch protection/ruleset 尚未强制 required check |
-| OSS-002 | P1 | M5 | Release | PR-18 | TC-OSS-001 | 3 OS matrix | Planned | matrix 未建立 |
-| OSS-003 | P1 | M0/M5 | Release | PR-00/18 | TC-OSS-002 | Ruff + Pyright + coverage CI | Partial | Ruff/Pyright 已绿色；coverage 和完整矩阵尚未建立 |
-| OSS-004 | P1 | M5 | Release | PR-18 | TC-OSS-002 | coverage reports + manifests | Planned | 分母已在测试计划定义，配置/报告未实现 |
-| OSS-005 | P1 | M0/M5 | Security | PR-00/18 | TC-OSS-003 | tracked/artifact secret negative CI | Partial | tracked-file scanner 已绿色；故意 secret negative fixture 与 artifact scan 尚未实现 |
+| OSS-001 | P1 | M0/M5 | Release | PR #1/#2 / PR-18 | TC-OSS-001 | required PR checks | Partial | PR-first 流程和 PR CI 已建立；异常直推意味着 required-check enforcement 仍需 M5 明确定义和负向证据 |
+| OSS-002 | P1 | M5 | Release | PR-18 | TC-OSS-001 | 3 OS × 3 Python matrix | Planned | M1 仅验证 P0 Python 3.11 三 OS；完整 release matrix 未建立 |
+| OSS-003 | P1 | M0/M5 | Release | PR #1/#2 / PR-18 | TC-OSS-002 | Ruff + Pyright + coverage CI | Partial | Ruff/Pyright 已绿色；coverage 和完整矩阵尚未建立 |
+| OSS-004 | P1 | M5 | Release | PR #6 / PR-18 | TC-OSS-002 | coverage reports + manifests | Partial | Gate manifest 已版本化；coverage 配置/报告未实现 |
+| OSS-005 | P1 | M0/M5 | Security | PR #1/#2 / PR-18 | TC-OSS-003 | tracked/artifact secret negative CI | Partial | tracked-file scanner 已绿色；故意 secret negative fixture 与 artifact scan 尚未实现 |
 | OSS-006 | P1 | M5 | Release | PR-18 | TC-OSS-003/005 | artifact file manifest | Blocked | denylist 打包工作树 |
 | OSS-007 | P1 | M5 | Release | PR-18 | TC-OSS-004 | recomputed digest + tamper failure | Blocked | 只检查长度 |
 | OSS-008 | P1 | M5 | Release | PR-18 | TC-CFG-006、TC-OSS-006 | clean-venv logs | Planned | wheel/sdist gate 缺失 |
-| OSS-009 | P1 | M0/M5 | Maintainer | PR-00/19 | TC-OSS-009 | governance files + docs/link CI | Partial | 治理文件与模板已落库、链接绿色；仓库 Issues 被禁用，M5 仍需治理复核 |
-| OSS-010 | P1 | M0/M5 | Security | PR-00/19 | TC-OSS-010 | SECURITY gate + approved review | Partial | 范围/SLA/报告流程已文档化；私密报告能力与 release review 尚待仓库设置/验证 |
-| OSS-011 | P1 | M0/M5/M6 | Maintainer | PR-00/19 | TC-OSS-007 | README claim audit | Partial | README 已事实收口并通过核心链接/映射门禁；完整逐项 claim audit 尚未实现 |
+| OSS-009 | P1 | M0/M5 | Maintainer | PR #2 / PR-19 | TC-OSS-009 | governance files + docs/link CI | Partial | 治理文件与模板已落库、链接绿色；M5 仍需 release governance 复核 |
+| OSS-010 | P1 | M0/M5 | Security | PR #2 / PR-19 | TC-OSS-010 | SECURITY gate + approved review | Partial | 范围/SLA/报告流程已文档化；私密报告能力与 release review 尚待验证 |
+| OSS-011 | P1 | M0/M5/M6 | Maintainer | PR #2 / PR-19 | TC-OSS-007 | README claim audit | Partial | README 已事实收口；完整逐项自动 claim audit 尚未实现 |
 
 ## 14. Release-level Evidence
 
@@ -201,8 +214,10 @@
 
 ## 15. 当前结论
 
-M0 已为 OSS-001/003/005/009/010/011 形成部分自动化和治理证据，但没有任何证据可替代其剩余 P1 验收条件。绝大多数 Runtime、安全、恢复和发布 Requirement 仍未 `Verified`。
+M0 已关闭并建立 PR-first、异常直推需留痕的开发政策。M1 的合同、Workspace containment、rollback authorization、side-effect uncertain 和永久 P0 Gate 已通过 PR #6–#10 合入 `develop`。
 
-M0 当前唯一仓库设置阻塞是 branch protection/ruleset 未强制 required CI；GitHub Issues 也处于禁用状态。完整 Alpha Release Gate 尚未开始。
+M1 P0 行当前标记为 `Implemented`，不是 `Verified`：本 closeout PR 必须在完整合并态重新执行 Linux/macOS/Windows 永久 Gate，并将最终 run 和 artifact 写回本表后，才能正式关闭 M1。
+
+M2 的 ToolRegistry、Policy、Approval、ExecutionAdapter、统一 Runtime lifecycle、budget/cancellation、Workspace P1 和 CLI contract 仍是当前最高优先级阻断项。
 
 因此当前发布结论继续保持：**NO RELEASE**。
