@@ -507,6 +507,9 @@ class WorkspaceResolver:
                             skipped["disappeared"] += 1
                             continue
                         bytes_scanned += result.bytes_read
+                        if elapsed() >= active.max_seconds:
+                            stop_reason = "time-limit"
+                            break
 
                         if result.status in skipped:
                             skipped[result.status] += 1
