@@ -233,7 +233,13 @@ class RuntimeExecutionAdapterTests(unittest.TestCase):
 
     def test_cancelled_restricted_execution_is_structured_and_content_free(self) -> None:
         token = CancellationToken()
-        token.cancel()
+
+        class CancellingClient(SequencedClient):
+            def chat(self, payload: dict[str, Any]) -> ProviderResult:
+                result = super().chat(payload)
+                token.cancel()
+                return result
+
         policy = PermissionPolicy(
             [PermissionRule(Risk.SHELL_SAFE, Decision.ALLOW, path_glob="*")]
         )
@@ -246,12 +252,16 @@ class RuntimeExecutionAdapterTests(unittest.TestCase):
                 ),
             )
         )
-        result, _ = self.run_runtime(
-            registry,
-            adapter=RestrictedSubprocessAdapter(),
-            policy=policy,
-            cancellation=token,
-        )
+        client = CancellingClient((tool_message({"value": "x"}),))
+        with tempfile.TemporaryDirectory() as workspace:
+            result = DeepSeekRuntime(client).run(
+                [{"role": "user", "content": "test"}],
+                workspace=Path(workspace),
+                tools=registry,
+                policy=policy,
+                execution_adapter=RestrictedSubprocessAdapter(),
+                cancellation=token,
+            )
 
         content = tool_contents(result)[0]
         self.assertEqual(error_code(content), ErrorCode.CANCELLED.value)
