@@ -1,7 +1,7 @@
 # DeepSeek Runtime Open-source Alpha Threat Model
 
 > 版本：1.4
-> 适用代码审查基线：PR #20 M2-D implementation head；pending exact-head CI、merge 与 closeout
+> 适用代码审查基线：`develop@2fe059d900c4e04fab05ca92f421a41d7ff0aa01`；M2-D closeout PR #21
 > 文档修订：以本文件所在 Git commit 为准
 > 目标：明确首个 Alpha 保护什么、不保护什么，以及所有安全声明的证据要求。
 

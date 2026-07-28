@@ -2,7 +2,7 @@
 
 > 面向 DeepSeek API 的本地 Agent Runtime Kernel。
 >
-> **当前阶段：Open-source Alpha Hardening；M1、M2-A、M2-B、M2-C 已关闭；M2-D Runtime Lifecycle、Budget、Cancellation 已在 PR #20 实现，正在完成 exact-head merge/closeout；当前发布结论：NO RELEASE。**
+> **当前阶段：Open-source Alpha Hardening；M1、M2-A、M2-B、M2-C、M2-D 已关闭；当前执行 M2-E Workspace P1；当前发布结论：NO RELEASE。**
 
 [English](README_en.md) | [简体中文](README.md)
 
@@ -10,14 +10,14 @@
 
 直接调用模型 API 并不等于获得一个可靠 Agent。Runtime 需要处理 Provider 协议、工具合同、权限审批、受限执行、资源预算、状态恢复、证据隐私和发布验证。
 
-本仓库已完成 M1 核心合同、Workspace containment、受约束回滚和不确定副作用恢复；M2-A 建立 ToolRegistry 唯一生产工具集合；M2-B 将 PermissionPolicy 与 ApprovalProvider 强制接入 Runtime；M2-C 将 ExecutionAdapter、受限子进程控制和三平台专项 Gate 合入 `develop`。PR #20 已实现 Runtime lifecycle、任务预算、Provider-before-call cancellation 与 tool-error policy，但尚未合入 `develop`；Provider in-flight cancellation、durable checkpoint、Workspace P1、CLI 协议和发布工程仍未完成。首个公开 Alpha 的范围、优先级和验收标准以 [`docs/product/PRD.md`](docs/product/PRD.md) 为唯一事实源。
+本仓库已完成 M1 核心合同、Workspace containment、受约束回滚和不确定副作用恢复；M2-A 建立 ToolRegistry 唯一生产工具集合；M2-B 将 PermissionPolicy 与 ApprovalProvider 强制接入 Runtime；M2-C 将 ExecutionAdapter、受限子进程控制和三平台专项 Gate 合入 `develop`。PR #20 已将 Runtime lifecycle、任务预算、Provider-before-call cancellation 与 tool-error policy 合入 `develop`；Provider in-flight cancellation、durable checkpoint、Workspace P1、CLI 协议和发布工程仍未完成。首个公开 Alpha 的范围、优先级和验收标准以 [`docs/product/PRD.md`](docs/product/PRD.md) 为唯一事实源。
 
 ## 当前真实状态
 
 | 能力 | 当前判断 |
 | --- | --- |
 | DeepSeek Provider 请求与基础响应处理 | Partial |
-| Text-only 与基础 Tool Loop | Implemented in PR #20；待 exact-head merge/closeout |
+| Text-only 与基础 Tool Loop | Verified for M2-D；PR #20、merge `2fe059d9`、run 44 |
 | ToolRegistry 与参数/结果边界 | Verified for M2-A；PR #14、runs 106/56 |
 | Policy 与 Approval 强制闭环 | Verified for M2-B 内存生产路径；PR #16、runs 129/77 |
 | ExecutionAdapter 强制闭环 | Verified for M2-C；PR #18、merge `7793a101`、runs 165/111/15 |
@@ -30,7 +30,7 @@
 | Checkpoint 与 Evidence | Partial；生产 lifecycle handoff 已实现，durable store/Evidence totality 属 M3 |
 | 副作用恢复 | Verified for M1 P0；不确定非幂等副作用进入人工协调 |
 | 文件变更与回滚 | Verified for M1 P0；opaque handle、durable ChangeJournal、expiry/scope/conflict 已覆盖 |
-| 多平台 CI | M1 P0 与 M2-C Adapter Gate 覆盖 Linux/macOS/Windows + Python 3.11；M2-D focused Gate 已建立，最终 implementation head 证据生成中；完整 release matrix 仍 Planned |
+| 多平台 CI | M1 P0、M2-C Adapter、M2-D Lifecycle Gate 覆盖 Linux/macOS/Windows + Python 3.11；完整 release matrix 仍 Planned |
 | wheel/sdist、构件来源与完整性验证 | Planned/Blocked |
 
 M2-C 最终证据：
@@ -42,12 +42,13 @@ M2-C 最终证据：
 - M2 ExecutionAdapter Gate run 15：三平台各 36/36，总计 108/108，0 failures/errors/skips；
 - retained failure：Minimum CI run 144，未 rerun、删除或隐藏。
 
-M2-D implementation 状态：
+M2-D 最终证据：
 
-- PR：#20；
-- 原 later-batch approval blocker 已修复；
-- approve-once、approve-session、deny、timeout、missing/failed ApprovalProvider、invalid outcome 的 checkpoint handoff 回归已保留；
-- 最终 exact-head CI、artifact、merge 与 docs-only closeout 尚未完成，因此当前只声明 `Implemented`，不声明 `Verified`。
+- implementation final head：`10f5240d8c82df8c41aa609c96a40c3ab7f65242`；merge：`2fe059d900c4e04fab05ca92f421a41d7ff0aa01`；
+- Minimum CI 229、M1 P0 173、M2 Adapter 79、M2 Lifecycle 44 全部 PASS；
+- Lifecycle 三平台各 64/64，总计 192/192；
+- closeout：`docs/roadmap/m2-d-closeout.md`；
+- 原 blocker 和全部失败 run 均保留。
 
 详细证据：
 
@@ -58,6 +59,7 @@ M2-D implementation 状态：
 - [M2-A ToolRegistry Closeout](docs/roadmap/m2-a-closeout.md)
 - [M2-B Policy/Approval Closeout](docs/roadmap/m2-b-closeout.md)
 - [M2-C ExecutionAdapter Closeout](docs/roadmap/m2-c-closeout.md)
+- [M2-D Runtime Lifecycle Closeout](docs/roadmap/m2-d-closeout.md)
 - [ExecutionAdapter Contract](docs/contracts/execution-adapter.md)
 - [Runtime Lifecycle Contract](docs/contracts/runtime-lifecycle.md)
 - [M2-C ExecutionAdapter Test Report](docs/testing/m2-execution-adapter-report.md)
