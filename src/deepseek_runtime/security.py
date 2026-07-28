@@ -33,6 +33,8 @@ from enum import Enum  # 枚举类型（有限个选项）
 from pathlib import Path
 from typing import Callable, Sequence
 
+from .workspace import WorkspaceResolver, WorkspaceViolation
+
 
 # ===== Risk（风险等级）=====
 
@@ -154,7 +156,7 @@ class PermissionPolicy:
 
 # ===== 自定义异常 =====
 
-class SandboxViolation(ValueError):
+class SandboxViolation(WorkspaceViolation):
     """路径越过了工作区边界"""
     pass
 
@@ -202,25 +204,26 @@ class WorkspaceSandbox:
 
     def __init__(self, root: Path, policy: PermissionPolicy | None = None):
         """初始化沙箱：指定工作区根目录和权限策略"""
-        self.root = root.resolve()
+        try:
+            self._resolver = WorkspaceResolver(root)
+        except WorkspaceViolation as exc:
+            raise SandboxViolation(str(exc)) from exc
+        self.root = self._resolver.root
         self.policy = policy or PermissionPolicy()
 
     def resolve(self, raw: str | Path) -> Path:
-        """将路径解析为绝对路径，并检查是否在沙箱内。越界则抛出异常。"""
-        candidate = Path(raw)
-        if not candidate.is_absolute():
-            candidate = self.root / candidate
-        if candidate.exists() or candidate.is_symlink():
-            resolved = candidate.resolve()
-        else:
-            resolved = candidate.parent.resolve() / candidate.name
-        if resolved != self.root and self.root not in resolved.parents:
-            raise SandboxViolation(f"path escapes workspace: {raw}")
-        return resolved
+        """使用唯一 WorkspaceResolver 解析路径并拒绝链接/重解析点。"""
+        try:
+            return self._resolver.resolve(raw)
+        except WorkspaceViolation as exc:
+            raise SandboxViolation(str(exc)) from exc
 
     def relative(self, path: Path) -> str:
-        """返回相对于工作区的路径（用于审计日志，避免暴露绝对路径）"""
-        return str(path.relative_to(self.root))
+        """返回相对于工作区的 POSIX 路径，用于内容最小化审计。"""
+        try:
+            return self._resolver.relative(path)
+        except WorkspaceViolation as exc:
+            raise SandboxViolation(str(exc)) from exc
 
     def classify_command(self, command: Sequence[str]) -> Risk:
         """根据可执行文件名判断命令的风险等级"""

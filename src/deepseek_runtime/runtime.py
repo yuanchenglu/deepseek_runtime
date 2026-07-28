@@ -30,6 +30,7 @@ from typing import Any, Callable
 from .client import DeepSeekClient
 from .diagnostics import build_diagnostics
 from .evidence import redact, request_evidence, response_evidence, sha256_bytes, wire_json
+from .workspace import WorkspaceResolver, WorkspaceViolation
 
 
 # ===== ToolHandler（工具处理器）=====
@@ -299,55 +300,39 @@ class DeepSeekRuntime:
 
 @dataclass
 class WorkspaceTools:
-    """内置的工作区工具集——提供基本的文件读写和搜索能力"""
+    """内置工作区工具；所有路径和遍历均经过唯一 WorkspaceResolver。"""
     root: str | Path
+    _resolver: WorkspaceResolver = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
-        self.root = Path(self.root)
+        self._resolver = WorkspaceResolver(self.root)
+        self.root = self._resolver.root
 
     def _path(self, raw: str) -> Path:
-        """
-        ❓ 问：_path() 做了哪些安全检查？
-        💡 答：和 security.py 的 resolve() 类似——
-           检查路径是否在工作区内，防止越界读取。
-           这叫"路径遍历防护"（Path Traversal Prevention），
-           是 Agent 安全的基础要求。
-        """
-        root = Path(self.root).resolve()
-        candidate = (root / raw).resolve()
-        if candidate != root and root not in candidate.parents:
-            raise ValueError("path escapes workspace")
-        return candidate
+        return self._resolver.resolve(raw)
 
     def read_file(self, args: dict[str, Any]) -> str:
-        """
-        读取文件内容（最多 20000 字符）。
-        工具名称叫 read_file，供 AI 调用。
-        """
-        # 从参数中提取 input 作为文件路径
-        path = self._path(str(args.get("input", "")))
-        return path.read_text(encoding="utf-8")[:20_000]
+        """读取普通工作区文件，最多返回 20000 个字符。"""
+        return self._resolver.read_text(str(args.get("input", "")), max_chars=20_000)
 
     def search(self, args: dict[str, Any]) -> str:
-        """
-        在工作区内搜索关键字（最多返回 100 条结果）。
-        工具名称叫 search，供 AI 调用。
-        """
+        """不跟随 symlink/reparse-point 搜索普通文件，最多返回 100 条。"""
         needle = str(args.get("input", ""))
         if not needle:
             raise ValueError("search input must not be empty")
-        matches = []
-        root = Path(self.root)
-        for path in root.rglob("*"):
-            if path.is_file() and ".git" not in path.parts and path.stat().st_size < 1_000_000:
-                try:
-                    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-                        if needle in line:
-                            matches.append(f"{path.relative_to(root)}:{number}:{line[:200]}")
-                            if len(matches) >= 100:
-                                return "\n".join(matches)
-                except (UnicodeDecodeError, OSError):
-                    pass
+        matches: list[str] = []
+        for path in self._resolver.iter_files():
+            try:
+                if path.stat(follow_symlinks=False).st_size >= 1_000_000:
+                    continue
+                content = self._resolver.read_text(path)
+                for number, line in enumerate(content.splitlines(), 1):
+                    if needle in line:
+                        matches.append(f"{self._resolver.relative(path)}:{number}:{line[:200]}")
+                        if len(matches) >= 100:
+                            return "\n".join(matches)
+            except (UnicodeDecodeError, OSError, WorkspaceViolation):
+                continue
         return "\n".join(matches) or "No matches"
 
     def catalog(self) -> dict[str, ToolHandler]:
