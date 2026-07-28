@@ -2,7 +2,7 @@
 
 > A local Agent Runtime Kernel for the DeepSeek API.
 >
-> **Current phase: Open-source Alpha Hardening. M1, M2-A, M2-B, and M2-C are closed. M2-D Runtime Lifecycle, Budget, and Cancellation is the next execution slice. Current release decision: NO RELEASE.**
+> **Current phase: Open-source Alpha Hardening. M1, M2-A, M2-B, and M2-C are closed. M2-D Runtime Lifecycle, Budget, and Cancellation is implemented in PR #20 and is completing exact-head merge/closeout. Current release decision: NO RELEASE.**
 
 [English](README_en.md) | [简体中文](README.md)
 
@@ -10,27 +10,27 @@
 
 Calling a model API does not provide a reliable Agent. A Runtime must handle Provider protocols, tool contracts, policy and approval, bounded execution, budgets, recovery, evidence privacy, and release verification.
 
-This repository has completed the M1 contracts, Workspace containment, constrained rollback, and ambiguous side-effect recovery. M2-A established ToolRegistry as the production tool collection. M2-B attached PermissionPolicy and ApprovalProvider to the Runtime path. M2-C merged the common ExecutionAdapter boundary, bounded subprocess controls, and a focused cross-platform gate into `develop`. The complete Runtime lifecycle, task budgets, Provider cancellation, durable checkpoints, Workspace P1, CLI protocol, and release engineering remain incomplete. [`docs/product/PRD.md`](docs/product/PRD.md) is the sole source of truth for Alpha scope and acceptance.
+This repository has completed the M1 contracts, Workspace containment, constrained rollback, and ambiguous side-effect recovery. M2-A established ToolRegistry as the production tool collection. M2-B attached PermissionPolicy and ApprovalProvider to the Runtime path. M2-C merged the common ExecutionAdapter boundary, bounded subprocess controls, and a focused cross-platform gate into `develop`. PR #20 implements the Runtime lifecycle, task budgets, Provider-before-call cancellation, and tool-error policy but is not yet merged into `develop`. Provider in-flight cancellation, durable checkpoints, Workspace P1, the CLI protocol, and release engineering remain incomplete. [`docs/product/PRD.md`](docs/product/PRD.md) is the sole source of truth for Alpha scope and acceptance.
 
 ## Current factual status
 
 | Capability | Current assessment |
 | --- | --- |
 | DeepSeek Provider request and basic response handling | Partial |
-| Text-only and basic tool loop | Partial; M2-D closes lifecycle behavior |
+| Text-only and basic tool loop | Implemented in PR #20; pending exact-head merge/closeout |
 | ToolRegistry and argument/result boundaries | Verified for M2-A; PR #14, runs 106/56 |
 | Mandatory Policy and Approval path | Verified for the M2-B in-memory path; PR #16, runs 129/77 |
 | ExecutionAdapter boundary | Verified for M2-C; PR #18, merge `7793a101`, runs 165/111/15 |
 | Restricted subprocess controls | Verified for M2-C: minimal env, contained cwd, timeout, combined byte limit, cancellation, process-tree cleanup |
 | Kernel / OS isolation | Not provided; every current adapter declares `kernel_isolation=false` |
-| Durable approval checkpoint and resume | Partial; persistence timing, resume, and migration remain M2-D/M3 |
-| Complete cancellation | Partial; tool-execution handoff exists, Provider-before/during cancellation remains M2-D/M4 |
+| Durable approval checkpoint and resume | Partial; M2-D in-memory pending/resolved handoff is implemented, durable store/resume/migration remains M3 |
+| Complete cancellation | Partial; Provider-before-call and tool cancellation are implemented, in-flight Provider transport cancellation remains M4 |
 | Workspace containment and link defense | Verified for M1 P0 |
 | Workspace read/search budgets | Planned; M2-E |
-| Checkpoint and Evidence | Partial; contracts exist, production lifecycle/store remain incomplete |
+| Checkpoint and Evidence | Partial; production lifecycle handoff is implemented, durable store/Evidence totality remains M3 |
 | Side-effect recovery | Verified for M1 P0; ambiguous non-idempotent effects enter manual reconciliation |
 | File changes and rollback | Verified for M1 P0; opaque handles, durable journals, expiry, scope, and conflict checks |
-| Cross-platform CI | M1 P0 and M2-C Adapter Gate cover Linux/macOS/Windows with Python 3.11; full release matrix remains Planned |
+| Cross-platform CI | M1 P0 and M2-C Adapter Gate cover Linux/macOS/Windows with Python 3.11; the M2-D focused gate exists and final implementation-head evidence is being generated; the full release matrix remains Planned |
 | wheel/sdist, provenance, and integrity | Planned/Blocked |
 
 M2-C final evidence:
@@ -42,6 +42,13 @@ M2-C final evidence:
 - M2 ExecutionAdapter Gate run 15: 36/36 per platform, 108/108 total, 0 failures/errors/skips;
 - retained failure: Minimum CI run 144, not rerun, deleted, or hidden.
 
+M2-D implementation state:
+
+- PR: #20;
+- the later-batch approval blocker is fixed;
+- checkpoint-handoff regressions cover approve-once, approve-session, deny, timeout, missing/failed ApprovalProvider, and invalid outcomes;
+- final exact-head CI, artifacts, merge, and docs-only closeout are not complete, so the current claim is `Implemented`, not `Verified`.
+
 Evidence:
 
 - [PRD](docs/product/PRD.md)
@@ -52,7 +59,9 @@ Evidence:
 - [M2-B Policy/Approval Closeout](docs/roadmap/m2-b-closeout.md)
 - [M2-C ExecutionAdapter Closeout](docs/roadmap/m2-c-closeout.md)
 - [ExecutionAdapter Contract](docs/contracts/execution-adapter.md)
+- [Runtime Lifecycle Contract](docs/contracts/runtime-lifecycle.md)
 - [M2-C ExecutionAdapter Test Report](docs/testing/m2-execution-adapter-report.md)
+- [M2-D Runtime Lifecycle Test Report](docs/testing/m2-runtime-lifecycle-report.md)
 - [Open-source Readiness Plan](docs/roadmap/open-source-readiness-plan.md)
 
 ## Current production tool-call path
@@ -91,19 +100,19 @@ The current implementation is **not an operating-system security sandbox**.
 
 See the [Threat Model](docs/security/threat-model.md) and [Security Policy](SECURITY.md).
 
-## Next execution slice: M2-D
+## Current implementation slice: M2-D (implementation complete, pending merge/closeout)
 
-M2-D extends the existing `DeepSeekRuntime`; it must not create a second Agent loop. Its scope includes:
+M2-D extends the existing `DeepSeekRuntime`; it must not create a second Agent loop. Its implemented scope includes:
 
 - production state transitions and lifecycle events;
 - checkpoint handoff;
 - Provider-before-call cancellation and final tool-during-cancel semantics;
 - step/token/cost/context/time budgets;
 - tool-error continue/terminate policy;
-- structured RuntimeResult boundaries for malformed Provider responses;
+- structured RuntimeResult boundaries for the supported malformed Provider subset;
 - an M2-D focused gate.
 
-M2-D excludes Workspace P1, CLI protocol, Provider streaming/retry, M3 durable store/Evidence work, and release engineering.
+M2-D excludes Workspace P1, the CLI protocol, Provider streaming/retry, M3 durable store/Evidence work, and release engineering.
 
 ## Developer quick start
 
@@ -150,6 +159,7 @@ Focused gates:
 ```bash
 python scripts/m1_p0_gate.py --repetitions 20 --output m1-p0-local.json
 python scripts/m2_execution_gate.py --output m2-execution-local.json
+python scripts/m2_lifecycle_gate.py --output m2-runtime-lifecycle-local.json
 ```
 
 CI output is shareable evidence; a local verbal claim is not release evidence.
@@ -163,6 +173,7 @@ Start at [`docs/INDEX.md`](docs/INDEX.md).
 - [Runtime Core Contracts](docs/contracts/runtime-contracts.md)
 - [Policy/Approval Contract](docs/contracts/policy-approval.md)
 - [ExecutionAdapter Contract](docs/contracts/execution-adapter.md)
+- [Runtime Lifecycle Contract](docs/contracts/runtime-lifecycle.md)
 - [Test Plan](docs/testing/test-plan.md)
 - [Test Cases](docs/testing/test-cases.md)
 - [Known Unknowns](docs/known-unknowns.md)

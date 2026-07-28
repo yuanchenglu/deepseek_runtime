@@ -19,6 +19,16 @@ from .common import (
 from .state import RecoveryPolicy, RuntimeState
 
 
+def _checkpoint_result(value: Any) -> Any:
+    """Represent Runtime-supported byte results as JSON-compatible checkpoint text."""
+    if isinstance(value, bytes):
+        try:
+            return value.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValueError("checkpoint result contains non-UTF-8 bytes") from exc
+    return copy.deepcopy(value)
+
+
 @dataclass
 class ToolCallCheckpoint:
     call_id: str
@@ -68,7 +78,7 @@ class ToolCallCheckpoint:
             "idempotency_key": self.idempotency_key,
             "approval": copy.deepcopy(self.approval),
             "receipt": copy.deepcopy(self.receipt),
-            "result": copy.deepcopy(self.result),
+            "result": _checkpoint_result(self.result),
             "error": self.error.to_dict() if self.error else None,
         }
 

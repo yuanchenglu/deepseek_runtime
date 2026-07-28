@@ -1,7 +1,7 @@
 # DeepSeek Runtime 测试计划
 
-> 版本：1.1
-> 适用代码审查基线：`develop@0e1e435`
+> 版本：1.2
+> 适用代码审查基线：PR #20 M2-D implementation head；pending exact-head CI、merge 与 closeout
 > 文档修订：以本文件所在 Git commit 为准
 > 目标：证明 Open-source Alpha 的功能、边界、安全、恢复和发布过程，而不是只证明 Happy Path。
 
@@ -259,7 +259,11 @@ lint
 → docs traceability
 ```
 
-### 8.2 合并后或 Nightly
+### 8.2 M2-D focused Gate
+
+`M2 Runtime Lifecycle Gate` 在 Linux、macOS、Windows + Python 3.11 上运行 Runtime lifecycle、strict review、ExecutionAdapter、ToolRegistry、Policy/Approval 与授权审计模块，并上传包含明确测试分母和失败详情的 JSON artifact。实现 PR 文档变更后必须重新取得同一 exact head 的三平台证据。
+
+### 8.3 合并后或 Nightly
 
 ```text
 Python 3.11–3.13
@@ -271,7 +275,7 @@ Python 3.11–3.13
 → package build/install
 ```
 
-### 8.3 Release
+### 8.4 Release
 
 ```text
 full matrix

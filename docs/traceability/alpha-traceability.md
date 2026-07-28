@@ -1,7 +1,7 @@
 # DeepSeek Runtime Alpha Traceability Matrix
 
-> 版本：1.9
-> 适用验证基线：`develop@7793a10152a49fb815aac667906080a4e1a39920`；M2-C closeout PR #19
+> 版本：2.0
+> 适用验证基线：PR #20 M2-D implementation head；pending exact-head CI、merge 与 closeout
 > 文档修订：以本文件所在 Git commit 为准
 > 作用：`Requirement → Milestone → PR → Test → Evidence` 的唯一追踪表。
 
@@ -103,14 +103,14 @@
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| RUN-001 | P1 | M2 | Runtime | M2-D PR | TC-RUN-001 | fake-provider integration CI | Implemented | 需接入统一 RuntimeResult/lifecycle |
-| RUN-002 | P1 | M2 | Runtime | M2-D PR | TC-RUN-002/003 | multi-round integration CI | Partial | 生命周期未统一 |
+| RUN-001 | P1 | M2 | Runtime | PR #20 | TC-RUN-001 | M2-D focused/full CI | Implemented | 待 exact-head CI、merge 与 closeout |
+| RUN-002 | P1 | M2 | Runtime | PR #20 | TC-RUN-002/003 | multi-round integration + lifecycle CI | Implemented | 待 exact-head CI、merge 与 closeout |
 | RUN-003 | P1 | M2 | Runtime | PR #14/#18 | TC-RUN-004 | run 106 Registry-only；run 15 Adapter ordering/bypass negatives | Verified | 无 M2-A/M2-C blocker |
-| RUN-004 | P1 | M1/M2 | Runtime | PR #6 / M2-D PR | TC-RUN-005 | transition manifest CI | Partial | state/transition/checkpoint 合同已冻结；生产 Runtime 尚未强制全部转换 |
-| RUN-005 | P1 | M2 | Runtime | M2-D PR | TC-RUN-006 | budget integration CI | Partial | 仅 step 行为 |
+| RUN-004 | P1 | M1/M2 | Runtime | PR #6/#20 | TC-RUN-005 | transition manifest + checkpoint timing CI | Implemented | durable checkpoint store 属 M3；待 M2-D merge/closeout |
+| RUN-005 | P1 | M2 | Runtime | PR #20 | TC-RUN-006 | step budget integration CI | Implemented | 待 exact-head CI、merge 与 closeout |
 | RUN-006 | P1 | M2/M4 | Runtime | PR #18 / M2-D PR | TC-RUN-012/013、TC-PROV-015 | run 15 Adapter cancellation + cleanup PASS | Partial | Tool-during-cancel handoff 已实现；Provider 前/请求中 cancellation 与 durable lifecycle 属 M2-D/M4 |
-| RUN-007 | P1 | M2 | Runtime | M2-D PR | TC-RUN-007 | budget matrix CI | Planned | token/cost/context/time 未接入 |
-| RUN-008 | P1 | M2 | Runtime | M2-D PR | TC-RUN-008 | tool-error policy CI | Partial | RecoveryPolicy 已实现；Runtime 级继续/终止策略未完成 |
+| RUN-007 | P1 | M2 | Runtime | PR #20 | TC-RUN-007 | token/cost/context/time threshold matrix | Implemented | 待 exact-head CI、merge 与 closeout |
+| RUN-008 | P1 | M2 | Runtime | PR #20 | TC-RUN-008 | continue/terminate policy CI | Implemented | 待 exact-head CI、merge 与 closeout |
 | RUN-009 | P1 | M2 | Runtime | PR #14/#18 | TC-RUN-009、TC-TOOL-005/006 | run 106 normalization；run 15 timeout/output PASS | Verified | NoIsolation capability 明确不提供 limit；bounded path 由 Restricted Adapter 保证 |
 | RUN-010 | P1 | M2/M4 | Runtime | PR #14 / M2-D/M4 Provider PR | TC-RUN-010 | run 98 retained；run 106 malformed subset PASS | Partial | arbitrary root、choices/message 全矩阵仍属后续 Provider/Runtime PR |
 
@@ -142,7 +142,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | SEC-001 | P1 | M2 | Security | PR #16/#17 | TC-SEC-001 | run 129；merged `f8a5799a` | Verified | 无 M2-B blocker |
 | SEC-002 | P1 | M2 | Security | PR #16/#17 | TC-SEC-002 | run 129；merged `f8a5799a` | Verified | 无 M2-B blocker |
-| SEC-003 | P1 | M2 | Security | PR #16 / M2-D/M3 Recovery PR | TC-SEC-003 | run 129 | Partial | durable approval checkpoint timing、resume、migration 属 M2-D/M3 |
+| SEC-003 | P1 | M2/M3 | Security | PR #16/#20 / M3 Recovery PR | TC-SEC-003 | approval outcome + checkpoint timing matrix | Partial | M2-D 内存 pending/resolved handoff 已实现；durable store、resume、migration 属 M3 |
 | SEC-004 | P1 | M2 | Security | PR #16/#17/#18 | TC-SEC-004 | run 129；M2 Gate run 15 Adapter ordering/bypass PASS | Verified | 无 M2-B/M2-C blocker |
 | SEC-005 | P1 | M0/M2 | Security | PR #18 | TC-SEC-007 | run 15 wrapped-command negative + capability snapshot × 3 OS | Verified | CLI help 最终文案仍由 M2-F 独立复核 |
 | SEC-006 | P1 | M2 | Security | PR #18 | TC-SEC-005 | run 15 minimal env/API-key/loader-key negatives × 3 OS | Verified | 无 M2-C blocker |
@@ -199,7 +199,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | OBS-001 | P1 | M3 | Runtime | PR #18 / M3 Observability PR | TC-OBS-007 | Adapter duration metadata | Partial | 完整 lifecycle latency 未接入 |
 | OBS-002 | P1 | M3 | Runtime | M3 Observability PR | TC-OBS-001 | usage/cost fixture CI | Partial | 分类语义混合 |
-| OBS-003 | P1 | M3 | Runtime | M3 Observability PR | TC-OBS-002 | missing-field CI | Blocked | unknown 被转为 0 |
+| OBS-003 | P1 | M2/M3 | Runtime | PR #20 / M3 Observability PR | TC-OBS-002 | unknown usage/cost lifecycle CI | Implemented | M3 仍需完整 metrics aggregation closeout |
 | OBS-004 | P1 | M3 | Runtime | M3 Observability PR | TC-OBS-003 | prompt-token fixture CI | Blocked | 输入成本漏算 |
 | OBS-005 | P1 | M3 | Runtime | M3 Observability PR | TC-OBS-004 | validation CI | Planned | 非法数值未拒绝 |
 | OBS-006 | P1 | M3 | Runtime | M3 Observability PR | TC-OBS-005 | partial-data CI | Blocked | 分母包含未知值 |

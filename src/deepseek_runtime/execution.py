@@ -194,6 +194,11 @@ def _adapter_handler_error(
     )
 
 
+def _completion_receipt(adapter: str, tool_name: str) -> dict[str, str]:
+    """Issue a private structural receipt only after the handler returned successfully."""
+    return {"adapter": adapter, "tool": tool_name, "status": "completed"}
+
+
 class FakeExecutionAdapter:
     """Deterministic adapter for Runtime and contract tests; never calls handlers."""
 
@@ -241,12 +246,25 @@ class FakeExecutionAdapter:
                 raise value
             raise _adapter_handler_error(self.name, spec.name, value) from value
         if isinstance(value, ExecutionOutcome):
+            if spec.side_effect and value.private_receipt is None:
+                return ExecutionOutcome(
+                    value=value.value,
+                    adapter=value.adapter,
+                    capabilities=value.capabilities,
+                    duration_ms=value.duration_ms,
+                    output_bytes=value.output_bytes,
+                    truncated=value.truncated,
+                    returncode=value.returncode,
+                    private_receipt=_completion_receipt(value.adapter, spec.name),
+                )
             return value
         if isinstance(value, ToolExecutionResult):
             private_receipt = value.receipt
             value = value.value
         else:
             private_receipt = None
+        if spec.side_effect and private_receipt is None:
+            private_receipt = _completion_receipt(self.name, spec.name)
         return ExecutionOutcome(
             value=value,
             adapter=self.name,
@@ -289,6 +307,8 @@ class NoIsolationLocalAdapter:
             value = value.value
         else:
             private_receipt = None
+        if spec.side_effect and private_receipt is None:
+            private_receipt = _completion_receipt(self.name, spec.name)
         return ExecutionOutcome(
             value=value,
             adapter=self.name,
@@ -522,7 +542,7 @@ class RestrictedSubprocessAdapter:
                 start_new_session=start_new_session,
                 creationflags=creationflags,
             )
-        except OSError as exc:
+        except (OSError, ValueError) as exc:
             raise self._contract_error(
                 ErrorCode.TOOL_EXECUTION_FAILED,
                 "restricted subprocess could not be started",
@@ -546,33 +566,25 @@ class RestrictedSubprocessAdapter:
         retained_output = [0]
         output_lock = threading.Lock()
         overflow = threading.Event()
+        reader_errors: list[str] = []
+
+        def read_stream(stream: Any, sink: bytearray) -> None:
+            try:
+                _read_stream(
+                    stream,
+                    sink,
+                    total_output,
+                    retained_output,
+                    output_lock,
+                    overflow,
+                    spec.max_output_bytes,
+                )
+            except Exception as exc:
+                reader_errors.append(type(exc).__name__)
+
         readers = (
-            threading.Thread(
-                target=_read_stream,
-                args=(
-                    process.stdout,
-                    stdout_buffer,
-                    total_output,
-                    retained_output,
-                    output_lock,
-                    overflow,
-                    spec.max_output_bytes,
-                ),
-                daemon=True,
-            ),
-            threading.Thread(
-                target=_read_stream,
-                args=(
-                    process.stderr,
-                    stderr_buffer,
-                    total_output,
-                    retained_output,
-                    output_lock,
-                    overflow,
-                    spec.max_output_bytes,
-                ),
-                daemon=True,
-            ),
+            threading.Thread(target=read_stream, args=(process.stdout, stdout_buffer), daemon=True),
+            threading.Thread(target=read_stream, args=(process.stderr, stderr_buffer), daemon=True),
         )
         for reader in readers:
             reader.start()
@@ -594,6 +606,9 @@ class RestrictedSubprocessAdapter:
                 break
             if overflow.is_set():
                 stop_reason = "output-limit"
+                break
+            if reader_errors:
+                stop_reason = "reader-error"
                 break
             if time.monotonic() >= deadline:
                 stop_reason = "timeout"
@@ -618,6 +633,14 @@ class RestrictedSubprocessAdapter:
                 adapter=self.name,
                 tool=spec.name,
                 timeout_seconds=spec.timeout_seconds,
+            )
+        if stop_reason == "reader-error" or reader_errors:
+            raise self._contract_error(
+                ErrorCode.TOOL_EXECUTION_FAILED,
+                "restricted subprocess output could not be read",
+                adapter=self.name,
+                tool=spec.name,
+                cause_class=reader_errors[0] if reader_errors else None,
             )
 
         stdout_raw = bytes(stdout_buffer)

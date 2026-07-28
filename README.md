@@ -2,7 +2,7 @@
 
 > 面向 DeepSeek API 的本地 Agent Runtime Kernel。
 >
-> **当前阶段：Open-source Alpha Hardening；M1、M2-A、M2-B、M2-C 已关闭；M2-D Runtime Lifecycle、Budget、Cancellation 为下一执行切片；当前发布结论：NO RELEASE。**
+> **当前阶段：Open-source Alpha Hardening；M1、M2-A、M2-B、M2-C 已关闭；M2-D Runtime Lifecycle、Budget、Cancellation 已在 PR #20 实现，正在完成 exact-head merge/closeout；当前发布结论：NO RELEASE。**
 
 [English](README_en.md) | [简体中文](README.md)
 
@@ -10,27 +10,27 @@
 
 直接调用模型 API 并不等于获得一个可靠 Agent。Runtime 需要处理 Provider 协议、工具合同、权限审批、受限执行、资源预算、状态恢复、证据隐私和发布验证。
 
-本仓库已完成 M1 核心合同、Workspace containment、受约束回滚和不确定副作用恢复；M2-A 建立 ToolRegistry 唯一生产工具集合；M2-B 将 PermissionPolicy 与 ApprovalProvider 强制接入 Runtime；M2-C 将 ExecutionAdapter、受限子进程控制和三平台专项 Gate 合入 `develop`。完整 Runtime lifecycle、任务预算、Provider cancellation、durable checkpoint、Workspace P1、CLI 协议和发布工程仍未完成。首个公开 Alpha 的范围、优先级和验收标准以 [`docs/product/PRD.md`](docs/product/PRD.md) 为唯一事实源。
+本仓库已完成 M1 核心合同、Workspace containment、受约束回滚和不确定副作用恢复；M2-A 建立 ToolRegistry 唯一生产工具集合；M2-B 将 PermissionPolicy 与 ApprovalProvider 强制接入 Runtime；M2-C 将 ExecutionAdapter、受限子进程控制和三平台专项 Gate 合入 `develop`。PR #20 已实现 Runtime lifecycle、任务预算、Provider-before-call cancellation 与 tool-error policy，但尚未合入 `develop`；Provider in-flight cancellation、durable checkpoint、Workspace P1、CLI 协议和发布工程仍未完成。首个公开 Alpha 的范围、优先级和验收标准以 [`docs/product/PRD.md`](docs/product/PRD.md) 为唯一事实源。
 
 ## 当前真实状态
 
 | 能力 | 当前判断 |
 | --- | --- |
 | DeepSeek Provider 请求与基础响应处理 | Partial |
-| Text-only 与基础 Tool Loop | Partial；M2-D 收口 lifecycle |
+| Text-only 与基础 Tool Loop | Implemented in PR #20；待 exact-head merge/closeout |
 | ToolRegistry 与参数/结果边界 | Verified for M2-A；PR #14、runs 106/56 |
 | Policy 与 Approval 强制闭环 | Verified for M2-B 内存生产路径；PR #16、runs 129/77 |
 | ExecutionAdapter 强制闭环 | Verified for M2-C；PR #18、merge `7793a101`、runs 165/111/15 |
 | Restricted subprocess controls | Verified for M2-C：minimal env、contained cwd、timeout、combined byte limit、cancel、process-tree cleanup |
 | Kernel / OS isolation | 不提供；所有当前 Adapter 均声明 `kernel_isolation=false` |
-| Approval durable checkpoint / resume | Partial；持久化时机、恢复和 migration 属 M2-D/M3 |
-| Complete cancellation | Partial；tool execution handoff 已实现，Provider 前/请求中 cancellation 属 M2-D/M4 |
+| Approval durable checkpoint / resume | Partial；M2-D 内存 pending/resolved handoff 已实现，durable store/resume/migration 属 M3 |
+| Complete cancellation | Partial；Provider-before-call 与 tool cancellation 已实现，in-flight Provider transport cancellation 属 M4 |
 | Workspace containment 与 symlink/reparse-point 防护 | Verified for M1 P0 |
 | Workspace read/search budgets | Planned；M2-E |
-| Checkpoint 与 Evidence | Partial；合同已冻结，生产 lifecycle/store 仍需收口 |
+| Checkpoint 与 Evidence | Partial；生产 lifecycle handoff 已实现，durable store/Evidence totality 属 M3 |
 | 副作用恢复 | Verified for M1 P0；不确定非幂等副作用进入人工协调 |
 | 文件变更与回滚 | Verified for M1 P0；opaque handle、durable ChangeJournal、expiry/scope/conflict 已覆盖 |
-| 多平台 CI | M1 P0 与 M2-C Adapter Gate 覆盖 Linux/macOS/Windows + Python 3.11；完整 release matrix 仍 Planned |
+| 多平台 CI | M1 P0 与 M2-C Adapter Gate 覆盖 Linux/macOS/Windows + Python 3.11；M2-D focused Gate 已建立，最终 implementation head 证据生成中；完整 release matrix 仍 Planned |
 | wheel/sdist、构件来源与完整性验证 | Planned/Blocked |
 
 M2-C 最终证据：
@@ -42,6 +42,13 @@ M2-C 最终证据：
 - M2 ExecutionAdapter Gate run 15：三平台各 36/36，总计 108/108，0 failures/errors/skips；
 - retained failure：Minimum CI run 144，未 rerun、删除或隐藏。
 
+M2-D implementation 状态：
+
+- PR：#20；
+- 原 later-batch approval blocker 已修复；
+- approve-once、approve-session、deny、timeout、missing/failed ApprovalProvider、invalid outcome 的 checkpoint handoff 回归已保留；
+- 最终 exact-head CI、artifact、merge 与 docs-only closeout 尚未完成，因此当前只声明 `Implemented`，不声明 `Verified`。
+
 详细证据：
 
 - [PRD](docs/product/PRD.md)
@@ -52,7 +59,9 @@ M2-C 最终证据：
 - [M2-B Policy/Approval Closeout](docs/roadmap/m2-b-closeout.md)
 - [M2-C ExecutionAdapter Closeout](docs/roadmap/m2-c-closeout.md)
 - [ExecutionAdapter Contract](docs/contracts/execution-adapter.md)
+- [Runtime Lifecycle Contract](docs/contracts/runtime-lifecycle.md)
 - [M2-C ExecutionAdapter Test Report](docs/testing/m2-execution-adapter-report.md)
+- [M2-D Runtime Lifecycle Test Report](docs/testing/m2-runtime-lifecycle-report.md)
 - [开源就绪执行计划](docs/roadmap/open-source-readiness-plan.md)
 
 ## 当前生产工具调用链
@@ -91,9 +100,9 @@ Provider tool call
 
 完整边界见 [Threat Model](docs/security/threat-model.md) 和 [Security Policy](SECURITY.md)。
 
-## 下一执行切片：M2-D
+## 当前实施切片：M2-D（implementation complete，pending merge/closeout）
 
-M2-D 只扩展现有 `DeepSeekRuntime`，不创建第二套 Agent loop。范围包括：
+M2-D 只扩展现有 `DeepSeekRuntime`，不创建第二套 Agent loop。实现范围包括：
 
 - 生产状态转换与 lifecycle event；
 - checkpoint handoff；
@@ -150,6 +159,7 @@ python scripts/check_docs_traceability.py
 ```bash
 python scripts/m1_p0_gate.py --repetitions 20 --output m1-p0-local.json
 python scripts/m2_execution_gate.py --output m2-execution-local.json
+python scripts/m2_lifecycle_gate.py --output m2-runtime-lifecycle-local.json
 ```
 
 CI 结果才是可分享的执行证据；本地口头通过不构成发布证据。
@@ -163,6 +173,7 @@ CI 结果才是可分享的执行证据；本地口头通过不构成发布证�
 - [Runtime Core Contracts](docs/contracts/runtime-contracts.md)
 - [Policy/Approval Contract](docs/contracts/policy-approval.md)
 - [ExecutionAdapter Contract](docs/contracts/execution-adapter.md)
+- [Runtime Lifecycle Contract](docs/contracts/runtime-lifecycle.md)
 - [测试计划](docs/testing/test-plan.md)
 - [测试用例](docs/testing/test-cases.md)
 - [Known Unknowns](docs/known-unknowns.md)

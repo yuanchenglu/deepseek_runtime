@@ -46,6 +46,14 @@ from .execution import (
     RestrictedSubprocessAdapter,
     SubprocessRequest,
 )
+from .lifecycle import (
+    BudgetTracker,
+    CheckpointSink,
+    LifecycleEvent,
+    LifecycleTrace,
+    RuntimeBudgets,
+    ToolErrorPolicy,
+)
 from .observability import summarize_observability
 from .runtime import DeepSeekRuntime, RuntimeResult, WorkspaceTools
 from .security import (
@@ -79,11 +87,13 @@ __all__ = [
     "ApprovalRequest",
     "AuthorizationEvent",
     "AuthorizationSession",
+    "BudgetTracker",
     "CancellationToken",
     "ChangeJournalEntry",
     "ChangeJournalStore",
     "ChangeManager",
     "ChangeSet",
+    "CheckpointSink",
     "ContractViolation",
     "DeepSeekClient",
     "DeepSeekRuntime",
@@ -97,6 +107,8 @@ __all__ = [
     "FileChange",
     "IsolationLevel",
     "JournalFileRecord",
+    "LifecycleEvent",
+    "LifecycleTrace",
     "NoIsolationLocalAdapter",
     "OperatorAction",
     "PermissionPolicy",
@@ -111,6 +123,7 @@ __all__ = [
     "Risk",
     "RollbackHandle",
     "RollbackToken",
+    "RuntimeBudgets",
     "RuntimeErrorInfo",
     "RuntimeResult",
     "RuntimeSettings",
@@ -119,8 +132,9 @@ __all__ = [
     "SubprocessRequest",
     "ToolArgumentError",
     "ToolCallRecord",
-    "ToolExecutionResult",
     "ToolCallCheckpoint",
+    "ToolErrorPolicy",
+    "ToolExecutionResult",
     "ToolRegistry",
     "ToolResultError",
     "ToolSpec",

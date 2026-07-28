@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sys
 import tempfile
+import threading
 import unittest
 from collections.abc import Iterable
 from pathlib import Path
@@ -233,25 +234,25 @@ class RuntimeExecutionAdapterTests(unittest.TestCase):
 
     def test_cancelled_restricted_execution_is_structured_and_content_free(self) -> None:
         token = CancellationToken()
-        token.cancel()
-        policy = PermissionPolicy(
-            [PermissionRule(Risk.SHELL_SAFE, Decision.ALLOW, path_glob="*")]
-        )
-        registry = ToolRegistry(
-            (
-                shell_spec(
-                    lambda arguments: SubprocessRequest(
-                        (sys.executable, "-c", "import time;time.sleep(5)")
-                    )
-                ),
+
+        def builder(arguments: dict[str, Any]) -> SubprocessRequest:
+            timer = threading.Timer(0.1, token.cancel)
+            timer.daemon = True
+            timer.start()
+            return SubprocessRequest(
+                (sys.executable, "-c", "import time;time.sleep(5)")
             )
-        )
-        result, _ = self.run_runtime(
-            registry,
-            adapter=RestrictedSubprocessAdapter(),
-            policy=policy,
-            cancellation=token,
-        )
+
+        registry = ToolRegistry((read_spec(builder),))
+        client = SequencedClient((tool_message({"value": "x"}),))
+        with tempfile.TemporaryDirectory() as workspace:
+            result = DeepSeekRuntime(client).run(
+                [{"role": "user", "content": "test"}],
+                workspace=Path(workspace),
+                tools=registry,
+                execution_adapter=RestrictedSubprocessAdapter(),
+                cancellation=token,
+            )
 
         content = tool_contents(result)[0]
         self.assertEqual(error_code(content), ErrorCode.CANCELLED.value)
