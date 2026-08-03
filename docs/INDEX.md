@@ -1,8 +1,8 @@
 # DeepSeek Runtime 文档索引
 
-> 适用验证基线：`develop@2fe059d900c4e04fab05ca92f421a41d7ff0aa01`；M2-D closeout PR #21
+> 适用验证基线：`develop@8c097a6348bc45cc40a24635124c3c2c845fed57`；M2-E closed
 > 文档修订：以各文件所在 Git commit 为准
-> 文档状态：Open-source Alpha Hardening；M1、M2-A、M2-B、M2-C、M2-D Closed；M2-E next
+> 文档状态：Open-source Alpha Hardening；M1、M2-A、M2-B、M2-C、M2-D、M2-E Closed；M2-F next
 > 原则：PRD 是产品范围、优先级和验收标准的唯一事实源；架构、测试和路线图均引用 PRD Requirement ID。
 
 ## 核心文档
@@ -35,6 +35,7 @@
 | [M1 P0 三平台报告](testing/m1-p0-report.md) | Linux/macOS/Windows 集成态重复 Gate、失败历史和 artifact |
 | [M2-C ExecutionAdapter 报告](testing/m2-execution-adapter-report.md) | PR #18 最终 head、retained failure、三平台 108/108 与边界 |
 | [M2-D Runtime Lifecycle 报告](testing/m2-runtime-lifecycle-report.md) | PR #20 lifecycle/budget/cancellation、retained failures 与三平台专项证据 |
+| [M2-E Workspace P1 报告](testing/m2-workspace-p1-report.md) | M2-E bounded read/search、UTF-8 截断、搜索预算与三平台专项证据 |
 | [M0 Closeout](roadmap/m0-closeout.md) | M0 Exit Gate、分支政策和异常直推纪律 |
 | [M1 Integrated Closeout](roadmap/m1-closeout.md) | PR #6–#10 合并态复验、M1 Exit Gate 和 M2 准入条件 |
 | [M2-A ToolRegistry Closeout](roadmap/m2-a-closeout.md) | PR #14 合并态、失败/成功证据和 M2-B handoff |
@@ -42,7 +43,9 @@
 | [M2-C ExecutionAdapter Closeout](roadmap/m2-c-closeout.md) | PR #18 合并态、三平台证据、非保证和 M2-D handoff |
 | [M2-D Worklog](roadmap/m2-d-worklog.md) | PR #20 实现范围、blocker closure、exact-head evidence 和 closeout handoff |
 | [M2-D Runtime Lifecycle Closeout](roadmap/m2-d-closeout.md) | PR #20 合并态、最终四套 Gate、artifacts、retained failures 和 M2-E handoff |
-| [开源就绪执行计划](roadmap/open-source-readiness-plan.md) | Contract-first 的 M0–M6 阻断项清零计划；当前 v2.3.3，M2-D closed / M2-E next |
+| [M2-E Workspace P1 Closeout](roadmap/m2-e-closeout.md) | direct push `8c097a6`、五套 Gate、artifacts、retained failures 和 M2-F handoff |
+| [M2-E Worklog](roadmap/m2-e-worklog.md) | M2-E 实现范围、安全边界、合同和测试矩阵 |
+| [开源就绪执行计划](roadmap/open-source-readiness-plan.md) | Contract-first 的 M0–M6 阻断项清零计划；当前 v2.3.4，M2-E closed / M2-F next |
 
 ## 治理与维护
 

@@ -2,7 +2,7 @@
 
 > 面向 DeepSeek API 的本地 Agent Runtime Kernel。
 >
-> **当前阶段：Open-source Alpha Hardening；M1、M2-A、M2-B、M2-C、M2-D 已关闭；当前执行 M2-E Workspace P1；当前发布结论：NO RELEASE。**
+> **当前阶段：Open-source Alpha Hardening；M1、M2-A、M2-B、M2-C、M2-D、M2-E 已关闭；当前执行 M2-F CLI Core；当前发布结论：NO RELEASE。**
 
 [English](README_en.md) | [简体中文](README.md)
 
@@ -10,7 +10,7 @@
 
 直接调用模型 API 并不等于获得一个可靠 Agent。Runtime 需要处理 Provider 协议、工具合同、权限审批、受限执行、资源预算、状态恢复、证据隐私和发布验证。
 
-本仓库已完成 M1 核心合同、Workspace containment、受约束回滚和不确定副作用恢复；M2-A 建立 ToolRegistry 唯一生产工具集合；M2-B 将 PermissionPolicy 与 ApprovalProvider 强制接入 Runtime；M2-C 将 ExecutionAdapter、受限子进程控制和三平台专项 Gate 合入 `develop`。PR #20 已将 Runtime lifecycle、任务预算、Provider-before-call cancellation 与 tool-error policy 合入 `develop`；Provider in-flight cancellation、durable checkpoint、Workspace P1、CLI 协议和发布工程仍未完成。首个公开 Alpha 的范围、优先级和验收标准以 [`docs/product/PRD.md`](docs/product/PRD.md) 为唯一事实源。
+本仓库已完成 M1 核心合同、Workspace containment、受约束回滚和不确定副作用恢复；M2-A 建立 ToolRegistry 唯一生产工具集合；M2-B 将 PermissionPolicy 与 ApprovalProvider 强制接入 Runtime；M2-C 将 ExecutionAdapter、受限子进程控制和三平台专项 Gate 合入 `develop`；M2-D 将 Runtime lifecycle、任务预算、Provider-before-call cancellation 与 tool-error policy 合入 `develop`；M2-E 将 Workspace bounded read/search、UTF-8 截断、结构化 I/O 结果和搜索预算合入 `develop`。Provider in-flight cancellation、durable checkpoint、CLI 协议和发布工程仍未完成。首个公开 Alpha 的范围、优先级和验收标准以 [`docs/product/PRD.md`](docs/product/PRD.md) 为唯一事实源。
 
 ## 当前真实状态
 
@@ -26,7 +26,7 @@
 | Approval durable checkpoint / resume | Partial；M2-D 内存 pending/resolved handoff 已实现，durable store/resume/migration 属 M3 |
 | Complete cancellation | Partial；Provider-before-call 与 tool cancellation 已实现，in-flight Provider transport cancellation 属 M4 |
 | Workspace containment 与 symlink/reparse-point 防护 | Verified for M1 P0 |
-| Workspace read/search budgets | Planned；M2-E |
+| Workspace read/search budgets | Verified for M2-E；direct push `8c097a6`、三平台 12/12 |
 | Checkpoint 与 Evidence | Partial；生产 lifecycle handoff 已实现，durable store/Evidence totality 属 M3 |
 | 副作用恢复 | Verified for M1 P0；不确定非幂等副作用进入人工协调 |
 | 文件变更与回滚 | Verified for M1 P0；opaque handle、durable ChangeJournal、expiry/scope/conflict 已覆盖 |
@@ -60,10 +60,12 @@ M2-D 最终证据：
 - [M2-B Policy/Approval Closeout](docs/roadmap/m2-b-closeout.md)
 - [M2-C ExecutionAdapter Closeout](docs/roadmap/m2-c-closeout.md)
 - [M2-D Runtime Lifecycle Closeout](docs/roadmap/m2-d-closeout.md)
+- [M2-E Workspace P1 Closeout](docs/roadmap/m2-e-closeout.md)
 - [ExecutionAdapter Contract](docs/contracts/execution-adapter.md)
 - [Runtime Lifecycle Contract](docs/contracts/runtime-lifecycle.md)
 - [M2-C ExecutionAdapter Test Report](docs/testing/m2-execution-adapter-report.md)
 - [M2-D Runtime Lifecycle Test Report](docs/testing/m2-runtime-lifecycle-report.md)
+- [M2-E Workspace P1 Test Report](docs/testing/m2-workspace-p1-report.md)
 - [开源就绪执行计划](docs/roadmap/open-source-readiness-plan.md)
 
 ## 当前生产工具调用链
@@ -102,19 +104,18 @@ Provider tool call
 
 完整边界见 [Threat Model](docs/security/threat-model.md) 和 [Security Policy](SECURITY.md)。
 
-## 当前实施切片：M2-D（implementation complete，pending merge/closeout）
+## 当前实施切片：M2-F CLI Core（implementation pending）
 
-M2-D 只扩展现有 `DeepSeekRuntime`，不创建第二套 Agent loop。实现范围包括：
+M2-F 实现 CLI 输出协议：
 
-- 生产状态转换与 lifecycle event；
-- checkpoint handoff；
-- Provider-before-call cancellation 与 tool-during-cancel 最终语义；
-- step/token/cost/context/time budgets；
-- tool error continue/terminate policy；
-- malformed Provider 的结构化 RuntimeResult 边界；
-- M2-D focused Gate。
+- stdout 输出最终回答；
+- `--report` 输出安全证据到独立文件；
+- `--json` 输出机器可读结果；
+- `--unsafe-debug-content` 明文调试开关；
+- exit code 与 error code 对应；
+- workspace 不存在时友好失败。
 
-M2-D 不混入 Workspace P1、CLI 协议、Provider streaming/retry、M3 durable store/Evidence 或发布工程。
+M2-F 不混入 durable checkpoint、Provider streaming/retry、M3 recovery 或发布工程。
 
 ## 开发者快速开始
 

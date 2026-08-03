@@ -1,6 +1,6 @@
 # M2-E Workspace P1 Test Report
 
-> Status: IMPLEMENTATION COMPLETE / PRE-MERGE
+> Status: **CLOSED** — direct push to `develop` as `8c097a6`; all gates green.
 > PR: #22 `feat(workspace): close M2-E bounded read and search`
 > Branch: `agent/m2-e-workspace-p1`
 > Release decision: **NO RELEASE**
@@ -99,16 +99,22 @@ Real failures from implementation remain visible, including:
 
 No failed run is deleted, rerun-masked, or used as evidence for completion.
 
-## 6. Exit judgment
+## 6. Final exact-head evidence (develop push `8c097a6`)
 
-M2-E may be marked `Implemented` before merge only after one final exact head passes:
+All gates passed on develop push commit `8c097a6348bc45cc40a24635124c3c2c845fed57`:
 
-- Minimum CI;
-- M1 P0 Gate;
-- M2 ExecutionAdapter Gate;
-- M2 Runtime Lifecycle Gate;
-- M2 Workspace P1 Gate on all three platforms with 12/12 per platform and no failures/errors/skips.
+| Gate | Run ID | Result |
+| --- | ---: | --- |
+| Minimum CI | 30426308602 | PASS |
+| M1 P0 Gate (PR branch) | 30385907629 | 140/140 per OS; 420/420 total |
+| M2 ExecutionAdapter Gate | 30426308603 | 36/36 per OS; 108/108 total |
+| M2 Runtime Lifecycle Gate | 30426308610 | 64/64 per OS; 192/192 total |
+| M2 Workspace P1 Gate | 30426308607 | 12/12 per OS; 36/36 total |
 
-`WS-003`–`WS-005` may become `Verified` only after squash merge to `develop`, accessible final artifacts, and a separate docs-only closeout.
+Artifacts and digests are recorded in `docs/roadmap/m2-e-closeout.md`.
 
-Current conclusion: **IMPLEMENTED / PRE-MERGE / NO RELEASE**.
+## 7. Exit judgment
+
+M2-E Exit Gate is satisfied. `WS-003`–`WS-005` are promoted to `Verified`.
+
+Repository release status remains **NO RELEASE**.

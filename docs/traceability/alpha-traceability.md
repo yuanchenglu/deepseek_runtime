@@ -1,9 +1,9 @@
 # DeepSeek Runtime Alpha Traceability Matrix
 
-> 版本：2.1
-> 适用验证基线：`develop@2fe059d900c4e04fab05ca92f421a41d7ff0aa01`；M2-D closeout PR #21
+> 版本：2.2
+> 适用验证基线：`develop@8c097a6348bc45cc40a24635124c3c2c845fed57`；M2-E closed
 > 文档修订：以本文件所在 Git commit 为准
-> 作用：`Requirement → Milestone → PR → Test → Evidence` 的唯一追踪表。
+> 作用：`Requirement -> Milestone -> PR -> Test -> Evidence` 的唯一追踪表。
 
 ## 1. 规则
 
@@ -86,6 +86,18 @@
 - Closeout：`docs/roadmap/m2-d-closeout.md`；
 - 发布结论：**NO RELEASE**。
 
+### M2-E 已形成的实际证据
+
+- implementation: direct push `8c097a6348bc45cc40a24635124c3c2c845fed57` to `develop`；
+- final Minimum CI run 30426308602：`success`；
+- M1 P0 Gate run 30385907629 (PR branch)：Linux/macOS/Windows 各 140/140，合计 420/420；
+- M2 ExecutionAdapter Gate run 30426308603：三平台各 36/36，合计 108/108；
+- M2 Runtime Lifecycle Gate run 30426308610：三平台各 64/64，合计 192/192；
+- M2 Workspace P1 Gate run 30426308607：三平台各 12/12，合计 36/36；
+- retained failures：PR branch M2 Workspace P1 Gate runs 30385210948/30385662767/30385584567；Minimum CI 30385661952；M1 P0 30384773280/30384862620；
+- Closeout：`docs/roadmap/m2-e-closeout.md`；
+- 发布结论：**NO RELEASE**。
+
 ## 2. 配置与版本
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
@@ -143,9 +155,9 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | WS-001 | P0 | M1 | Security | PR #7/#13/#18 | TC-WS-001 | run 33；M1 run 111 regression PASS | Verified | 无 M1 blocker |
 | WS-002 | P0 | M1 | Security | PR #7/#13/#18 | TC-WS-002/003 | run 33；M1 run 111 regression PASS | Verified | 同账号恶意并发进程不在承诺范围 |
-| WS-003 | P1 | M2 | Runtime | PR #7 / M2-E PR | TC-WS-004 | UTF-8 boundary CI | Partial | containment 已统一；read byte-limit/UTF-8 截断语义未完成 |
-| WS-004 | P1 | M2 | Runtime | M2-E PR | TC-WS-005 | large-workspace budget CI | Planned | read/search file/byte/time budget 未实现 |
-| WS-005 | P1 | M2 | Runtime | PR #7 / M2-E PR | TC-WS-006 | IO fixture CI | Partial | no-follow traversal 已实现；错误结构仍未统一 |
+| WS-003 | P1 | M2 | Runtime | PR #7 / direct push `8c097a6` | TC-WS-004 | M2-E Gate run 30426308607; 12/12 × 3 OS | Verified | 无 M2-E blocker |
+| WS-004 | P1 | M2 | Runtime | direct push `8c097a6` | TC-WS-005 | M2-E Gate run 30426308607; 12/12 × 3 OS | Verified | 无 M2-E blocker |
+| WS-005 | P1 | M2 | Runtime | PR #7 / direct push `8c097a6` | TC-WS-006 | M2-E Gate run 30426308607; 12/12 × 3 OS | Verified | 无 M2-E blocker |
 
 ## 7. Policy、Approval 与 Execution
 
@@ -264,10 +276,10 @@
 
 ## 15. 当前结论
 
-M0、M1、M2-A、M2-B、M2-C 已关闭。
+M0、M1、M2-A、M2-B、M2-C、M2-D、M2-E 已关闭。
 
-M2-C 通过 PR #18 建立 Adapter 合同、三种 Adapter、Runtime 强制接入、WorkspaceSandbox 迁移、最小环境、cwd containment、timeout、byte output、cancellation handoff、process-tree cleanup 与 execution evidence。最终 Minimum CI run 165、M1 P0 Gate run 111 和 M2 ExecutionAdapter Gate run 15 全绿，专项分母为三平台各 36/36；merge commit 为 `7793a10152a49fb815aac667906080a4e1a39920`。
+M2-E 通过 direct push `8c097a6` 建立了 Workspace bounded read/search、UTF-8 截断、结构化 I/O 结果、搜索预算和三平台专项 Gate。最终 Minimum CI run 30426308602、M1 P0 Gate run 30385907629、M2 ExecutionAdapter Gate run 30426308603、M2 Runtime Lifecycle Gate run 30426308610 和 M2 Workspace P1 Gate run 30426308607 全绿。
 
-M2-D lifecycle/budget/full cancellation、M2-E Workspace P1、M2-F CLI contract 与 M2-G integrated closeout 仍为阻断项。
+M2-F CLI contract 与 M2-G integrated closeout 仍为阻断项。
 
 当前发布结论：**NO RELEASE**。

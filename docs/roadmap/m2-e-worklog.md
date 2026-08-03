@@ -1,6 +1,6 @@
 # M2-E Workspace P1 Worklog
 
-> Status: IMPLEMENTATION COMPLETE / PRE-MERGE
+> Status: **CLOSED** — direct push to `develop` as `8c097a6`; all gates green.
 > Base: `develop@c2d873ef3a1ea8288a145204ea907df5c15d0378`
 > Branch: `agent/m2-e-workspace-p1`
 > PR: #22 `feat(workspace): close M2-E bounded read and search`

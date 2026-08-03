@@ -1,12 +1,10 @@
 # DeepSeek Runtime 开源就绪执行计划
 
-> 计划版本：2.3.3  
-> 状态日期：2026-07-29  
-> 计划状态：**Execution in progress — M0/M1/M2-A/M2-B/M2-C/M2-D closed; M2-E Workspace P1 next**  
-> 已合入开发基线：`develop@2fe059d900c4e04fab05ca92f421a41d7ff0aa01`  
-> 当前远程工作分支：`agent/m2-d-closeout`  
-> 当前工作入口：PR #21 `docs(readiness): close M2-D runtime lifecycle milestone`；merge 后立即创建 M2-E implementation PR  
-> 当前 PR head：必须从 GitHub 动态获取  
+> 计划版本：2.3.4  
+> 状态日期：2026-08-03  
+> 计划状态：**Execution in progress - M0/M1/M2-A/M2-B/M2-C/M2-D/M2-E closed; M2-F CLI Core next**  
+> 已合入开发基线：`develop@8c097a6348bc45cc40a24635124c3c2c845fed57`  
+> 当前工作入口：M2-F CLI Core implementation  
 > 全计划自主执行提示词：`docs/roadmap/full-plan-autonomous-handoff.md`  
 > 发布分支：`master`  
 > 发布结论：**NO RELEASE**
@@ -36,8 +34,8 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 | M2-B Policy 与 Approval | **CLOSED** | Runtime tool call 强制经过 Policy/Approval | PR #16、runs 129/77、PR #17 |
 | M2-C ExecutionAdapter | **CLOSED** | 统一 Adapter、进程资源控制和三平台专项 Gate 已合入 | PR #18、runs 165/111/15、PR #19 |
 | M2-D Runtime Lifecycle、Budget、Cancellation | **CLOSED** | exact-head 四套 Gate 全绿；implementation merge `2fe059d9`；closeout PR #21 | PR #20/#21、runs 229/173/79/44 |
-| M2-E Workspace P1 | **NEXT** | read/search byte/file/time 与结构化 I/O 未完成 | `WS-003`–`005` |
-| M2-F CLI 核心 | **NOT STARTED** | stdout/report/json/exit-code 协议未完成 | `CLI-001`–`006` |
+| M2-E Workspace P1 | **CLOSED** | bounded read/search、UTF-8 截断、结构化 I/O、搜索预算已合入 | direct push `8c097a6`、runs 30426308602/30385907629/30426308603/30426308610/30426308607 |
+| M2-F CLI 核心 | **NEXT** | stdout/report/json/exit-code 协议未完成 | `CLI-001`–`006` |
 | M2-G Integrated Closeout | **NOT STARTED** | M2 全部 P1 尚未综合验收 | Traceability |
 | M3 Recovery、Change、Evidence、Observability | **NOT STARTED** | durable recovery/evidence gate 未建立 | Traceability |
 | M4 Provider、配置与协议收口 | **NOT STARTED** | Provider normalization/streaming/config 未完成 | Traceability |
@@ -47,9 +45,9 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 ### 3.1 进度判断
 
 - 基线、治理和 P0 安全合同已完成；
-- M2 Runtime/Tool/Security 主链中 A/B/C/D 已关闭，E 为当前唯一合法下一切片，F/G 未开始；
+- M2 Runtime/Tool/Security 主链中 A/B/C/D/E 已关闭，F 为当前唯一合法下一切片，G 未开始；
 - M3 durable recovery/evidence、M4 Provider、M5 packaging/release matrix、M6 RC 仍是主要未完成工作；
-- 当前整体 Alpha 发布就绪度约为 **35%–40%**，仅用于资源规划，不替代 Requirement/Test/Evidence Gate；
+- 当前整体 Alpha 发布就绪度约为 **40%–45%**，仅用于资源规划，不替代 Requirement/Test/Evidence Gate；
 - 当前必须保持 **NO RELEASE**。
 
 ## 4. 已关闭阶段
@@ -144,14 +142,13 @@ Provider tool call
 ## 6. 后续执行顺序
 
 ```text
-M2-D closeout
-→ M2-E Workspace P1
-→ M2-F CLI 核心
-→ M2-G Integrated Closeout
-→ M3 Recovery / Change / Evidence / Observability
-→ M4 Provider / Config / Protocol
-→ M5 CI Matrix / Packaging / Governance
-→ M6 RC / Alpha Release Gate
+M2-E closeout
+-> M2-F CLI 核心
+-> M2-G Integrated Closeout
+-> M3 Recovery / Change / Evidence / Observability
+-> M4 Provider / Config / Protocol
+-> M5 CI Matrix / Packaging / Governance
+-> M6 RC / Alpha Release Gate
 ```
 
 完整自主执行规则见：

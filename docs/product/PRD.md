@@ -1,8 +1,8 @@
 # DeepSeek Runtime 产品需求文档（PRD）
 
-> 文档版本：1.5
+> 文档版本：1.6
 > 产品阶段：Open-source Alpha Hardening
-> 适用验证基线：`develop@2fe059d900c4e04fab05ca92f421a41d7ff0aa01`；M2-D closeout PR #21
+> 适用验证基线：`develop@8c097a6348bc45cc40a24635124c3c2c845fed57`；M2-E closed
 > 文档修订：以本文件所在 Git commit 为准
 > 唯一目标：以最少新增功能，把项目做到可以真实、可信、可持续地开源。
 
@@ -21,7 +21,7 @@
 
 直接调用 DeepSeek API 不能自动解决 Agent 产品所需的工具治理、状态恢复、文件变更、证据隐私、成本控制和发布验证。
 
-当前仓库已在 `develop` 合入 ToolRegistry、Policy/Approval、ExecutionAdapter，以及 M2-D Runtime lifecycle、任务预算、Provider-before-call cancellation 与 tool-error policy。Workspace P1、durable recovery、Provider 协议、CLI 和发布工程仍未闭环。
+当前仓库已在 `develop` 合入 ToolRegistry、Policy/Approval、ExecutionAdapter，M2-D Runtime lifecycle、任务预算、Provider-before-call cancellation 与 tool-error policy，以及 M2-E Workspace bounded read/search。durable recovery、Provider 协议、CLI 协议和发布工程仍未闭环。
 
 ## 2. 产品目标
 
@@ -157,9 +157,9 @@
 | --- | --- | --- | --- | --- |
 | WS-001 | P0 | read_file 不能越出工作区 | traversal/symlink tests | Verified |
 | WS-002 | P0 | search 不能跟随外部 symlink/reparse point | adversarial tests | Verified |
-| WS-003 | P1 | read_file 有字节上限且标注截断 | UTF-8/大文件测试 | Partial |
-| WS-004 | P1 | search 有文件数、字节和时间预算 | 大仓库 fixture | Planned |
-| WS-005 | P1 | 二进制、权限和 IO 错误结构化返回 | fixtures | Partial |
+| WS-003 | P1 | read_file 有字节上限且标注截断 | UTF-8/大文件测试 | Verified |
+| WS-004 | P1 | search 有文件数、字节和时间预算 | 大仓库 fixture | Verified |
+| WS-005 | P1 | 二进制、权限和 IO 错误结构化返回 | fixtures | Verified |
 | WS-006 | P2 | `.git`、runtime state 和用户 exclude 可配置 | config tests | Partial |
 
 ### 6.6 Policy、Approval 与 Execution Adapter
@@ -359,4 +359,4 @@ stderr: 进度/警告（可关闭）
 - M5：完整 CI、Packaging、治理和 Release Engineering；
 - M6：Release Candidate、独立验证与 Alpha 发布。
 
-M0、M1、M2-A、M2-B、M2-C 已关闭；M2-D Runtime Lifecycle、Budget、Cancellation 为下一执行切片。具体执行顺序见 `docs/roadmap/open-source-readiness-plan.md`。
+M0、M1、M2-A、M2-B、M2-C、M2-D、M2-E 已关闭；M2-F CLI Core 为下一执行切片。具体执行顺序见 `docs/roadmap/open-source-readiness-plan.md`。
