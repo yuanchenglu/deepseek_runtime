@@ -1,7 +1,7 @@
 # DeepSeek Runtime Alpha Traceability Matrix
 
-> 版本：2.2
-> 适用验证基线：`develop@8c097a6348bc45cc40a24635124c3c2c845fed57`；M2-E closed
+> 版本：2.3
+> 适用验证基线：`develop@432db3e`；M2-F closed
 > 文档修订：以本文件所在 Git commit 为准
 > 作用：`Requirement -> Milestone -> PR -> Test -> Evidence` 的唯一追踪表。
 
@@ -96,6 +96,17 @@
 - M2 Workspace P1 Gate run 30426308607：三平台各 12/12，合计 36/36；
 - retained failures：PR branch M2 Workspace P1 Gate runs 30385210948/30385662767/30385584567；Minimum CI 30385661952；M1 P0 30384773280/30384862620；
 - Closeout：`docs/roadmap/m2-e-closeout.md`；
+- 发布结论：**NO RELEASE**。
+
+### M2-F 已形成的实际证据
+
+- implementation: direct push `432db3e` to `develop`；
+- final Minimum CI run 30792953108：`success`；
+- M2 ExecutionAdapter Gate run 30792953145：三平台各 36/36，合计 108/108；
+- M2 Runtime Lifecycle Gate run 30792953114：三平台各 64/64，合计 192/192；
+- M2 Workspace P1 Gate run 30792953127：三平台各 12/12，合计 36/36；
+- 本地 165 pass / 1 skip；
+- Closeout：`docs/roadmap/m2-f-closeout.md`；
 - 发布结论：**NO RELEASE**。
 
 ## 2. 配置与版本
@@ -232,12 +243,12 @@
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CLI-001 | P1 | M2/M4 | Runtime | PR #10 / M2-F PR | TC-CLI-001 | subprocess CI | Implemented | 需保持无 Key |
-| CLI-002 | P1 | M2/M4 | Runtime | M2-F PR | TC-CLI-002 | golden/subprocess CI | Blocked | 默认仅摘要 |
-| CLI-003 | P1 | M2/M4 | Runtime | M2-F PR | TC-CLI-003 | stdout/report separation CI | Planned | 独立 report 缺失 |
-| CLI-004 | P1 | M2/M4 | Security | PR #18 / M2-F PR | TC-CLI-004 | Adapter warning docs；help/golden pending | Partial | CLI help/unsafe adapter UX 待 M2-F |
-| CLI-005 | P1 | M2/M4 | Runtime | M2-F PR | TC-CLI-005 | exit-code matrix CI | Partial | 具体映射未实现 |
-| CLI-006 | P1 | M2/M4 | Runtime | M2-F PR | TC-CLI-006 | workspace error CI | Partial | 错误 UX 不统一 |
+| CLI-001 | P1 | M2/M4 | Runtime | PR #10 / direct push `432db3e` | TC-CLI-001 | run 30792953108 | Verified | 需保持无 Key |
+| CLI-002 | P1 | M2/M4 | Runtime | direct push `432db3e` | TC-CLI-002 | test_cli_core 8 tests | Verified | 无 M2-F blocker |
+| CLI-003 | P1 | M2/M4 | Runtime | direct push `432db3e` | TC-CLI-003 | test_cli_core report tests | Verified | 无 M2-F blocker |
+| CLI-004 | P1 | M2/M4 | Security | PR #18 / direct push `432db3e` | TC-CLI-004 | test_cli_core unsafe-debug test | Verified | 无 M2-F blocker |
+| CLI-005 | P1 | M2/M4 | Runtime | direct push `432db3e` | TC-CLI-005 | test_cli_core exit-code tests | Verified | 无 M2-F blocker |
+| CLI-006 | P1 | M2/M4 | Runtime | direct push `432db3e` | TC-CLI-006 | test_cli_core workspace-error tests | Verified | 无 M2-F blocker |
 | DOC-001 | P1 | M4 | Release | PR #10 / M4 Docs PR | TC-DOC-001 | doctor semantics CI | Partial | 诊断/在线可运行混淆 |
 
 ## 13. 开源与发布
@@ -276,10 +287,10 @@
 
 ## 15. 当前结论
 
-M0、M1、M2-A、M2-B、M2-C、M2-D、M2-E 已关闭。
+M0、M1、M2-A、M2-B、M2-C、M2-D、M2-E、M2-F 已关闭。
 
-M2-E 通过 direct push `8c097a6` 建立了 Workspace bounded read/search、UTF-8 截断、结构化 I/O 结果、搜索预算和三平台专项 Gate。最终 Minimum CI run 30426308602、M1 P0 Gate run 30385907629、M2 ExecutionAdapter Gate run 30426308603、M2 Runtime Lifecycle Gate run 30426308610 和 M2 Workspace P1 Gate run 30426308607 全绿。
+M2-F 通过 direct push `432db3e` 建立了 CLI 输出协议：默认 stdout 输出最终回答、--report 安全证据文件、--json 机器可读结果、--unsafe-debug-content 显式开关、exit code 矩阵和 workspace 友好错误。最终 Minimum CI、M2 ExecutionAdapter Gate、M2 Runtime Lifecycle Gate 和 M2 Workspace P1 Gate 全绿。
 
-M2-F CLI contract 与 M2-G integrated closeout 仍为阻断项。
+M2-G integrated closeout 仍为阻断项。
 
 当前发布结论：**NO RELEASE**。

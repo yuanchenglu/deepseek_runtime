@@ -1,8 +1,8 @@
 # DeepSeek Runtime 产品需求文档（PRD）
 
-> 文档版本：1.6
+> 文档版本：1.7
 > 产品阶段：Open-source Alpha Hardening
-> 适用验证基线：`develop@8c097a6348bc45cc40a24635124c3c2c845fed57`；M2-E closed
+> 适用验证基线：`develop@432db3e`；M2-F closed
 > 文档修订：以本文件所在 Git commit 为准
 > 唯一目标：以最少新增功能，把项目做到可以真实、可信、可持续地开源。
 
@@ -21,7 +21,7 @@
 
 直接调用 DeepSeek API 不能自动解决 Agent 产品所需的工具治理、状态恢复、文件变更、证据隐私、成本控制和发布验证。
 
-当前仓库已在 `develop` 合入 ToolRegistry、Policy/Approval、ExecutionAdapter，M2-D Runtime lifecycle、任务预算、Provider-before-call cancellation 与 tool-error policy，以及 M2-E Workspace bounded read/search。durable recovery、Provider 协议、CLI 协议和发布工程仍未闭环。
+当前仓库已在 `develop` 合入 ToolRegistry、Policy/Approval、ExecutionAdapter，M2-D Runtime lifecycle、任务预算、Provider-before-call cancellation 与 tool-error policy，M2-E Workspace bounded read/search，以及 M2-F CLI 输出协议。durable recovery、Provider 协议和发布工程仍未闭环。
 
 ## 2. 产品目标
 
@@ -239,12 +239,12 @@
 
 | ID | P | 需求 | 验收标准 | 当前 |
 | --- | --- | --- | --- | --- |
-| CLI-001 | P1 | `doctor --json` 无 Key 可运行 | subprocess test | Implemented |
-| CLI-002 | P1 | `run` 默认输出最终回答 | golden test | Blocked |
-| CLI-003 | P1 | safe report 可用独立 `--report` 输出 | file/stdout test | Planned |
-| CLI-004 | P1 | debug 明文需要明显危险开关 | help/golden test | Partial |
-| CLI-005 | P1 | 退出码与 error code 对应 | subprocess matrix | Partial |
-| CLI-006 | P1 | workspace 不存在时友好失败 | test | Partial |
+| CLI-001 | P1 | `doctor --json` 无 Key 可运行 | subprocess test | Verified |
+| CLI-002 | P1 | `run` 默认输出最终回答 | golden test | Verified |
+| CLI-003 | P1 | safe report 可用独立 `--report` 输出 | file/stdout test | Verified |
+| CLI-004 | P1 | debug 明文需要明显危险开关 | help/golden test | Verified |
+| CLI-005 | P1 | 退出码与 error code 对应 | subprocess matrix | Verified |
+| CLI-006 | P1 | workspace 不存在时友好失败 | test | Verified |
 | CLI-007 | P2 | 支持 resume session id | end-to-end test | Planned |
 | DOC-001 | P1 | doctor 区分“诊断成功”和“可在线运行” | report semantics test | Partial |
 
