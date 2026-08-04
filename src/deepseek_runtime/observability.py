@@ -188,6 +188,11 @@ def _estimated_cost(
         0,
     ) or 0
     output = _first_int(usage.get("completion_tokens"), usage.get("output_tokens"), 0) or 0
+    # OBS-004：当无 cache 拆分但有 prompt_tokens 时，输入成本不漏算
+    if hit == 0 and miss == 0:
+        prompt = _first_int(usage.get("prompt_tokens"), usage.get("input_tokens"), 0) or 0
+        if prompt > 0:
+            miss = prompt
     total = (
         hit * float(model_prices["cache_hit_input"])
         + miss * float(model_prices["cache_miss_input"])

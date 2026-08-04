@@ -157,6 +157,19 @@ class ObservabilityM3Tests(unittest.TestCase):
         cost = _estimated_cost({}, {}, None, {}, None)
         self.assertIsNone(cost)
 
+    def test_prompt_tokens_fallback_covers_input_cost(self) -> None:
+        """OBS-004：无 cache 拆分但有 prompt_tokens 时输入成本不漏算。"""
+        cost = _estimated_cost(
+            {"prompt_tokens": 200, "completion_tokens": 50},
+            {},
+            "m",
+            self._pricing(),
+            None,
+        )
+        self.assertIsNotNone(cost)
+        # miss=200 (prompt fallback) * 2.0 + output=50 * 3.0 = 550 / 1e6
+        self.assertAlmostEqual(cost, 550 / 1_000_000)  # type: ignore[arg-type]
+
     def test_summary_denominator_uses_known_values_only(self) -> None:
         """OBS-006：success/first-completion 分母只使用已知值。"""
         data = {

@@ -268,7 +268,7 @@
 | OBS-001 | P1 | M3 | Runtime | PR #18 / M3 Observability PR | observability latency metadata| Adapter duration metadata | Verified| 统计聚合含 elapsed；完整 lifecycle latency 属 M4|
 | OBS-002 | P1 | M3 | Runtime | M3 Observability PR | observability usage/cache/cost| usage/cost fixture CI | Verified| 无 M3 blocker|
 | OBS-003 | P1 | M2/M3 | Runtime | PR #20/#21 / M3 Observability PR | TC-OBS-002 | run 44 unknown usage/cost PASS | Verified | M3 metrics aggregation 为独立 Requirement 范围 |
-| OBS-004 | P1 | M3 | Runtime | M3 Observability PR | TC-OBS-003 | prompt-token fixture CI | Blocked | 输入成本漏算 |
+| OBS-004 | P1 | M3 | Runtime | M3 Observability PR | test_evidence_observability_m3.py prompt fallback| prompt-token fixture CI | Verified| prompt_tokens fallback 覆盖输入成本|
 | OBS-005 | P1 | M3 | Runtime | M3 Observability PR | test_evidence_observability_m3.py invalid-num| validation CI | Verified| 拒绝 NaN/inf/负 cost|
 | OBS-006 | P1 | M3 | Runtime | M3 Observability PR | test_evidence_observability_m3.py denominator| partial-data CI | Verified| 分母只含已知值|
 | OBS-007 | P1 | M2/M3 | Runtime | PR #20/#21 / M3 Observability PR | TC-OBS-006 | run 44 budget-stop integration PASS | Verified | M3 仅扩展观测聚合 |
