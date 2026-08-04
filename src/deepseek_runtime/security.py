@@ -28,6 +28,7 @@ import math
 import os
 import stat
 import tempfile  # 临时文件
+import threading
 import time
 import uuid  # 唯一 ID
 from collections.abc import Mapping
@@ -348,6 +349,8 @@ class ChangeManager:
         self.journal_store = journal_store or ChangeJournalStore(clock=clock)
         self.journal_store.cleanup_expired()
         self.audit_events: list[dict[str, object]] = []
+        # CHG-004：进程内串行化 apply/rollback，避免并发同路径竞争
+        self._lock = threading.RLock()
 
     @staticmethod
     def _contract_error(code: ErrorCode, message: str, **details: object) -> ContractViolation:
@@ -401,15 +404,30 @@ class ChangeManager:
             with os.fdopen(fd, "wb") as handle:
                 handle.write(content)
                 handle.flush()
-                os.fsync(handle.fileno())
+                os.fsync(handle.fileno())  # CHG-007：先 fsync 文件数据
             self.replace(temp, path)
             if mode is not None:
                 try:
                     path.chmod(mode)
                 except OSError:
                     pass
+            self._fsync_directory(path.parent)  # CHG-007：再 fsync 父目录，保证目录项持久化
         finally:
             temp.unlink(missing_ok=True)
+
+    @staticmethod
+    def _fsync_directory(directory: Path) -> None:
+        """fsync 目录，确保 rename 后的目录项持久化（crash-during-restore 防护）。"""
+        if os.name == "nt":
+            return
+        try:
+            descriptor = os.open(directory, os.O_RDONLY)
+        except OSError:
+            return
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
 
     def _restore_originals(self, originals: dict[Path, tuple[bytes | None, int | None]]) -> None:
         for path, (content, mode) in originals.items():
@@ -420,6 +438,22 @@ class ChangeManager:
 
     def apply(self, change_set: ChangeSet) -> RollbackHandle:
         """Persist private recovery state before applying a validated change set."""
+        with self._lock:
+            return self._apply_locked(change_set)
+
+    def _apply_locked(self, change_set: ChangeSet) -> RollbackHandle:
+        # CHG-003：拒绝同一 change_set 内重复路径（避免不确定的覆盖顺序）
+        seen: set[str] = set()
+        for change in change_set.changes:
+            resolved = self.sandbox.resolve(change.path)
+            relative = self.sandbox.relative(resolved)
+            if relative in seen:
+                raise self._contract_error(
+                    ErrorCode.CHANGE_CONFLICT,
+                    "duplicate path in change set",
+                    path=relative,
+                )
+            seen.add(relative)
         validated = [(*self._validate(change), change) for change in change_set.changes]
         handle = RollbackHandle.issue()
         now = int(self.clock())
@@ -485,6 +519,10 @@ class ChangeManager:
 
     def rollback(self, handle: RollbackHandle) -> None:
         """Resolve an opaque handle and restore only its protected journal entry."""
+        with self._lock:
+            return self._rollback_locked(handle)
+
+    def _rollback_locked(self, handle: RollbackHandle) -> None:
         try:
             entry = self.journal_store.load(handle)
         except ContractViolation:
