@@ -64,6 +64,17 @@ def _load(path: Path) -> dict[str, Any]:
     return value
 
 
+def _sha256(path: Path) -> str:
+    """OSS-007：重算文件 SHA-256（用于 tamper 检测）。"""
+    import hashlib
+
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 # ❓ _check 辅助函数在做什么？
 # 💡 创建一个标准的审计检查项字典，包含三个字段：
 #    - name: 检查名称（如 "release_drill_success"）
@@ -133,7 +144,29 @@ def audit(release_drill_result: Path, live_smoke_result: Path, manifest: Path | 
         #    3. 每个构件都是字典
         #    4. 每个构件的 sha256 字段是长度为 64 的字符串（SHA-256 十六进制表示）
         sha_ok = isinstance(artifacts, list) and bool(artifacts) and all(isinstance(item, dict) and len(str(item.get("sha256", ""))) == 64 for item in artifacts)
+        # OSS-007：重算构件 digest 并在实际文件存在时比对（tamper 检测）
+        tamper_ok = True
+        tamper_failures: list[str] = []
+        if isinstance(artifacts, list):
+            for item in artifacts:
+                if not isinstance(item, dict):
+                    tamper_ok = False
+                    tamper_failures.append("non-dict artifact")
+                    continue
+                recorded = str(item.get("sha256", ""))
+                path = str(item.get("path", ""))
+                if not path or not Path(path).is_file():
+                    tamper_ok = False
+                    tamper_failures.append(f"missing artifact: {path}")
+                    continue
+                recomputed = _sha256(Path(path))
+                if recomputed != recorded:
+                    tamper_ok = False
+                    tamper_failures.append(
+                        f"digest mismatch for {path}: recorded={recorded[:12]}... recomputed={recomputed[:12]}..."
+                    )
         checks.append(_check("release_manifest_sha256", sha_ok, {"path": str(manifest), "artifact_count": len(artifacts) if isinstance(artifacts, list) else 0}))
+        checks.append(_check("artifact_digest_verified", tamper_ok, {"failures": tamper_failures}))
     # ❓ 返回完整的审计报告
     # 💡 - schema_version: 数据格式版本号 "1.0"
     #    - created_at: 执行时间戳（UTC）

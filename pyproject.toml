@@ -20,3 +20,13 @@ deepseek-runtime = "deepseek_runtime.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.coverage.run]
+source = ["deepseek_runtime"]
+branch = true
+omit = ["*/tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+precision = 0

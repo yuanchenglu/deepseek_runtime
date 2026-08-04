@@ -302,7 +302,15 @@ class CliAndScriptsTests(unittest.TestCase):
             #    所有这些检查都通过，说明安全脱敏机制有效。
             #    论文参考 A1: Agent Harness Survey — 泄漏检查是 Agent 安全审计的核心环节。
 
-            manifest.write_text(json.dumps({"artifacts": [{"sha256": "a" * 64}]}), encoding="utf-8")
+            # 真实 artifact 文件，供 tamper 检测重算 digest
+            artifact = out / "artifact.tar.gz"
+            artifact.write_bytes(b"release content")
+            import hashlib
+            real_digest = hashlib.sha256(b"release content").hexdigest()
+            manifest.write_text(
+                json.dumps({"artifacts": [{"path": str(artifact), "sha256": real_digest}]}),
+                encoding="utf-8",
+            )
             # ❓ 问：manifest.json 写了什么？
             # 💡 答：写入一个模拟的构建清单，包含一个构建产物（artifact），
             #    其 SHA256 校验值为 64 个 "a"（在真实场景中是一个真正的 64 位十六进制哈希值）。
