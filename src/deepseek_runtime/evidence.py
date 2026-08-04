@@ -151,21 +151,35 @@ def response_evidence(body: dict[str, Any]) -> dict[str, Any]:
           - content_sha256（内容的 SHA-256 指纹，而不是内容本身！）
           - content_bytes（内容的字节大小）
           - has_reasoning_content（是否包含思考过程——只记"有无"，不记内容）
-       
+
        这种设计哲学来自 llm-harness-agent 的"Reasoning-content hygiene"：
        「你可以证明 thinking 环节发生过，但你不必（也不应该）记录 thinking 的内容。」
     """
+    if not isinstance(body, dict):
+        # EVD-003：total function，任意输入不抛异常
+        return {"top_level_fields": [], "choices": []}
     # 准备一个空列表，用来装每个 choice（候选答案）的证据
     choices = []
 
     # 遍历 response body 中的 choices 数组
-    for choice in body.get("choices", []):
+    raw_choices = body.get("choices")
+    choices_iter = raw_choices if isinstance(raw_choices, list) else []
+    for choice in choices_iter:
+        if not isinstance(choice, dict):
+            continue
         # 从 choice 中提取 message（回复消息），确保它是字典
-        message = choice.get("message", {}) if isinstance(choice, dict) else {}
+        message = choice.get("message", {}) if isinstance(choice.get("message"), dict) else {}
         # 获取消息的 content（文本内容）
         content = message.get("content")
         # 把 content 转成 wire 字节（用于计算指纹和大小）
         content_bytes = wire_json(content) if content is not None else b""
+        # 模型想调用哪些工具的名字（EVD-003：非 list 输入安全）
+        raw_tool_calls = message.get("tool_calls")
+        tool_names = (
+            [call.get("function", {}).get("name") for call in raw_tool_calls if isinstance(call, dict)]
+            if isinstance(raw_tool_calls, list)
+            else []
+        )
 
         # 把当前 choice 的结构证据添加到列表中
         choices.append(
@@ -175,10 +189,7 @@ def response_evidence(body: dict[str, Any]) -> dict[str, Any]:
                 # message 里有哪些字段（按字母排序，方便对比）
                 "message_fields": sorted(message),
                 # 模型想调用哪些工具的名字
-                "tool_names": [
-                    call.get("function", {}).get("name")
-                    for call in message.get("tool_calls") or []
-                ],
+                "tool_names": tool_names,
                 # 有没有真正的内容文本？（True/False）
                 "has_content": bool(message.get("content")),
                 # 内容的 SHA-256 指纹（不是内容本身！）
@@ -222,15 +233,33 @@ def request_evidence(payload: dict[str, Any]) -> dict[str, Any]:
        这对应 llm-harness-agent 理论中 Harness 的"执行循环"（Execution Loop）组件
        ——你需要记录循环的每一步输入和输出，才能追溯问题。
     """
+    if not isinstance(payload, dict):
+        # EVD-003：total function，任意输入不抛异常
+        return {"top_level_fields": [], "model": None, "messages": [], "tool_names": [], "thinking": None, "reasoning_effort": None, "stream": False}
     # 准备一个空列表，存储每条消息的结构摘要
     messages = []
 
     # 遍历 payload（请求体）中的 messages 数组
-    for message in payload.get("messages", []):
+    raw_messages = payload.get("messages")
+    messages_iter = raw_messages if isinstance(raw_messages, list) else []
+    for message in messages_iter:
+        if not isinstance(message, dict):
+            continue
         # 获取消息的内容
         content = message.get("content")
         # 转成字节（用于哈希和大小计算）
         content_bytes = wire_json(content) if content is not None else b""
+        # 如果是 AI 回复，它想调用哪些工具（EVD-003：非 list 输入安全）
+        raw_req_tool_calls = message.get("tool_calls")
+        req_tool_names = (
+            [
+                call.get("function", {}).get("name")
+                for call in raw_req_tool_calls
+                if isinstance(call, dict) and isinstance(call.get("function"), dict)
+            ]
+            if isinstance(raw_req_tool_calls, list)
+            else []
+        )
 
         # 为每条消息建立结构摘要
         messages.append(
@@ -246,14 +275,22 @@ def request_evidence(payload: dict[str, Any]) -> dict[str, Any]:
                 # 是否包含 reasoning_content（思考过程）
                 "has_reasoning_content": bool(message.get("reasoning_content")),
                 # 如果是 AI 回复，它想调用哪些工具
-                "tool_names": [
-                    call.get("function", {}).get("name")
-                    for call in message.get("tool_calls") or []
-                ],
+                "tool_names": req_tool_names,
             }
         )
 
     # 返回完整的请求结构摘要
+    # 请求中定义的工具名称列表（EVD-003：非 list 输入安全）
+    raw_req_tools = payload.get("tools")
+    req_tool_names = (
+        [
+            tool.get("function", {}).get("name")
+            for tool in raw_req_tools
+            if isinstance(tool, dict) and isinstance(tool.get("function"), dict)
+        ]
+        if isinstance(raw_req_tools, list)
+        else []
+    )
     return {
         # 请求体顶层有哪些字段
         "top_level_fields": sorted(payload),
@@ -262,10 +299,7 @@ def request_evidence(payload: dict[str, Any]) -> dict[str, Any]:
         # 每条消息的结构摘要
         "messages": messages,
         # 请求中定义的工具名称列表
-        "tool_names": [
-            tool.get("function", {}).get("name")
-            for tool in payload.get("tools") or []
-        ],
+        "tool_names": req_tool_names,
         # 是否启用了 thinking 模式
         "thinking": payload.get("thinking"),
         # 推理强度（effort）级别

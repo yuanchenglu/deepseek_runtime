@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Iterable
@@ -69,11 +70,17 @@ def _int_or_none(value: Any) -> int | None:
 
 
 def _float_or_none(value: Any) -> float | None:
-    """把值安全转成浮点数"""
+    """把值安全转成浮点数（OBS-005：拒绝 NaN/inf/负数）"""
     if isinstance(value, bool):
         return None
     if isinstance(value, (int, float)):
-        return float(value)
+        try:
+            parsed = float(value)
+        except (ValueError, OverflowError):
+            return None
+        if not math.isfinite(parsed) or parsed < 0:
+            return None
+        return parsed
     return None
 
 
