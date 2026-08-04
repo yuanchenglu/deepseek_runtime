@@ -38,8 +38,8 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 | M2-F CLI 核心 | **CLOSED** | stdout/report/json/exit-code 协议已合入 | direct push `432db3e`、runs 30792953108/53145/53114/53127 |
 | M2-G Integrated Closeout | **CLOSED** | M2 全部 P1 综合验收通过，未关闭项真实转移 M3/M4 | `m2-g-closeout.md`、本地 Gate 35/36/64/12 |
 | M3 Recovery、Change、Evidence、Observability | **CLOSED** | ChangeManager 鲁棒性、SessionStore 加密/迁移、Evidence total-function、Observability 非法值拒绝 | `m3-closeout.md`、189 pass；SES-002/006/008、OBS-004 -> M4 |
-| M4 Provider、配置与协议收口 | **NEXT** | Provider normalization/streaming/config 未完成 | Traceability |
-| M5 完整 CI、Packaging 与治理 | **NOT STARTED** | 完整矩阵、构件和发布验证未建立 | Traceability |
+| M4 Provider、配置与协议收口 | **CLOSED** | retry/backoff、size limit、malformed 分类、增量 SSE parser、config 校验 | `m4-closeout.md`、206 pass；CFG-001/002/003、PROV-007、DOC-001 -> M5 |
+| M5 完整 CI、Packaging 与治理 | **NEXT** | 完整矩阵、构件和发布验证未建立 | Traceability |
 | M6 RC 与 Alpha 发布 | **NOT STARTED** | 尚未进入 RC；不得合入 `master` 或打发布 tag | Release Gate |
 
 ### 3.1 进度判断
@@ -158,8 +158,7 @@ Provider tool call
 ## 6. 后续执行顺序
 
 ```text
-M3 closeout
--> M4 Provider / Config / Protocol
+M4 closeout
 -> M5 CI Matrix / Packaging / Governance
 -> M6 RC / Alpha Release Gate
 ```

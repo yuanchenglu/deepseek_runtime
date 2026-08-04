@@ -1,7 +1,7 @@
 # DeepSeek Runtime Alpha Traceability Matrix
 
-> 版本：2.4
-> 适用验证基线：`develop@405e33c`；M3 closed
+> 版本：2.5
+> 适用验证基线：`develop@6efd24b`；M4 closed
 > 文档修订：以本文件所在 Git commit 为准
 > 作用：`Requirement -> Milestone -> PR -> Test -> Evidence` 的唯一追踪表。
 
@@ -121,6 +121,17 @@
 - 未关闭项转移：SES-002/006/008、OBS-004 -> M4；
 - 发布结论：**NO RELEASE**。
 
+### M4 已形成的实际证据
+
+- implementation: `2413756`（retry/limit）、`6efd24b`（malformed/SSE）push 到 `develop`；
+- Provider：PROV-005 retry/backoff、PROV-006 size limit、PROV-008 增量 SSE parser、PROV-009 stream consumer（`test_provider_m4.py` 8 + `test_streaming_m4.py` 6）；
+- Malformed：PROV-002/003/004 arbitrary root + 分类（`test_provider_malformed_m4.py` 3）；
+- Config：CFG-004/005 settings 校验 + from_env（`test_provider_m4.py`）；
+- 本地 206 pass / 1 skip；
+- Closeout：`docs/roadmap/m4-closeout.md`；
+- 未关闭项转移：CFG-001/002/003、PROV-007、DOC-001 -> M5；RUN-006 保持；
+- 发布结论：**NO RELEASE**。
+
 ## 2. 配置与版本
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
@@ -128,22 +139,22 @@
 | CFG-001 | P1 | M4/M5 | Release | M4 Config PR / M5 Release PR | TC-CFG-001 | 3 Python × 3 OS CI matrix | Partial | M1/M2 专项仅覆盖 Python 3.11；完整版本矩阵未建立 |
 | CFG-002 | P1 | M4/M5 | Release | M4 Config PR / M5 Release PR | TC-CFG-002 | version consistency CI + release manifest | Blocked | 多版本源 |
 | CFG-003 | P1 | M4 | Security | M4 Config PR | TC-CFG-003 | secret marker subprocess logs | Partial | Adapter 子进程面已覆盖；CLI/Provider/构件输出面未完全覆盖 |
-| CFG-004 | P1 | M4 | Runtime | M4 Config PR | TC-CFG-004 | config validation unit CI | Planned | 配置 schema 未冻结 |
-| CFG-005 | P1 | M4 | Security | M4 Config PR | TC-CFG-005 | isolated env unit CI | Blocked | RuntimeSettings 仍存在 `env or os.environ` 语义 |
+| CFG-004 | P1 | M4 | Runtime | M4 Config PR | test_provider_m4.py settings validate| config validation unit CI | Verified| 无 M4 blocker|
+| CFG-005 | P1 | M4 | Security | M4 Config PR | RuntimeSettings.from_env 干净语义| isolated env unit CI | Verified| 无 M4 blocker|
 
 ## 3. Provider
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| PROV-001 | P1 | M4 | Provider | M4 Provider PR | TC-PROV-001 | mock transport CI | Implemented | 需接入最终 lifecycle/RuntimeResult |
-| PROV-002 | P1 | M4 | Provider | M4 Provider PR | TC-PROV-002 | property/fuzz artifact | Blocked | arbitrary root 未规范化 |
-| PROV-003 | P1 | M4 | Provider | M4 Provider PR | TC-PROV-003/004 | malformed fixture manifest | Planned | schema 未定义 |
-| PROV-004 | P1 | M4 | Provider | M4 Provider PR | TC-PROV-005 | error-code fixture manifest | Partial | 分类不完整 |
-| PROV-005 | P1 | M4 | Provider | M4 Provider PR | TC-PROV-006/007 | fake-clock retry CI | Planned | retry contract 未实现 |
-| PROV-006 | P1 | M4 | Provider | M4 Provider PR | TC-PROV-008 | response-size CI | Planned | 无 body limit |
+| PROV-001 | P1 | M4 | Provider | M4 Provider PR | runtime.run 消费 ProviderResult| mock transport CI | Verified| 无 M4 blocker|
+| PROV-002 | P1 | M4 | Provider | M4 Provider PR | test_provider_malformed_m4.py arbitrary root| property/fuzz artifact | Verified| 任意 root 不崩溃|
+| PROV-003 | P1 | M4 | Provider | M4 Provider PR | test_provider_malformed_m4.py malformed| malformed fixture manifest | Verified| 无 M4 blocker|
+| PROV-004 | P1 | M4 | Provider | M4 Provider PR | test_provider_malformed_m4.py error-code| error-code fixture manifest | Verified| 无 M4 blocker|
+| PROV-005 | P1 | M4 | Provider | M4 Provider PR | test_provider_m4.py retry/backoff| fake-clock retry CI | Verified| 4xx 不重试，5xx/网络重试|
+| PROV-006 | P1 | M4 | Provider | M4 Provider PR | test_provider_m4.py size limit| response-size CI | Verified| 普通+流式体上限|
 | PROV-007 | P1 | M1/M4 | Provider | PR #6 / M4 Provider PR | TC-PROV-009/010 | canonical identity snapshot | Partial | Evidence contract 已冻结；Provider identity envelope 仍不完整 |
-| PROV-008 | P1 | M4 | Provider | M4 Streaming PR | TC-PROV-011/012/013 | byte-split SSE CI | Blocked | 非真正增量 parser |
-| PROV-009 | P1 | M4 | Provider | M4 Streaming PR | TC-PROV-014 | stream consumer integration CI | Blocked | 无 iterator/callback 合同 |
+| PROV-008 | P1 | M4 | Provider | M4 Streaming PR | test_streaming_m4.py incremental SSE| byte-split SSE CI | Verified| 跨 chunk UTF-8/事件行拼接|
+| PROV-009 | P1 | M4 | Provider | M4 Streaming PR | test_streaming_m4.py chat_stream consumer| stream consumer integration CI | Verified| 消费增量事件|
 
 ## 4. Runtime
 
@@ -158,7 +169,7 @@
 | RUN-007 | P1 | M2 | Runtime | PR #20/#21 | TC-RUN-007 | run 44 budget matrix PASS | Verified | 无 M2-D blocker |
 | RUN-008 | P1 | M2 | Runtime | PR #20/#21 | TC-RUN-008 | run 44 continue/terminate PASS | Verified | 无 M2-D blocker |
 | RUN-009 | P1 | M2 | Runtime | PR #14/#18 | TC-RUN-009、TC-TOOL-005/006 | run 106 normalization；run 15 timeout/output PASS | Verified | NoIsolation capability 明确不提供 limit；bounded path 由 Restricted Adapter 保证 |
-| RUN-010 | P1 | M2/M4 | Runtime | PR #14 / M2-D/M4 Provider PR | TC-RUN-010 | run 98 retained；run 106 malformed subset PASS | Partial | arbitrary root、choices/message 全矩阵仍属后续 Provider/Runtime PR |
+| RUN-010 | P1 | M2/M4 | Runtime | PR #14 / M2-D/M4 Provider PR | PROV-002/003 覆盖 arbitrary root + malformed 矩阵| run 98 retained；run 106 malformed subset PASS | Verified| 无 M4 blocker|
 
 ## 5. Tool Contract
 
@@ -299,10 +310,10 @@
 
 ## 15. 当前结论
 
-M0、M1、M2-A、M2-B、M2-C、M2-D、M2-E、M2-F、M2-G、M3 已关闭。
+M0、M1、M2-A~G、M3、M4 已关闭。
 
-M3 完成：ChangeManager 鲁棒性（CHG-003~010）、SessionStore 加密/迁移/损坏检测（SES-003/004/005）、Evidence total-function/redaction（EVD-003/008）、Observability 非法值拒绝（OBS-005/006）。未关闭项（SES-002/006/008、OBS-004）真实转移 M4。
+M4 完成：Provider retry/backoff（PROV-005）、response-size limit（PROV-006）、malformed 分类（PROV-002/003/004）、增量 SSE parser（PROV-008/009）、config 校验（CFG-004/005）。未关闭项（CFG-001/002/003、PROV-007、DOC-001）真实转移 M5。
 
-M4 Provider / Config / Protocol 为下一执行切片。
+M5 CI Matrix / Packaging / Governance 为下一执行切片。
 
 当前发布结论：**NO RELEASE**。
