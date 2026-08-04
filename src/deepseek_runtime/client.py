@@ -27,6 +27,58 @@ from typing import Any, Protocol  # 类型提示
 from .evidence import sha256_bytes, wire_json  # 从 evidence 导入"指纹"和"序列化"工具
 
 
+def iter_sse_events(chunks: list[tuple[int, bytes]]) -> list[tuple[int, dict[str, Any]]]:
+    """增量 SSE 解析器（PROV-008）。
+
+    处理跨 chunk 的 UTF-8 字符切分和跨 chunk 的事件行拼接。
+    返回 (offset_ms, event) 列表，event 是解析后的 JSON 对象。
+    """
+    from json import loads as _loads
+
+    buffer = bytearray()
+    events: list[tuple[int, dict[str, Any]]] = []
+    last_offset = 0
+
+    for offset_ms, raw in chunks:
+        buffer.extend(raw)
+        last_offset = offset_ms
+        # 尝试从 buffer 中提取完整行（以 \n 结尾）
+        while True:
+            newline = buffer.find(b"\n")
+            if newline == -1:
+                break
+            line = bytes(buffer[:newline])
+            del buffer[: newline + 1]
+            # 跳过空行（事件分隔符）
+            if not line.strip():
+                continue
+            text = line.decode("utf-8", errors="replace").strip()
+            if not text.startswith("data:"):
+                continue
+            value = text[5:].strip()
+            if value == "[DONE]":
+                continue
+            try:
+                event = _loads(value)
+            except ValueError:
+                continue
+            if isinstance(event, dict):
+                events.append((offset_ms, event))
+
+    # 处理 buffer 中残留的未换行数据（可能是一个完整事件但无结束换行）
+    if buffer:
+        text = bytes(buffer).decode("utf-8", errors="replace").strip()
+        if text.startswith("data:") and text[5:].strip() != "[DONE]":
+            try:
+                event = _loads(text[5:].strip())
+            except ValueError:
+                event = None
+            if isinstance(event, dict):
+                events.append((last_offset, event))
+
+    return events
+
+
 # =============================================================================
 # ⚙️ RuntimeSettings —— 运行时配置：该连哪个 API？用什么模型？
 # =============================================================================
@@ -374,7 +426,7 @@ class DeepSeekClient:
                 self.settings.timeout,
             )
 
-            # 解析 SSE 事件流
+            # 解析 SSE 事件流（PROV-008：增量 parser，处理跨 chunk 边界）
             events: list[dict[str, Any]] = []
             first_event_ms = None
             total_bytes = 0
@@ -388,19 +440,8 @@ class DeepSeekClient:
                         status, round((time.monotonic() - started) * 1000), body,
                         request_hash, error, error_class, request_id, complete,
                     )
-                # 把字节解码成字符串（如果解码失败用 ? 代替非法字符）
-                line = raw.decode(errors="replace").strip()
-                # SSE 协议中，数据行以 "data:" 开头
-                if not line.startswith("data:"):
-                    continue
-                value = line[5:].strip()  # 去掉 "data:" 前缀
-                if value == "[DONE]":  # SSE 的结束标记
-                    continue
-                try:
-                    import json
-                    event = json.loads(value)  # 解析 JSON 事件
-                except ValueError:
-                    continue  # 解析失败就跳过（可能是空行或心跳包）
+            parsed = iter_sse_events(chunks)
+            for offset_ms, event in parsed:
                 # 记录第一个事件的时间（即流式响应的"首字延迟"）
                 first_event_ms = offset_ms if first_event_ms is None else first_event_ms
                 events.append(event)
