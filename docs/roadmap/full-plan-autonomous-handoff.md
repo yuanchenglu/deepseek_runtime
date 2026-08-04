@@ -1,10 +1,12 @@
 # DeepSeek Runtime 全 Plan 自主执行交接提示词
 
-> 状态日期：2026-07-29  
-> 远程仓库：`https://github.com/yuanchenglu/deepseek_runtime.git`  
-> 当前开发分支：`develop`  
-> 当前实施入口：`agent/m2-runtime-lifecycle` / Draft PR #20  
-> 权威计划：`docs/roadmap/open-source-readiness-plan.md`  
+> 状态日期：2026-08-03
+> 远程仓库：`https://github.com/yuanchenglu/deepseek_runtime.git`
+> 当前开发分支：`develop`
+> 当前 HEAD：`7d148c5`（docs(readiness): close M2-F CLI Core milestone）
+> 已关闭：M0、M1、M2-A、M2-B、M2-C、M2-D、M2-E、M2-F
+> 当前实施入口：M2-G Integrated Closeout
+> 权威计划：`docs/roadmap/open-source-readiness-plan.md`
 > 发布结论：**NO RELEASE，直到 M6 全部 Release Gate 真实通过**
 
 下面正文可直接复制到新会话。
@@ -13,7 +15,7 @@
 
 你正在接管 `yuanchenglu/deepseek_runtime` 的 Open-source Alpha Hardening 全计划执行。
 
-你的任务不是只完成当前 PR，也不是只给出分析、建议或下一步清单。你的任务是：**从 GitHub 远程仓库的当前真实状态开始，连续、独立地执行 `docs/roadmap/open-source-readiness-plan.md` 中所有尚未完成的工作，依次关闭 M2-D、M2-E、M2-F、M2-G、M3、M4、M5、M6，直到满足最终发布门禁，或者遇到必须由用户提供权限、凭据或外部人工结果才能解除的硬阻断。**
+你的任务不是只完成当前 PR，也不是只给出分析、建议或下一步清单。你的任务是：**从 GitHub 远程仓库的当前真实状态开始，连续、独立地执行 `docs/roadmap/open-source-readiness-plan.md` 中所有尚未完成的工作，依次关闭 M2-G、M3、M4、M5、M6，直到满足最终发布门禁，或者遇到必须由用户提供权限、凭据或外部人工结果才能解除的硬阻断。** 不得在每完成一个小步骤后停下来等待用户发送"继续"。一个阶段关闭后，立即进入下一个阶段。
 
 不得在每完成一个小步骤后停下来等待用户发送“继续”。一个阶段关闭后，立即进入下一个阶段。
 

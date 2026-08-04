@@ -35,8 +35,8 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 | M2-C ExecutionAdapter | **CLOSED** | 统一 Adapter、进程资源控制和三平台专项 Gate 已合入 | PR #18、runs 165/111/15、PR #19 |
 | M2-D Runtime Lifecycle、Budget、Cancellation | **CLOSED** | exact-head 四套 Gate 全绿；implementation merge `2fe059d9`；closeout PR #21 | PR #20/#21、runs 229/173/79/44 |
 | M2-E Workspace P1 | **CLOSED** | bounded read/search、UTF-8 截断、结构化 I/O、搜索预算已合入 | direct push `8c097a6`、runs 30426308602/30385907629/30426308603/30426308610/30426308607 |
-| M2-F CLI 核心 | **NEXT** | stdout/report/json/exit-code 协议未完成 | `CLI-001`–`006` |
-| M2-G Integrated Closeout | **NOT STARTED** | M2 全部 P1 尚未综合验收 | Traceability |
+| M2-F CLI 核心 | **CLOSED** | stdout/report/json/exit-code 协议已合入 | direct push `432db3e`、runs 30792953108/53145/53114/53127 |
+| M2-G Integrated Closeout | **NEXT** | M2 全部 P1 尚未综合验收 | Traceability |
 | M3 Recovery、Change、Evidence、Observability | **NOT STARTED** | durable recovery/evidence gate 未建立 | Traceability |
 | M4 Provider、配置与协议收口 | **NOT STARTED** | Provider normalization/streaming/config 未完成 | Traceability |
 | M5 完整 CI、Packaging 与治理 | **NOT STARTED** | 完整矩阵、构件和发布验证未建立 | Traceability |
@@ -139,11 +139,26 @@ Provider tool call
 - [x] docs-only closeout PR #21 建立并同步 Verified 状态；
 - [x] M2-E Workspace P1 成为下一执行切片。
 
+## 5.4 M2-E 已关闭
+
+- implementation：direct push `8c097a6` to `develop`；
+- 五套 Gate 全绿：Minimum CI 30426308602、M1 P0 30385907629、M2 Adapter 30426308603、M2 Lifecycle 30426308610、M2 Workspace P1 30426308607；
+- WS-003/004/005 -> Verified；
+- Closeout：`docs/roadmap/m2-e-closeout.md`。
+
+## 5.5 M2-F 已关闭
+
+- implementation：direct push `432db3e` to `develop`；
+- CLI 输出协议：stdout 最终回答、--report、--json、--unsafe-debug-content、exit code 矩阵、workspace 友好错误；
+- 四套 Gate 全绿：Minimum CI 30792953108、M2 Adapter 30792953145、M2 Lifecycle 30792953114、M2 Workspace 30792953127；
+- CLI-001~006 -> Verified；
+- 新增 ErrorCode：WORKSPACE_INVALID、CONFIG_INVALID；
+- Closeout：`docs/roadmap/m2-f-closeout.md`。
+
 ## 6. 后续执行顺序
 
 ```text
-M2-E closeout
--> M2-F CLI 核心
+M2-F closeout
 -> M2-G Integrated Closeout
 -> M3 Recovery / Change / Evidence / Observability
 -> M4 Provider / Config / Protocol
