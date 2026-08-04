@@ -52,6 +52,22 @@ class RuntimeSettings:
     model: str = "deepseek-v4-flash"  # 默认模型（快速且便宜）
     timeout: float = 120.0  # 请求超时时间（120 秒）
     max_tokens: int = 512  # 每次最多输出 512 个 token
+    max_retries: int = 2  # PROV-005：网络/5xx 错误最大重试次数
+    retry_backoff_seconds: float = 1.0  # PROV-005：指数退避基础秒数
+    max_response_bytes: int = 10 * 1024 * 1024  # PROV-006：响应体上限（10 MiB）
+
+    def __post_init__(self) -> None:
+        # CFG-004：配置校验
+        if self.max_retries < 0:
+            raise ValueError("max_retries must be non-negative")
+        if self.retry_backoff_seconds < 0:
+            raise ValueError("retry_backoff_seconds must be non-negative")
+        if self.max_response_bytes <= 0:
+            raise ValueError("max_response_bytes must be positive")
+        if self.max_tokens <= 0:
+            raise ValueError("max_tokens must be positive")
+        if self.timeout <= 0:
+            raise ValueError("timeout must be positive")
 
     @classmethod
     def from_env(cls) -> "RuntimeSettings":
@@ -79,6 +95,9 @@ class RuntimeSettings:
             # 超时时间和最大 token 数也可以从环境变量配置
             timeout=float(os.getenv("DEEPSEEK_TIMEOUT", "120")),
             max_tokens=int(os.getenv("DEEPSEEK_MAX_TOKENS", "512")),
+            max_retries=int(os.getenv("DEEPSEEK_MAX_RETRIES", "2")),
+            retry_backoff_seconds=float(os.getenv("DEEPSEEK_RETRY_BACKOFF", "1.0")),
+            max_response_bytes=int(os.getenv("DEEPSEEK_MAX_RESPONSE_BYTES", str(10 * 1024 * 1024))),
         )
 
 
@@ -358,7 +377,17 @@ class DeepSeekClient:
             # 解析 SSE 事件流
             events: list[dict[str, Any]] = []
             first_event_ms = None
+            total_bytes = 0
             for offset_ms, raw in chunks:
+                # PROV-006：流式响应体大小上限
+                total_bytes += len(raw)
+                if total_bytes > self.settings.max_response_bytes:
+                    status, body = 0, {"error": {"message": "provider stream exceeds size limit"}}
+                    error, error_class, request_id = "provider stream exceeds size limit", "transport", None
+                    return ProviderResult(
+                        status, round((time.monotonic() - started) * 1000), body,
+                        request_hash, error, error_class, request_id, complete,
+                    )
                 # 把字节解码成字符串（如果解码失败用 ? 代替非法字符）
                 line = raw.decode(errors="replace").strip()
                 # SSE 协议中，数据行以 "data:" 开头
@@ -473,47 +502,86 @@ class DeepSeekClient:
         request_hash = sha256_bytes(data or b"")
         started = time.monotonic()
 
-        try:
-            # 通过 transport 发送 HTTP 请求
-            status, headers, raw = self.transport(
-                method,
-                self.settings.base_url + path,
-                {
-                    "Authorization": f"Bearer {self.settings.api_key}",
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                },
-                data,
-                self.settings.timeout,
-            )
+        # PROV-005：网络错误/5xx 指数退避重试
+        last_error: str | None = None
+        last_error_class: str | None = None
+        last_request_id: str | None = None
+        last_body: dict[str, Any] = {"error": {"message": "request failed"}}
+        last_status = 0
+
+        for attempt in range(self.settings.max_retries + 1):
             try:
-                # 把响应体（字节）解析成 Python 字典
-                body = json.loads(raw)
-            except json.JSONDecodeError:
-                # 如果响应不是合法的 JSON，也记录下原始内容
-                body = {"error": {"message": raw.decode(errors="replace")}}
+                # 通过 transport 发送 HTTP 请求
+                status, headers, raw = self.transport(
+                    method,
+                    self.settings.base_url + path,
+                    {
+                        "Authorization": f"Bearer {self.settings.api_key}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    },
+                    data,
+                    self.settings.timeout,
+                )
+                # PROV-006：响应体大小上限
+                if len(raw) > self.settings.max_response_bytes:
+                    status, body = 0, {"error": {"message": "provider response exceeds size limit"}}
+                    error, error_class, request_id = "provider response exceeds size limit", "transport", None
+                    return ProviderResult(
+                        status, round((time.monotonic() - started) * 1000), body,
+                        request_hash, error, error_class, request_id, payload,
+                    )
+                try:
+                    # 把响应体（字节）解析成 Python 字典
+                    body = json.loads(raw)
+                except json.JSONDecodeError:
+                    # 如果响应不是合法的 JSON，也记录下原始内容
+                    body = {"error": {"message": raw.decode(errors="replace")}}
 
-            # HTTP 状态码 >= 400 表示有错误
-            error = body.get("error", {}).get("message") if status >= 400 else None
-            error_class = "http" if status >= 400 else None
-            # DeepSeek API 会在响应头中返回 x-request-id，用于追踪
-            request_id = headers.get("x-request-id") or headers.get("X-Request-Id")
+                # HTTP 状态码 >= 400 表示有错误
+                error = body.get("error", {}).get("message") if status >= 400 else None
+                error_class = "http" if status >= 400 else None
+                # DeepSeek API 会在响应头中返回 x-request-id，用于追踪
+                request_id = headers.get("x-request-id") or headers.get("X-Request-Id")
 
-        except (urllib.error.URLError, TimeoutError, OSError) as exc:
-            # 网络层出错（DNS 解析失败、连接超时等）
-            status = 0
-            body = {"error": {"message": str(exc)}}
-            error = str(exc)
-            error_class = "transport"
-            request_id = None
+                # PROV-005：5xx 或网络错误可重试，4xx 不重试
+                retryable = status >= 500 or status == 0
+                if retryable and attempt < self.settings.max_retries:
+                    last_error, last_error_class, last_request_id = error, error_class, request_id
+                    last_body, last_status = body, status
+                    time.sleep(self.settings.retry_backoff_seconds * (2 ** attempt))
+                    continue
 
+                return ProviderResult(
+                    status,
+                    round((time.monotonic() - started) * 1000),
+                    body,
+                    request_hash,
+                    error,
+                    error_class,
+                    request_id,
+                    payload,
+                )
+
+            except (urllib.error.URLError, TimeoutError, OSError) as exc:
+                # 网络层出错（DNS 解析失败、连接超时等）
+                last_error = str(exc)
+                last_error_class = "transport"
+                last_request_id = None
+                last_body = {"error": {"message": str(exc)}}
+                last_status = 0
+                if attempt >= self.settings.max_retries:
+                    break
+                time.sleep(self.settings.retry_backoff_seconds * (2 ** attempt))
+
+        # 重试耗尽，返回最后一次错误
         return ProviderResult(
-            status,
+            last_status,
             round((time.monotonic() - started) * 1000),
-            body,
+            last_body,
             request_hash,
-            error,
-            error_class,
-            request_id,
+            last_error,
+            last_error_class,
+            last_request_id,
             payload,
         )
