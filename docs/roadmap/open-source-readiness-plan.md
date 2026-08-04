@@ -36,8 +36,8 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 | M2-D Runtime Lifecycle、Budget、Cancellation | **CLOSED** | exact-head 四套 Gate 全绿；implementation merge `2fe059d9`；closeout PR #21 | PR #20/#21、runs 229/173/79/44 |
 | M2-E Workspace P1 | **CLOSED** | bounded read/search、UTF-8 截断、结构化 I/O、搜索预算已合入 | direct push `8c097a6`、runs 30426308602/30385907629/30426308603/30426308610/30426308607 |
 | M2-F CLI 核心 | **CLOSED** | stdout/report/json/exit-code 协议已合入 | direct push `432db3e`、runs 30792953108/53145/53114/53127 |
-| M2-G Integrated Closeout | **NEXT** | M2 全部 P1 尚未综合验收 | Traceability |
-| M3 Recovery、Change、Evidence、Observability | **NOT STARTED** | durable recovery/evidence gate 未建立 | Traceability |
+| M2-G Integrated Closeout | **CLOSED** | M2 全部 P1 综合验收通过，未关闭项真实转移 M3/M4 | `m2-g-closeout.md`、本地 Gate 35/36/64/12 |
+| M3 Recovery、Change、Evidence、Observability | **NEXT** | durable recovery/evidence gate 未建立 | Traceability |
 | M4 Provider、配置与协议收口 | **NOT STARTED** | Provider normalization/streaming/config 未完成 | Traceability |
 | M5 完整 CI、Packaging 与治理 | **NOT STARTED** | 完整矩阵、构件和发布验证未建立 | Traceability |
 | M6 RC 与 Alpha 发布 | **NOT STARTED** | 尚未进入 RC；不得合入 `master` 或打发布 tag | Release Gate |

@@ -287,10 +287,10 @@
 
 ## 15. 当前结论
 
-M0、M1、M2-A、M2-B、M2-C、M2-D、M2-E、M2-F 已关闭。
+M0、M1、M2-A、M2-B、M2-C、M2-D、M2-E、M2-F、M2-G 已关闭。
 
-M2-F 通过 direct push `432db3e` 建立了 CLI 输出协议：默认 stdout 输出最终回答、--report 安全证据文件、--json 机器可读结果、--unsafe-debug-content 显式开关、exit code 矩阵和 workspace 友好错误。最终 Minimum CI、M2 ExecutionAdapter Gate、M2 Runtime Lifecycle Gate 和 M2 Workspace P1 Gate 全绿。
+M2-G 在 integrated `develop` 上完成 M2 综合验收：Registry/Policy/Approval/Adapter 无 bypass，Runtime/Tool/Workspace/Security/CLI P1 全部 Verified，未关闭项（RUN-006/010、TOOL-006、SEC-003）真实转移到 M3/M4。
 
-M2-G integrated closeout 仍为阻断项。
+M3 Recovery / Change / Evidence / Observability 为下一执行切片。
 
 当前发布结论：**NO RELEASE**。
