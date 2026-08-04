@@ -2,7 +2,7 @@
 
 > 面向 DeepSeek API 的本地 Agent Runtime Kernel。
 >
-> **当前阶段：Open-source Alpha Hardening；M1、M2-A、M2-B、M2-C、M2-D、M2-E 已关闭；当前执行 M2-F CLI Core；当前发布结论：NO RELEASE。**
+> **当前阶段：Open-source Alpha Hardening；M1、M2-A~G、M3 已关闭；当前执行 M4 Provider/Config/Protocol；当前发布结论：NO RELEASE。**
 
 [English](README_en.md) | [简体中文](README.md)
 

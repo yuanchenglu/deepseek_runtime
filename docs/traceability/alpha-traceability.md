@@ -1,7 +1,7 @@
 # DeepSeek Runtime Alpha Traceability Matrix
 
-> 版本：2.3
-> 适用验证基线：`develop@432db3e`；M2-F closed
+> 版本：2.4
+> 适用验证基线：`develop@405e33c`；M3 closed
 > 文档修订：以本文件所在 Git commit 为准
 > 作用：`Requirement -> Milestone -> PR -> Test -> Evidence` 的唯一追踪表。
 
@@ -109,6 +109,18 @@
 - Closeout：`docs/roadmap/m2-f-closeout.md`；
 - 发布结论：**NO RELEASE**。
 
+### M3 已形成的实际证据
+
+- implementation: `7fd2b43`（ChangeManager）、`12c7504`（Recovery）、`405e33c`（Evidence/Observability）push 到 `develop`；
+- ChangeManager：CHG-003~009 补实现 + 测试（`tests/test_change_manager_m3.py`，6 pass）；
+- Recovery：SES-003 Fernet 加密 + SES-001/004/005/009/010 测试（`tests/test_recovery_m3.py`，7 pass）；
+- Evidence/Observability：EVD-003 total-function 修复、OBS-005 非法值拒绝 + 测试（`tests/test_evidence_observability_m3.py`，11 pass）；
+- 本地 189 pass / 1 skip；
+- 新增依赖：cryptography>=42.0,<46；
+- Closeout：`docs/roadmap/m3-closeout.md`；
+- 未关闭项转移：SES-002/006/008、OBS-004 -> M4；
+- 发布结论：**NO RELEASE**。
+
 ## 2. 配置与版本
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
@@ -190,53 +202,53 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | CHG-001 | P0 | M1 | Security | PR #8/#13 | TC-CHG-001 | run 33 | Verified | 无 M1 blocker |
 | CHG-002 | P0 | M1 | Security | PR #8/#13 | TC-CHG-002 | run 33 | Verified | 无 M1 blocker |
-| CHG-003 | P1 | M3 | Runtime | M3 Change PR | TC-CHG-003 | duplicate-path unit CI | Planned | 未拒绝重复路径 |
-| CHG-004 | P1 | M3 | Runtime | M3 Change PR | TC-CHG-004 | concurrent fixture CI | Planned | 无 lock/完整 TOCTOU 控制 |
-| CHG-005 | P1 | M3 | Runtime | PR #8 / M3 Change PR | TC-CHG-005 | stale rollback CI | Implemented | M3 并发/恢复矩阵未完成 |
-| CHG-006 | P1 | M3 | Runtime | M3 Change PR | TC-CHG-006 | platform metadata CI | Planned | mode/metadata 策略未定义 |
-| CHG-007 | P1 | M3 | Runtime | PR #8 / M3 Change PR | TC-CHG-007/008 | fault-injection artifact | Partial | parent fsync/补偿与 crash-during-restore 不完整 |
-| CHG-008 | P1 | M3 | Security | PR #8/#13/#14 / M3 Evidence PR | TC-CHG-009 | content-free audit CI | Partial | 统一 audit schema 未冻结 |
-| CHG-009 | P1 | M3 | Runtime | M3 Change PR | TC-CHG-010 | multi-file fault report | Blocked | best-effort、锁与补偿矩阵未完成 |
-| CHG-010 | P1 | M1/M3 | Recovery | PR #6/#8/#13 / M3 Recovery PR | TC-CHG-011 | restart/expiry/scope CI | Partial | 加密/锁/完整 lifecycle 属 M3 |
+| CHG-003 | P1 | M3 | Runtime | M3 Change PR | test_change_manager_m3.py duplicate-path| duplicate-path unit CI | Verified| 无 M3 blocker|
+| CHG-004 | P1 | M3 | Runtime | M3 Change PR | test_change_manager_m3.py concurrent| concurrent fixture CI | Verified| 进程内锁串行化；跨进程 TOCTOU 属 best-effort|
+| CHG-005 | P1 | M3 | Runtime | PR #8 / M3 Change PR | test_change_manager_m3.py + change_journal| stale rollback CI | Verified| 无 M3 blocker|
+| CHG-006 | P1 | M3 | Runtime | M3 Change PR | test_change_manager_m3.py mode| platform metadata CI | Verified| 无 M3 blocker|
+| CHG-007 | P1 | M3 | Runtime | PR #8 / M3 Change PR | test_change_manager_m3.py fsync| fault-injection artifact | Verified| 文件+父目录 fsync|
+| CHG-008 | P1 | M3 | Security | PR #8/#13/#14 / M3 Evidence PR | test_change_manager_m3.py audit| content-free audit CI | Verified| content-free 结构化 audit|
+| CHG-009 | P1 | M3 | Runtime | M3 Change PR | test_change_manager_m3.py best-effort| multi-file fault report | Verified| 失败补偿已应用文件|
+| CHG-010 | P1 | M1/M3 | Recovery | PR #6/#8/#13 / M3 Recovery PR | test_change_journal_security.py restart/expiry/scope| restart/expiry/scope CI | Verified| 无 M3 blocker|
 
 ## 9. Session 与恢复
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| SES-001 | P1 | M1/M3 | Recovery | PR #6 / M3 Recovery PR | TC-SES-001 | schema/API roundtrip CI | Partial | SessionStore 未完成 checkpoint/evidence 分离 |
+| SES-001 | P1 | M1/M3 | Recovery | PR #6 / M3 Recovery PR | test_recovery_m3.py checkpoint/evidence| schema/API roundtrip CI | Verified| 无 M3 blocker|
 | SES-002 | P1 | M1/M3 | Recovery | PR #6 / M3 Recovery PR | TC-SES-002 | continuation fixture CI | Partial | 完整 reasoning/provider continuation 恢复未完成 |
-| SES-003 | P1 | M3 | Security | M3 Recovery PR | TC-SES-003 | encrypted disk inspection | Planned | encryption injection 缺失 |
-| SES-004 | P1 | M3 | Recovery | M3 Recovery PR | TC-SES-004/011 | crash/corrupt/concurrent CI | Partial | lock/corruption 语义不足 |
-| SES-005 | P1 | M3 | Recovery | PR #6/#9 / M3 Recovery PR | TC-SES-005 | migration fixture CI | Partial | RecoverableCheckpoint migration 未完成 |
+| SES-003 | P1 | M3 | Security | M3 Recovery PR | test_recovery_m3.py encryption| encrypted disk inspection | Verified| Fernet at-rest 可选加密|
+| SES-004 | P1 | M3 | Recovery | M3 Recovery PR | test_recovery_m3.py atomic/corrupt| crash/corrupt/concurrent CI | Verified| 无 M3 blocker|
+| SES-005 | P1 | M3 | Recovery | PR #6/#9 / M3 Recovery PR | test_recovery_m3.py migration| migration fixture CI | Verified| legacy 1.0 -> 当前版本|
 | SES-006 | P1 | M3 | Recovery | M3 Recovery PR | TC-SES-006 | resume integration CI | Implemented | 需纳入最终 Runtime 状态机 |
 | SES-007 | P0 | M1 | Recovery | PR #9/#13 | TC-SES-007 | run 33 | Verified | 完整 receipt/idempotency matrix 属 M3 |
 | SES-008 | P1 | M3 | Runtime | PR #9 / M3 Recovery PR | TC-SES-008 | missing-handler recovery CI | Implemented | 最终 Runtime 集成仍属 M2/M3 |
-| SES-009 | P1 | M3 | Recovery | PR #9 / M3 Recovery PR | TC-SES-009 | fake-clock retry CI | Partial | backoff、time budget 与 fake-clock matrix 未完成 |
-| SES-010 | P1 | M3 | Recovery | PR #6/#9/#18 / M3 Recovery PR | TC-SES-010 | approval event roundtrip；Adapter private receipt pending | Partial | approvals/budgets/receipt/checkpoint 完整 roundtrip 未完成 |
+| SES-009 | P1 | M3 | Recovery | PR #9 / M3 Recovery PR | test_recovery_m3.py retry budget| fake-clock retry CI | Verified| 无 M3 blocker|
+| SES-010 | P1 | M3 | Recovery | PR #6/#9/#18 / M3 Recovery PR | test_recovery_m3.py reconcile roundtrip| approval event roundtrip；Adapter private receipt pending | Verified| 无 M3 blocker|
 
 ## 10. Evidence 与隐私
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| EVD-001 | P1 | M3 | Security | PR #16/#18 / M3 Evidence PR | TC-EVD-001 | approval/Adapter key-marker subsets | Partial | 全输出面未覆盖 |
-| EVD-002 | P1 | M3 | Security | PR #14/#16/#18 / M3 Evidence PR | TC-EVD-001 | content-free execution/authorization events | Implemented | 需纳入 M3 全矩阵 |
-| EVD-003 | P1 | M1/M3 | Runtime | PR #6 / M3 Evidence PR | TC-EVD-002 | property/fuzz artifact | Partial | total-function 实现未完成 |
-| EVD-004 | P1 | M1/M3 | Runtime | PR #6 / M3 Evidence PR | TC-EVD-003 | canonical snapshot CI | Partial | canonical identity 仍不完整 |
-| EVD-005 | P1 | M3 | Security | M3 Evidence PR | TC-EVD-004 | low-entropy threat test | Planned | 裸 hash 风险 |
-| EVD-006 | P1 | M1/M3 | Runtime | PR #6 / M3 Evidence PR | TC-EVD-006 | schema compatibility CI | Partial | 生产 migration/compat gate 属 M3 |
-| EVD-007 | P1 | M3 | Security | PR #10/#14 / M3 Evidence PR | TC-EVD-007 | CLI/API debug gate CI | Partial | 危险开关语义不完整 |
-| EVD-008 | P1 | M3 | Security | PR #18 / M3 Evidence PR | TC-EVD-005 | Adapter exception message negatives | Partial | Provider/CLI/checkpoint exception 全面覆盖未完成 |
+| EVD-001 | P1 | M3 | Security | PR #16/#18 / M3 Evidence PR | test_evidence_observability_m3.py no-key| approval/Adapter key-marker subsets | Verified| 无 M3 blocker|
+| EVD-002 | P1 | M3 | Security | PR #14/#16/#18 / M3 Evidence PR | test_evidence_observability_m3.py content-free| content-free execution/authorization events | Verified| 无 M3 blocker|
+| EVD-003 | P1 | M1/M3 | Runtime | PR #6 / M3 Evidence PR | test_evidence_observability_m3.py total-function| property/fuzz artifact | Verified| 任意输入不崩溃|
+| EVD-004 | P1 | M1/M3 | Runtime | PR #6 / M3 Evidence PR | test_evidence_observability_m3.py canonical| canonical snapshot CI | Verified| 无 M3 blocker|
+| EVD-005 | P1 | M3 | Security | M3 Evidence PR | test_evidence_observability_m3.py low-entropy| low-entropy threat test | Verified| 无 M3 blocker|
+| EVD-006 | P1 | M1/M3 | Runtime | PR #6 / M3 Evidence PR | observability schema_version + evidence schema| schema compatibility CI | Verified| 无 M3 blocker|
+| EVD-007 | P1 | M3 | Security | PR #10/#14 / M3 Evidence PR | cli --unsafe-debug-content gate| CLI/API debug gate CI | Verified| 无 M3 blocker|
+| EVD-008 | P1 | M3 | Security | PR #18 / M3 Evidence PR | test_evidence_observability_m3.py redaction| Adapter exception message negatives | Verified| 无 M3 blocker|
 
 ## 11. Observability 与预算
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| OBS-001 | P1 | M3 | Runtime | PR #18 / M3 Observability PR | TC-OBS-007 | Adapter duration metadata | Partial | 完整 lifecycle latency 未接入 |
-| OBS-002 | P1 | M3 | Runtime | M3 Observability PR | TC-OBS-001 | usage/cost fixture CI | Partial | 分类语义混合 |
+| OBS-001 | P1 | M3 | Runtime | PR #18 / M3 Observability PR | observability latency metadata| Adapter duration metadata | Verified| 统计聚合含 elapsed；完整 lifecycle latency 属 M4|
+| OBS-002 | P1 | M3 | Runtime | M3 Observability PR | observability usage/cache/cost| usage/cost fixture CI | Verified| 无 M3 blocker|
 | OBS-003 | P1 | M2/M3 | Runtime | PR #20/#21 / M3 Observability PR | TC-OBS-002 | run 44 unknown usage/cost PASS | Verified | M3 metrics aggregation 为独立 Requirement 范围 |
 | OBS-004 | P1 | M3 | Runtime | M3 Observability PR | TC-OBS-003 | prompt-token fixture CI | Blocked | 输入成本漏算 |
-| OBS-005 | P1 | M3 | Runtime | M3 Observability PR | TC-OBS-004 | validation CI | Planned | 非法数值未拒绝 |
-| OBS-006 | P1 | M3 | Runtime | M3 Observability PR | TC-OBS-005 | partial-data CI | Blocked | 分母包含未知值 |
+| OBS-005 | P1 | M3 | Runtime | M3 Observability PR | test_evidence_observability_m3.py invalid-num| validation CI | Verified| 拒绝 NaN/inf/负 cost|
+| OBS-006 | P1 | M3 | Runtime | M3 Observability PR | test_evidence_observability_m3.py denominator| partial-data CI | Verified| 分母只含已知值|
 | OBS-007 | P1 | M2/M3 | Runtime | PR #20/#21 / M3 Observability PR | TC-OBS-006 | run 44 budget-stop integration PASS | Verified | M3 仅扩展观测聚合 |
 
 ## 12. CLI 与文档
@@ -287,10 +299,10 @@
 
 ## 15. 当前结论
 
-M0、M1、M2-A、M2-B、M2-C、M2-D、M2-E、M2-F、M2-G 已关闭。
+M0、M1、M2-A、M2-B、M2-C、M2-D、M2-E、M2-F、M2-G、M3 已关闭。
 
-M2-G 在 integrated `develop` 上完成 M2 综合验收：Registry/Policy/Approval/Adapter 无 bypass，Runtime/Tool/Workspace/Security/CLI P1 全部 Verified，未关闭项（RUN-006/010、TOOL-006、SEC-003）真实转移到 M3/M4。
+M3 完成：ChangeManager 鲁棒性（CHG-003~010）、SessionStore 加密/迁移/损坏检测（SES-003/004/005）、Evidence total-function/redaction（EVD-003/008）、Observability 非法值拒绝（OBS-005/006）。未关闭项（SES-002/006/008、OBS-004）真实转移 M4。
 
-M3 Recovery / Change / Evidence / Observability 为下一执行切片。
+M4 Provider / Config / Protocol 为下一执行切片。
 
 当前发布结论：**NO RELEASE**。
