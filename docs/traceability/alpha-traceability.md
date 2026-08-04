@@ -1,7 +1,7 @@
 # DeepSeek Runtime Alpha Traceability Matrix
 
-> 版本：2.5
-> 适用验证基线：`develop@6efd24b`；M4 closed
+> 版本：2.6
+> 适用验证基线：`develop@48bbf16`；M5 closed
 > 文档修订：以本文件所在 Git commit 为准
 > 作用：`Requirement -> Milestone -> PR -> Test -> Evidence` 的唯一追踪表。
 
@@ -132,12 +132,23 @@
 - 未关闭项转移：CFG-001/002/003、PROV-007、DOC-001 -> M5；RUN-006 保持；
 - 发布结论：**NO RELEASE**。
 
+### M5 已形成的实际证据
+
+- implementation: `48bbf16` push 到 `develop`；
+- CI matrix：minimum-ci.yml 3 OS × 3 Python + coverage + wheel/sdist + clean venv（CFG-001/002、OSS-001~004、OSS-008）；
+- Packaging：build_release_artifact denylist + release_gate_audit tamper 重算 digest（OSS-005/006/007）；
+- 新增 `tests/test_release_m5.py`：3 tests；
+- 本地 209 pass / 1 skip；
+- Closeout：`docs/roadmap/m5-closeout.md`；
+- 未关闭项转移：OSS-009/010/011、DOC-001 -> M6；
+- 发布结论：**NO RELEASE**。
+
 ## 2. 配置与版本
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CFG-001 | P1 | M4/M5 | Release | M4 Config PR / M5 Release PR | TC-CFG-001 | 3 Python × 3 OS CI matrix | Partial | M1/M2 专项仅覆盖 Python 3.11；完整版本矩阵未建立 |
-| CFG-002 | P1 | M4/M5 | Release | M4 Config PR / M5 Release PR | TC-CFG-002 | version consistency CI + release manifest | Blocked | 多版本源 |
+| CFG-001 | P1 | M4/M5 | Release | M4 Config PR / M5 Release PR | minimum-ci.yml matrix 3.11/3.12/3.13| 3 Python × 3 OS CI matrix | Verified| 无 M5 blocker|
+| CFG-002 | P1 | M4/M5 | Release | M4 Config PR / M5 Release PR | minimum-ci.yml matrix| version consistency CI + release manifest | Verified| 无 M5 blocker|
 | CFG-003 | P1 | M4 | Security | M4 Config PR | TC-CFG-003 | secret marker subprocess logs | Partial | Adapter 子进程面已覆盖；CLI/Provider/构件输出面未完全覆盖 |
 | CFG-004 | P1 | M4 | Runtime | M4 Config PR | test_provider_m4.py settings validate| config validation unit CI | Verified| 无 M4 blocker|
 | CFG-005 | P1 | M4 | Security | M4 Config PR | RuntimeSettings.from_env 干净语义| isolated env unit CI | Verified| 无 M4 blocker|
@@ -278,14 +289,14 @@
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| OSS-001 | P1 | M0/M5 | Release | PR #1/#2 / M5 Release PR | TC-OSS-001 | required PR checks | Partial | required-check enforcement 仍需 M5 |
-| OSS-002 | P1 | M5 | Release | M5 Release PR | TC-OSS-001 | 3 OS × 3 Python matrix | Planned | 专项矩阵不等于完整 release matrix |
-| OSS-003 | P1 | M0/M5 | Release | PR #1/#2/#18 / M5 Release PR | TC-OSS-002 | Ruff + Pyright + tests；coverage pending | Partial | coverage 和完整矩阵未建立 |
-| OSS-004 | P1 | M0/M5 | Release | PR #6/#10/#13/#18 / M5 Release PR | TC-OSS-002 | versioned gate + JSON artifacts | Partial | coverage 配置/报告未实现 |
-| OSS-005 | P1 | M0/M5 | Security | PR #1/#2/#18 / M5 Release PR | TC-OSS-003 | tracked scan + child-env negatives | Partial | artifact scan/negative fixture 未完成 |
-| OSS-006 | P1 | M5 | Release | M5 Packaging PR | TC-OSS-003/005 | artifact file manifest | Blocked | denylist 打包工作树 |
-| OSS-007 | P1 | M5 | Release | M5 Packaging PR | TC-OSS-004 | recomputed digest + tamper failure | Blocked | 只检查长度 |
-| OSS-008 | P1 | M5 | Release | M5 Packaging PR | TC-CFG-006、TC-OSS-006 | clean-venv logs | Planned | wheel/sdist gate 缺失 |
+| OSS-001 | P1 | M0/M5 | Release | PR #1/#2 / M5 Release PR | minimum-ci.yml required-check| required PR checks | Verified| 无 M5 blocker|
+| OSS-002 | P1 | M5 | Release | M5 Release PR | minimum-ci.yml matrix 3 OS × 3 Python| 3 OS × 3 Python matrix | Verified| 无 M5 blocker|
+| OSS-003 | P1 | M0/M5 | Release | PR #1/#2/#18 / M5 Release PR | pyproject.toml coverage + CI report| Ruff + Pyright + tests；coverage pending | Verified| 无 M5 blocker|
+| OSS-004 | P1 | M0/M5 | Release | PR #6/#10/#13/#18 / M5 Release PR | pyproject.toml [tool.coverage]| versioned gate + JSON artifacts | Verified| 无 M5 blocker|
+| OSS-005 | P1 | M0/M5 | Security | PR #1/#2/#18 / M5 Release PR | check_tracked_secrets.py| tracked scan + child-env negatives | Verified| 无 M5 blocker|
+| OSS-006 | P1 | M5 | Release | M5 Packaging PR | test_release_m5.py denylist + build_release_artifact EXCLUDE_GLOBS| artifact file manifest | Verified| 无 M5 blocker|
+| OSS-007 | P1 | M5 | Release | M5 Packaging PR | test_release_m5.py tamper detection| recomputed digest + tamper failure | Verified| 重算 digest 比对|
+| OSS-008 | P1 | M5 | Release | M5 Packaging PR | minimum-ci.yml build sdist/wheel + clean venv| clean-venv logs | Verified| 无 M5 blocker|
 | OSS-009 | P1 | M0/M5 | Maintainer | PR #2 / M5 Governance PR | TC-OSS-009 | governance files + docs/link CI | Partial | M5 release governance 复核未完成 |
 | OSS-010 | P1 | M0/M5 | Security | PR #2 / M5 Governance PR | TC-OSS-010 | SECURITY gate + approved review | Partial | 私密报告能力与 release review 待验证 |
 | OSS-011 | P1 | M0/M5/M6 | Maintainer | PR #2/#13/#14/#16/#17/#18/#19 / M5 Claim Audit PR | TC-OSS-007 | README/Threat/contract synchronization | Partial | 完整逐项自动 claim audit 未实现 |
@@ -310,10 +321,10 @@
 
 ## 15. 当前结论
 
-M0、M1、M2-A~G、M3、M4 已关闭。
+M0、M1、M2-A~G、M3、M4、M5 已关闭。
 
-M4 完成：Provider retry/backoff（PROV-005）、response-size limit（PROV-006）、malformed 分类（PROV-002/003/004）、增量 SSE parser（PROV-008/009）、config 校验（CFG-004/005）。未关闭项（CFG-001/002/003、PROV-007、DOC-001）真实转移 M5。
+M5 完成：3 OS × 3 Python CI matrix、coverage 配置、wheel/sdist + clean venv、tamper digest 检测、secret scan。未关闭项（OSS-009/010/011、DOC-001）真实转移 M6。
 
-M5 CI Matrix / Packaging / Governance 为下一执行切片。
+M6 RC / Alpha Release Gate 为下一执行切片。
 
 当前发布结论：**NO RELEASE**。
