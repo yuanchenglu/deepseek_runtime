@@ -22,12 +22,20 @@ import json
 import os
 import tempfile  # 创建临时文件（原子写入，避免写入过程中崩溃导致数据损坏）
 import uuid  # 生成唯一 ID
+import base64  # SES-003：Fernet 密钥 base64 编码
 from dataclasses import asdict, dataclass, field  # 数据类
 from pathlib import Path
 from typing import Any, Callable
 
 from .contracts import ErrorCode, OperatorAction, RecoveryPolicy, RuntimeState
 from .evidence import redact  # 从证据模块导入脱敏工具
+
+
+def _make_fernet(key: bytes) -> Any:
+    """从 32 字节原始密钥构造 Fernet 密码对象（SES-003 可选加密）。"""
+    from cryptography.fernet import Fernet
+
+    return Fernet(base64.urlsafe_b64encode(key))
 
 # =============================================================================
 # 📋 常量定义
@@ -225,14 +233,21 @@ class SessionStore:
     讨论了 Agent 记忆的存储、检索和持久化机制。
     """
 
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, encrypt_key: bytes | None = None):
         """
-        ❓ 问：root 参数是什么？
-        💡 答：会话文件的存放目录。默认是 .deepseek-runtime/sessions/
-           这个目录一般放在项目的根目录下。
+        ❓ 问：root 和 encrypt_key 参数是什么？
+        💡 答：root 是会话文件的存放目录。
+           encrypt_key 是可选加密密钥（SES-003）：若提供，则 checkpoint
+           使用 Fernet 加密 at rest；若为 None，则明文存储（向后兼容）。
+           加密密钥必须是 32 字节（Fernet 原始密钥）。
         """
         self.root = root  # 会话文件存放的根目录
         self.root.mkdir(parents=True, exist_ok=True)  # 确保目录存在
+        self._cipher = None
+        if encrypt_key is not None:
+            if not isinstance(encrypt_key, bytes) or len(encrypt_key) != 32:
+                raise ValueError("encrypt_key must be 32 bytes")
+            self._cipher = _make_fernet(encrypt_key)
 
     def path(self, session_id: str) -> Path:
         """
@@ -270,6 +285,9 @@ class SessionStore:
             json.dumps(state.to_dict(), ensure_ascii=False, sort_keys=True, indent=2)
             + "\n"
         )
+        # SES-003：若配置了加密密钥，则加密 at rest
+        if self._cipher is not None:
+            payload = self._cipher.encrypt(payload.encode("utf-8")).decode("ascii") + "\n"
         # 创建临时文件（前缀用点 + 目标文件名，方便识别）
         fd, temp_name = tempfile.mkstemp(
             prefix=f".{destination.name}.", dir=self.root
@@ -296,9 +314,14 @@ class SessionStore:
            所有这些错误都是 ValueError 类型，调用方可以根据需要捕获。
         """
         try:
-            value = json.loads(
-                self.path(session_id).read_text(encoding="utf-8")
-            )
+            raw = self.path(session_id).read_text(encoding="utf-8")
+            # SES-003：若配置了加密密钥，则解密（失败视为损坏 checkpoint）
+            if self._cipher is not None:
+                try:
+                    raw = self._cipher.decrypt(raw.strip().encode("ascii")).decode("utf-8")
+                except Exception as exc:  # noqa: BLE001
+                    raise ValueError(f"corrupt session checkpoint: {exc}") from exc
+            value = json.loads(raw)
         except json.JSONDecodeError as exc:
             raise ValueError(f"corrupt session checkpoint: {exc}") from exc
         if not isinstance(value, dict):

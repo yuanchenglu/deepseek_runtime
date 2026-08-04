@@ -12,6 +12,7 @@ readme = "README.md"
 authors = [{name = "7colorai"}]
 dependencies = [
     "jsonschema>=4.23,<5",
+    "cryptography>=42.0,<46",
 ]
 
 [project.scripts]
