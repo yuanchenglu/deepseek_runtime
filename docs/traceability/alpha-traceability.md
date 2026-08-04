@@ -1,7 +1,7 @@
 # DeepSeek Runtime Alpha Traceability Matrix
 
-> 版本：2.6
-> 适用验证基线：`develop@48bbf16`；M5 closed
+> 版本：2.7
+> 适用验证基线：`develop@8cfa5cf`；M6 BLOCKED
 > 文档修订：以本文件所在 Git commit 为准
 > 作用：`Requirement -> Milestone -> PR -> Test -> Evidence` 的唯一追踪表。
 
@@ -143,6 +143,18 @@
 - 未关闭项转移：OSS-009/010/011、DOC-001 -> M6；
 - 发布结论：**NO RELEASE**。
 
+### M6 已形成的实际证据
+
+- implementation: `8cfa5cf`（OBS-004 修复）push 到 `develop`；
+- 本地 Gate：M1P0 21/21、Execution 36/36、Lifecycle 64/64、Workspace 12/12；
+- 全量 210 pass / 1 skip；
+- OBS-004 prompt_tokens fallback 修复（输入成本不漏算）；
+- SEC-003 提升 Verified（M3 durable store/resume/migration 已实现）；
+- RC 报告：`docs/roadmap/m6-rc-report.md`；
+- **Active P1 = 11 > 0，不满足发布门禁**；
+- live DeepSeek smoke 需真实 API Key（硬阻断）；
+- 发布结论：**NO RELEASE / BLOCKED**。
+
 ## 2. 配置与版本
 
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
@@ -210,7 +222,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | SEC-001 | P1 | M2 | Security | PR #16/#17 | TC-SEC-001 | run 129；merged `f8a5799a` | Verified | 无 M2-B blocker |
 | SEC-002 | P1 | M2 | Security | PR #16/#17 | TC-SEC-002 | run 129；merged `f8a5799a` | Verified | 无 M2-B blocker |
-| SEC-003 | P1 | M2/M3 | Security | PR #16/#20 / M3 Recovery PR | TC-SEC-003 | approval outcome + checkpoint timing matrix | Partial | M2-D 内存 pending/resolved handoff 已实现；durable store、resume、migration 属 M3 |
+| SEC-003 | P1 | M2/M3 | Security | PR #16/#20 / M3 Recovery PR | test_recovery_m3.py durable/encryption/migration| approval outcome + checkpoint timing matrix | Verified| M3 SessionStore durable save/load + 加密 + 迁移 + resume 已实现|
 | SEC-004 | P1 | M2 | Security | PR #16/#17/#18 | TC-SEC-004 | run 129；M2 Gate run 15 Adapter ordering/bypass PASS | Verified | 无 M2-B/M2-C blocker |
 | SEC-005 | P1 | M0/M2 | Security | PR #18 | TC-SEC-007 | run 15 wrapped-command negative + capability snapshot × 3 OS | Verified | CLI help 最终文案仍由 M2-F 独立复核 |
 | SEC-006 | P1 | M2 | Security | PR #18 | TC-SEC-005 | run 15 minimal env/API-key/loader-key negatives × 3 OS | Verified | 无 M2-C blocker |
@@ -321,10 +333,10 @@
 
 ## 15. 当前结论
 
-M0、M1、M2-A~G、M3、M4、M5 已关闭。
+M0~M5 已关闭。M6 RC 执行完毕，结论 **BLOCKED — NO RELEASE**。
 
-M5 完成：3 OS × 3 Python CI matrix、coverage 配置、wheel/sdist + clean venv、tamper digest 检测、secret scan。未关闭项（OSS-009/010/011、DOC-001）真实转移 M6。
+M6 完成：本地四套 Gate 全绿（21/36/64/12）、210 pass / 1 skip、OBS-004 修复、SEC-003 提升。但 Active P1 = 11 > 0，不满足发布门禁。
 
-M6 RC / Alpha Release Gate 为下一执行切片。
+剩余 11 项 P1：5 项功能缺口（RUN-006、TOOL-006、SES-002/006/008 runtime 主循环接入）、6 项覆盖/governance（CFG-003、PROV-007、DOC-001、OSS-009/010/011）。live smoke 需真实 API Key（硬阻断）。
 
-当前发布结论：**NO RELEASE**。
+当前发布结论：**NO RELEASE / BLOCKED**。

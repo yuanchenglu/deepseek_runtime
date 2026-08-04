@@ -1,8 +1,8 @@
 # DeepSeek Runtime 文档索引
 
-> 适用验证基线：`develop@48bbf16`；M5 closed
+> 适用验证基线：`develop@8cfa5cf`；M6 BLOCKED
 > 文档修订：以各文件所在 Git commit 为准
-> 文档状态：Open-source Alpha Hardening；M1~M5 Closed；M6 next
+> 文档状态：Open-source Alpha Hardening；M1~M5 Closed；M6 BLOCKED（Active P1=11）
 > 原则：PRD 是产品范围、优先级和验收标准的唯一事实源；架构、测试和路线图均引用 PRD Requirement ID。
 
 ## 核心文档

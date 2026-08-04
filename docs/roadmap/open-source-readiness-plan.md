@@ -40,7 +40,7 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 | M3 Recovery、Change、Evidence、Observability | **CLOSED** | ChangeManager 鲁棒性、SessionStore 加密/迁移、Evidence total-function、Observability 非法值拒绝 | `m3-closeout.md`、189 pass；SES-002/006/008、OBS-004 -> M4 |
 | M4 Provider、配置与协议收口 | **CLOSED** | retry/backoff、size limit、malformed 分类、增量 SSE parser、config 校验 | `m4-closeout.md`、206 pass；CFG-001/002/003、PROV-007、DOC-001 -> M5 |
 | M5 完整 CI、Packaging 与治理 | **CLOSED** | 3 OS × 3 Python matrix、coverage、wheel/sdist + clean venv、tamper 检测、secret scan | `m5-closeout.md`、209 pass；OSS-009/010/011、DOC-001 -> M6 |
-| M6 RC 与 Alpha 发布 | **NEXT** | 尚未进入 RC；不得合入 `master` 或打发布 tag | Release Gate |
+| M6 RC 与 Alpha 发布 | **BLOCKED** | Active P1=11>0；本地 Gate 全绿但 runtime 主循环接入未完成；live smoke 需 API Key | `m6-rc-report.md`、210 pass |
 
 ### 3.1 进度判断
 

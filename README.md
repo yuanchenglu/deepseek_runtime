@@ -2,7 +2,7 @@
 
 > 面向 DeepSeek API 的本地 Agent Runtime Kernel。
 >
-> **当前阶段：Open-source Alpha Hardening；M1~M5 已关闭；当前执行 M6 RC/Alpha Release Gate；当前发布结论：NO RELEASE。**
+> **当前阶段：Open-source Alpha Hardening；M1~M5 已关闭；M6 RC BLOCKED（Active P1=11）；当前发布结论：NO RELEASE / BLOCKED。**
 
 [English](README_en.md) | [简体中文](README.md)
 
