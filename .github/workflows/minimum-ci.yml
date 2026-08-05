@@ -117,10 +117,16 @@ jobs:
           python -m build --sdist --wheel --outdir dist/
 
       - name: Clean venv install smoke
+        shell: bash
         run: |
           python -m venv /tmp/clean-venv
-          /tmp/clean-venv/bin/python -m pip install --quiet dist/*.whl
-          /tmp/clean-venv/bin/python -c "import deepseek_runtime; print(deepseek_runtime.__name__)"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            VENV_PY=/tmp/clean-venv/Scripts/python.exe
+          else
+            VENV_PY=/tmp/clean-venv/bin/python
+          fi
+          "$VENV_PY" -m pip install --quiet dist/*.whl
+          "$VENV_PY" -c "import deepseek_runtime; print(deepseek_runtime.__name__)"
 
       - name: Package import smoke
         run: python -c "import deepseek_runtime; print(deepseek_runtime.__name__)"
