@@ -1,0 +1,77 @@
+name: Bug report
+description: Report a reproducible defect without secrets or private content
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not report vulnerabilities or include credentials, prompts, checkpoints, or raw provider content here. Follow SECURITY.md for security reports.
+  - type: input
+    id: commit
+    attributes:
+      label: Version or commit
+      description: Tagged version or exact commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Provider
+        - Runtime
+        - Tool/Policy/Approval
+        - Workspace/Security
+        - Change/Rollback
+        - Session/Recovery
+        - Evidence/Observability
+        - CLI/Packaging/CI
+        - Documentation
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python version, installation method, and active execution adapter
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Use synthetic data and include exact commands or code
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Sanitize logs and remove all secrets/content
+    validations:
+      required: true
+  - type: input
+    id: requirement
+    attributes:
+      label: Related Requirement or Test Case
+      description: PRD/Test ID when known
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety checks
+      options:
+        - label: I removed credentials, prompt/response/reasoning content, checkpoints, and private data.
+          required: true
+        - label: This is not a privately reportable security vulnerability.
+          required: true

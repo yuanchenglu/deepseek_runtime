@@ -75,7 +75,7 @@ def _run(command: list[str], *, env: dict[str, str], timeout: int = 180) -> dict
     #    timeout=timeout：超时时间，默认 180 秒（3 分钟），防止命令卡死。
     #    check=False：即使命令返回非零退出码，也不抛异常——让调用方自行处理错误。
     # 参考 llm-harness-agent 论文 C3 (OpenHands) 中关于沙箱化执行和超时管理的讨论。
-    completed = subprocess.run(command, cwd=ROOT, env=env, text=True, capture_output=True, timeout=timeout, check=False)
+    completed = subprocess.run(command, cwd=ROOT, env=env, text=True, encoding="utf-8", capture_output=True, timeout=timeout, check=False)
     # ❓ 为什么要对 stdout/stderr 做 .encode("utf-8")？
     # 💡 因为 hashlib.sha256() 需要字节数据（bytes）而不是字符串（str）。
     #    我们先把文本编码成 UTF-8 字节序列，然后计算 SHA-256 哈希。
@@ -122,6 +122,8 @@ def run_release_drill(skip_tests: bool = False) -> dict[str, Any]:
     #    如果没有，就直接设成 SRC 的路径。
     #    这样脚本就能 import deepseek_runtime 包里的模块了。
     env["PYTHONPATH"] = str(SRC) + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+    # Windows 控制台默认 cp1252 无法编码中文输出，强制子进程 UTF-8（CFG-003 跨平台）
+    env["PYTHONIOENCODING"] = "utf-8"
     # ❓ commands 列表是做什么的？
     # 💡 它是一个命令列表，每个命令后续会被 _run() 执行。初始为空，逐步添加。
     commands = []

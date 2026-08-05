@@ -22,20 +22,30 @@ import json
 import os
 import tempfile  # 创建临时文件（原子写入，避免写入过程中崩溃导致数据损坏）
 import uuid  # 生成唯一 ID
+import base64  # SES-003：Fernet 密钥 base64 编码
 from dataclasses import asdict, dataclass, field  # 数据类
 from pathlib import Path
 from typing import Any, Callable
 
+from .contracts import ErrorCode, OperatorAction, RecoveryPolicy, RuntimeState
 from .evidence import redact  # 从证据模块导入脱敏工具
+
+
+def _make_fernet(key: bytes) -> Any:
+    """从 32 字节原始密钥构造 Fernet 密码对象（SES-003 可选加密）。"""
+    from cryptography.fernet import Fernet
+
+    return Fernet(base64.urlsafe_b64encode(key))
 
 # =============================================================================
 # 📋 常量定义
 # =============================================================================
 
 # 当前会话 schema 版本号（用于向后兼容——以后升级格式时，可以判断旧版本如何处理）
-SESSION_SCHEMA_VERSION = "1.0"
+SESSION_SCHEMA_VERSION = "1.1"
+LEGACY_SESSION_SCHEMA_VERSIONS = {"1.0"}
 # 工具调用的合法状态集合（只能在这几个状态之间转换）
-TOOL_STATES = {"pending", "running", "succeeded", "failed"}
+TOOL_STATES = {"pending", "running", "succeeded", "failed", "side-effect-uncertain"}
 
 
 # =============================================================================
@@ -52,33 +62,62 @@ TOOL_STATES = {"pending", "running", "succeeded", "failed"}
 #   Harness 六组件的"生命周期钩子"（Lifecycle Hooks）。
 
 @dataclass
+class ToolExecutionResult:
+    """Handler result with an optional external or structural receipt."""
+
+    value: Any
+    receipt: dict[str, Any] | None = None
+
+
+@dataclass
 class ToolCallRecord:
-    """
-    ❓ 问：类比一下，ToolCallRecord 像什么？
-    💡 答：像快递的物流跟踪单——
-       name = 快递公司（工具名称）
-       arguments = 包裹内容（调用参数）
-       status = 物流状态（pending=待揽收, running=运输中, succeeded=已签收, failed=退回）
-       result = 签收结果
-       error = 退回原因
-    """
-    name: str  # 工具的名称（例如 "read_file"、"search"）
-    arguments: dict[str, Any]  # 调用参数（例如 {"input": "README.md"}）
-    side_effect: bool  # 是否有副作用？（True=会修改文件/系统，False=只读操作）
-    call_id: str = field(default_factory=lambda: uuid.uuid4().hex)  # 本次调用的唯一 ID
-    status: str = "pending"  # 当前状态：pending → running → succeeded/failed
-    result: Any = None  # 工具返回的结果
-    error: str | None = None  # 如果失败，错误信息是什么
+    """Persisted tool lifecycle record used by the production resume path."""
+
+    name: str
+    arguments: dict[str, Any]
+    side_effect: bool
+    call_id: str = field(default_factory=lambda: uuid.uuid4().hex)
+    status: str = "pending"
+    result: Any = None
+    error: str | None = None
+    error_code: str | None = None
+    recovery_policy: str | RecoveryPolicy | None = None
+    attempt_count: int = 0
+    idempotency_key: str | None = None
+    receipt: dict[str, Any] | None = None
+    retry_authorized: bool = False
+    operator_action: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.recovery_policy is None:
+            self.recovery_policy = (
+                RecoveryPolicy.NON_IDEMPOTENT.value if self.side_effect else RecoveryPolicy.PURE.value
+            )
+        elif isinstance(self.recovery_policy, RecoveryPolicy):
+            self.recovery_policy = self.recovery_policy.value
+        else:
+            self.recovery_policy = RecoveryPolicy(str(self.recovery_policy)).value
+
+    @property
+    def policy(self) -> RecoveryPolicy:
+        return RecoveryPolicy(str(self.recovery_policy))
 
     def validate(self) -> None:
-        """
-        ❓ 问：validate() 检查什么？
-        💡 答：确保 status 字段的值是合法的（属于 TOOL_STATES 集合）。
-           如果出现了非法值（比如有人手写成了 "done"），立刻报错。
-           这叫"防御性编程"——不相信任何人给你的数据都是对的。
-        """
         if self.status not in TOOL_STATES:
             raise ValueError(f"unknown tool status: {self.status}")
+        if self.attempt_count < 0:
+            raise ValueError("attempt_count must be non-negative")
+        policy = self.policy
+        if self.side_effect and policy is RecoveryPolicy.PURE:
+            raise ValueError("side-effect tools cannot use PURE recovery")
+        if not self.side_effect and policy is not RecoveryPolicy.PURE:
+            raise ValueError("non-side-effect tools must use PURE recovery")
+        if policy is RecoveryPolicy.RETRYABLE_WITH_KEY and not self.idempotency_key:
+            raise ValueError("RETRYABLE_WITH_KEY requires an idempotency key")
+        if self.status == "side-effect-uncertain" and not self.side_effect:
+            raise ValueError("only side-effect tools may be uncertain")
+        if self.operator_action is not None:
+            OperatorAction(self.operator_action)
 
 
 # =============================================================================
@@ -148,15 +187,14 @@ class SessionState:
 
         参考 llm-harness-agent 论文 B4: Reflexion —— 状态持久化机制。
         """
-        # 检查 schema 版本
-        if value.get("schema_version") != SESSION_SCHEMA_VERSION:
-            raise ValueError(
-                f"unsupported session schema version: {value.get('schema_version')}"
-            )
-        # 从字典重建 SessionState 对象
+        # 接受当前版本，并将受支持的旧版本迁移到当前内存模型。
+        source_version = str(value.get("schema_version", ""))
+        if source_version != SESSION_SCHEMA_VERSION and source_version not in LEGACY_SESSION_SCHEMA_VERSIONS:
+            raise ValueError(f"unsupported session schema version: {source_version}")
+        # 从字典重建 SessionState 对象；后续保存统一写出当前版本。
         state = cls(
             session_id=str(value["session_id"]),
-            schema_version=str(value["schema_version"]),
+            schema_version=SESSION_SCHEMA_VERSION,
             step=int(value.get("step", 0)),
             messages=list(value.get("messages", [])),
             # 把每个 tool_calls 字典转成 ToolCallRecord 对象
@@ -195,14 +233,21 @@ class SessionStore:
     讨论了 Agent 记忆的存储、检索和持久化机制。
     """
 
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, encrypt_key: bytes | None = None):
         """
-        ❓ 问：root 参数是什么？
-        💡 答：会话文件的存放目录。默认是 .deepseek-runtime/sessions/
-           这个目录一般放在项目的根目录下。
+        ❓ 问：root 和 encrypt_key 参数是什么？
+        💡 答：root 是会话文件的存放目录。
+           encrypt_key 是可选加密密钥（SES-003）：若提供，则 checkpoint
+           使用 Fernet 加密 at rest；若为 None，则明文存储（向后兼容）。
+           加密密钥必须是 32 字节（Fernet 原始密钥）。
         """
         self.root = root  # 会话文件存放的根目录
         self.root.mkdir(parents=True, exist_ok=True)  # 确保目录存在
+        self._cipher = None
+        if encrypt_key is not None:
+            if not isinstance(encrypt_key, bytes) or len(encrypt_key) != 32:
+                raise ValueError("encrypt_key must be 32 bytes")
+            self._cipher = _make_fernet(encrypt_key)
 
     def path(self, session_id: str) -> Path:
         """
@@ -240,6 +285,9 @@ class SessionStore:
             json.dumps(state.to_dict(), ensure_ascii=False, sort_keys=True, indent=2)
             + "\n"
         )
+        # SES-003：若配置了加密密钥，则加密 at rest
+        if self._cipher is not None:
+            payload = self._cipher.encrypt(payload.encode("utf-8")).decode("ascii") + "\n"
         # 创建临时文件（前缀用点 + 目标文件名，方便识别）
         fd, temp_name = tempfile.mkstemp(
             prefix=f".{destination.name}.", dir=self.root
@@ -266,9 +314,14 @@ class SessionStore:
            所有这些错误都是 ValueError 类型，调用方可以根据需要捕获。
         """
         try:
-            value = json.loads(
-                self.path(session_id).read_text(encoding="utf-8")
-            )
+            raw = self.path(session_id).read_text(encoding="utf-8")
+            # SES-003：若配置了加密密钥，则解密（失败视为损坏 checkpoint）
+            if self._cipher is not None:
+                try:
+                    raw = self._cipher.decrypt(raw.strip().encode("ascii")).decode("utf-8")
+                except Exception as exc:  # noqa: BLE001
+                    raise ValueError(f"corrupt session checkpoint: {exc}") from exc
+            value = json.loads(raw)
         except json.JSONDecodeError as exc:
             raise ValueError(f"corrupt session checkpoint: {exc}") from exc
         if not isinstance(value, dict):
@@ -290,46 +343,179 @@ class SessionStore:
 # 参考 llm-harness-agent 论文 B4: Reflexion —— 通过"反思"（Reflection）
 # 机制，Agent 可以从失败中学习并重试，而无需重新开始。
 
+def _save_session(state: SessionState, save: Callable[[SessionState], object] | None) -> None:
+    if save is not None:
+        save(state)
+
+
+def _mark_uncertain(call: ToolCallRecord, message: str) -> None:
+    call.status = "side-effect-uncertain"
+    call.error_code = ErrorCode.TOOL_SIDE_EFFECT_UNCERTAIN.value
+    call.error = message
+    call.retry_authorized = False
+
+
+def _handler_receipt(call: ToolCallRecord) -> dict[str, Any]:
+    return {
+        "kind": "handler-returned",
+        "call_id": call.call_id,
+        "attempt": call.attempt_count,
+    }
+
+
 def resume_tool_calls(
     state: SessionState,
     handlers: dict[str, Callable[[dict[str, Any]], Any]],
     save: Callable[[SessionState], object] | None = None,
+    *,
+    max_attempts: int = 2,
 ) -> SessionState:
-    """
-    ❓ 问：参数 save 是做什么的？
-    💡 答：这是一个"回调函数"——每次工具调用状态发生变化时，
-       都会调用 save() 来持久化当前状态。
-       这样即使后续的工具调用失败了，已经完成的调用结果也不会丢失。
-       这叫"断点续传"（Checkpoint Resume）。
+    """Resume tool calls without automatically replaying uncertain side effects.
 
-    ❓ 问：handlers 是什么？
-    💡 答：工具名 → 处理函数的映射。
-       比如 {"read_file": read_file_handler, "search": search_handler}。
-       当 Agent 需要调用 "read_file" 时，就从 handlers 中找到对应的函数来执行。
+    A persisted ``running`` call is a crash-window record. Pure/idempotent work may
+    retry within budget. Non-idempotent or manual-reconciliation work transitions to
+    ``side-effect-uncertain`` and remains stopped until an operator records an action.
     """
-    # 遍历每条工具调用记录
+
+    if max_attempts <= 0:
+        raise ValueError("max_attempts must be positive")
+
     for call in state.tool_calls:
-        call.validate()  # 先验证状态是否合法
-        if call.status == "succeeded":
-            # 已经成功的调用跳过（避免重复执行有副作用的操作）
+        call.validate()
+        if call.status in {"succeeded", "side-effect-uncertain"}:
             continue
 
-        # 标记为"正在运行"
+        policy = call.policy
+        if call.status == "running":
+            recovered = policy.recovery_state_for_running(
+                has_idempotency_key=bool(call.idempotency_key)
+            )
+            if recovered is RuntimeState.TOOL_SIDE_EFFECT_UNCERTAIN:
+                _mark_uncertain(call, "tool may have produced an external side effect before checkpoint")
+                _save_session(state, save)
+                continue
+            call.status = "pending"
+
+        if call.status == "failed":
+            automatic = policy.permits_automatic_retry(
+                has_idempotency_key=bool(call.idempotency_key)
+            )
+            reconciled_terminal = call.operator_action in {
+                OperatorAction.MARK_NOT_EXECUTED.value,
+                OperatorAction.ABANDON.value,
+            }
+            if call.side_effect and not automatic and not call.retry_authorized and not reconciled_terminal:
+                _mark_uncertain(call, "failed side-effect call requires operator reconciliation")
+                _save_session(state, save)
+                continue
+            if not call.retry_authorized and not (automatic and call.attempt_count < max_attempts):
+                continue
+            call.status = "pending"
+
+        if call.status != "pending":
+            continue
+
+        if call.attempt_count > 0:
+            automatic = policy.permits_automatic_retry(
+                has_idempotency_key=bool(call.idempotency_key)
+            )
+            if not call.retry_authorized and not automatic:
+                _mark_uncertain(call, "tool retry requires an explicit operator decision")
+                _save_session(state, save)
+                continue
+            if not call.retry_authorized and call.attempt_count >= max_attempts:
+                continue
+
+        handler = handlers.get(call.name)
+        if handler is None:
+            call.status = "failed"
+            call.error_code = ErrorCode.TOOL_NOT_FOUND.value
+            call.error = f"tool handler not found: {call.name}"
+            _save_session(state, save)
+            continue
+
         call.status = "running"
-        if save:
-            save(state)  # 持久化当前状态（断点）
+        call.attempt_count += 1
+        call.retry_authorized = False
+        _save_session(state, save)
 
         try:
-            # 调用对应的处理函数
-            call.result = handlers[call.name](call.arguments)
-            call.error = None  # 清除之前的错误
-            call.status = "succeeded"  # 标记成功
+            output = handler(call.arguments)
+            if isinstance(output, ToolExecutionResult):
+                call.result = output.value
+                call.receipt = output.receipt or (_handler_receipt(call) if call.side_effect else None)
+            else:
+                call.result = output
+                call.receipt = _handler_receipt(call) if call.side_effect else None
+            call.error = None
+            call.error_code = None
+            call.status = "succeeded"
         except Exception as exc:
-            # 任何异常都记录为失败
-            call.error = f"{type(exc).__name__}: {exc}"
+            if call.side_effect and not policy.permits_automatic_retry(
+                has_idempotency_key=bool(call.idempotency_key)
+            ):
+                _mark_uncertain(
+                    call,
+                    f"{type(exc).__name__}: handler failed after side-effect execution began",
+                )
+            else:
+                call.error = f"{type(exc).__name__}: {exc}"
+                call.error_code = ErrorCode.TOOL_EXECUTION_FAILED.value
+                call.status = "failed"
+
+        _save_session(state, save)
+
+    return state
+
+
+def reconcile_tool_call(
+    state: SessionState,
+    call_id: str,
+    action: OperatorAction | str,
+    *,
+    receipt: dict[str, Any] | None = None,
+    save: Callable[[SessionState], object] | None = None,
+) -> SessionState:
+    """Record an explicit operator decision for an uncertain tool call."""
+
+    decision = action if isinstance(action, OperatorAction) else OperatorAction(str(action))
+    call = next((item for item in state.tool_calls if item.call_id == call_id), None)
+    if call is None:
+        raise KeyError(f"tool call not found: {call_id}")
+
+    if decision is OperatorAction.EXPLICIT_RETRY:
+        allowed = call.status == "side-effect-uncertain" or (
+            call.status == "failed" and call.operator_action == OperatorAction.MARK_NOT_EXECUTED.value
+        )
+        if not allowed:
+            raise ValueError("explicit retry requires an uncertain or confirmed-not-executed call")
+        call.status = "pending"
+        call.retry_authorized = True
+        call.error = None
+        call.error_code = None
+    else:
+        if call.status != "side-effect-uncertain":
+            raise ValueError("operator reconciliation requires an uncertain tool call")
+        if decision is OperatorAction.MARK_SUCCEEDED:
+            call.status = "succeeded"
+            call.receipt = receipt or {
+                "kind": "operator-attestation",
+                "call_id": call.call_id,
+                "attempt": call.attempt_count,
+            }
+            call.error = None
+            call.error_code = None
+        elif decision is OperatorAction.MARK_NOT_EXECUTED:
             call.status = "failed"
+            call.error = "operator confirmed the external effect did not occur"
+            call.error_code = ErrorCode.TOOL_EXECUTION_FAILED.value
+        elif decision is OperatorAction.ABANDON:
+            call.status = "failed"
+            call.error = "operator abandoned uncertain side effect"
+            call.error_code = ErrorCode.TOOL_SIDE_EFFECT_UNCERTAIN.value
+        else:
+            raise ValueError(f"unsupported operator action: {decision.value}")
 
-        if save:
-            save(state)  # 再次持久化（保存执行结果）
-
+    call.operator_action = decision.value
+    _save_session(state, save)
     return state

@@ -1,63 +1,168 @@
-"""
-DeepSeek Runtime 的"大门"——包初始化文件
+"""Public package exports for DeepSeek Runtime."""
 
-❓ 问：什么是 __init__.py？
-💡 答：当你在 Python 中写 from deepseek_runtime import XXX 时，
-   Python 就会执行这个文件。它决定了哪些类、函数可以被外部访问。
-
-❓ 问：这个文件做了什么事？
-💡 答：两件事——
-   1. 从各个模块导入核心的公开 API
-   2. 定义 __all__ 列表，明确告诉使用者"哪些是公共的、稳定的 API"
-   
-   参考 llm-harness-agent 论文 C1: ToolLLM 中的模块化设计理念：
-   每个模块只暴露必要的接口，内部实现可以随时重构而不影响使用者。
-"""
-
-# 从各个子模块导入公开的 API
+from .approval import (
+    ApprovalOutcome,
+    ApprovalProvider,
+    ApprovalRequest,
+    AuthorizationEvent,
+    AuthorizationSession,
+    summarize_approval,
+)
+from .change_journal import ChangeJournalStore, default_change_journal_dir, workspace_identity
 from .client import DeepSeekClient, ProviderResult, RuntimeSettings
+from .contracts import (
+    ChangeJournalEntry,
+    ContractViolation,
+    ErrorCode,
+    JournalFileRecord,
+    OperatorAction,
+    PublishableEvidence,
+    ReceiptRequirement,
+    RecoverableCheckpoint,
+    RecoveryPolicy,
+    RollbackHandle,
+    RuntimeErrorInfo,
+    RuntimeState,
+    ToolArgumentError,
+    ToolCallCheckpoint,
+    ToolRegistry,
+    ToolResultError,
+    ToolSpec,
+    TransitionRule,
+    normalize_tool_result,
+    transition_manifest,
+    validate_transition,
+)
 from .diagnostics import build_diagnostics
+from .execution import (
+    CancellationToken,
+    ExecutionAdapter,
+    ExecutionCapabilities,
+    ExecutionContext,
+    ExecutionOutcome,
+    FakeExecutionAdapter,
+    IsolationLevel,
+    NoIsolationLocalAdapter,
+    RestrictedSubprocessAdapter,
+    SubprocessRequest,
+)
+from .lifecycle import (
+    BudgetTracker,
+    CheckpointSink,
+    LifecycleEvent,
+    LifecycleTrace,
+    RuntimeBudgets,
+    ToolErrorPolicy,
+)
 from .observability import summarize_observability
 from .runtime import DeepSeekRuntime, RuntimeResult, WorkspaceTools
 from .security import (
-    ChangeManager, ChangeSet, Decision, FileChange, PermissionPolicy,
-    PermissionRequest, PermissionRule, Risk, RollbackToken,
-    WorkspaceSandbox, content_sha256,
+    ChangeManager,
+    ChangeSet,
+    Decision,
+    FileChange,
+    PermissionPolicy,
+    PermissionRequest,
+    PermissionRule,
+    Risk,
+    RollbackToken,
+    WorkspaceSandbox,
+    content_sha256,
 )
-from .session import SessionState, resume_tool_calls
+from .session import (
+    SessionState,
+    ToolCallRecord,
+    ToolExecutionResult,
+    reconcile_tool_call,
+    resume_tool_calls,
+)
+from .workspace import (
+    WorkspacePathMissing,
+    WorkspaceReadResult,
+    WorkspaceResolver,
+    WorkspaceSearchBudgets,
+    WorkspaceSearchResult,
+    WorkspaceViolation,
+)
 
-# 当前版本号（Alpha 版本）
-# ❓ 问：0.1.1a1 代表什么？
-# 💡 答：0.1.1 是版本号，a1 是 Alpha 1 测试版。
-#   还不是正式版，API 可能还会有变化。
 __version__ = "0.1.1a1"
 
-# ❓ 问：__all__ 是什么？
-# 💡 答：它声明了"这个包的公共 API 清单"。
-#   当用户写 from deepseek_runtime import * 时，
-#   只会导入 __all__ 里列出的名字。
-#   不在列表里的就是"内部实现"，不保证稳定性。
 __all__ = [
     "__version__",
+    "ApprovalOutcome",
+    "ApprovalProvider",
+    "ApprovalRequest",
+    "AuthorizationEvent",
+    "AuthorizationSession",
+    "BudgetTracker",
+    "CancellationToken",
+    "ChangeJournalEntry",
+    "ChangeJournalStore",
     "ChangeManager",
     "ChangeSet",
+    "CheckpointSink",
+    "ContractViolation",
     "DeepSeekClient",
     "DeepSeekRuntime",
     "Decision",
+    "ErrorCode",
+    "ExecutionAdapter",
+    "ExecutionCapabilities",
+    "ExecutionContext",
+    "ExecutionOutcome",
+    "FakeExecutionAdapter",
     "FileChange",
+    "IsolationLevel",
+    "JournalFileRecord",
+    "LifecycleEvent",
+    "LifecycleTrace",
+    "NoIsolationLocalAdapter",
+    "OperatorAction",
     "PermissionPolicy",
     "PermissionRequest",
     "PermissionRule",
     "ProviderResult",
+    "PublishableEvidence",
+    "ReceiptRequirement",
+    "RecoverableCheckpoint",
+    "RecoveryPolicy",
+    "RestrictedSubprocessAdapter",
     "Risk",
+    "RollbackHandle",
     "RollbackToken",
+    "RuntimeBudgets",
+    "RuntimeErrorInfo",
     "RuntimeResult",
     "RuntimeSettings",
+    "RuntimeState",
     "SessionState",
+    "SubprocessRequest",
+    "ToolArgumentError",
+    "ToolCallRecord",
+    "ToolCallCheckpoint",
+    "ToolErrorPolicy",
+    "ToolExecutionResult",
+    "ToolRegistry",
+    "ToolResultError",
+    "ToolSpec",
+    "TransitionRule",
+    "WorkspacePathMissing",
+    "WorkspaceReadResult",
+    "WorkspaceResolver",
+    "WorkspaceSearchBudgets",
+    "WorkspaceSearchResult",
     "WorkspaceSandbox",
+    "WorkspaceViolation",
     "WorkspaceTools",
     "build_diagnostics",
     "content_sha256",
+    "default_change_journal_dir",
+    "normalize_tool_result",
+    "reconcile_tool_call",
     "resume_tool_calls",
+    "summarize_approval",
     "summarize_observability",
+    "transition_manifest",
+    "validate_transition",
+    "workspace_identity",
 ]

@@ -372,6 +372,22 @@ def _runtime_summary(workspace: Path) -> dict[str, Any]:
 #    💡 论文参考（Agent Harness Survey - A1）：这里的 checks 列表对应 Harness 六组件中的
 #    "评估组件"——将每个检查项按 pass/warn/fail 三类状态分类，并汇总成整体健康度评分（ok 字段）。
 #    证据机制（evidence）对应"可追溯组件"，确保每次 LLM 调用的资源消耗和路由决策都有据可查。
+def _directory_writable(workspace: Path, target: Path) -> bool:
+    """跨平台目录可写探测（Windows os.access W_OK 不可靠）。
+
+    尝试在目标目录创建并删除一个探测文件；失败即视为不可写。
+    """
+    if not workspace.exists():
+        return False
+    try:
+        probe = target / f".writable-probe-{os.getpid()}"
+        probe.write_bytes(b"")
+        probe.unlink(missing_ok=True)
+        return True
+    except OSError:
+        return False
+
+
 def build_diagnostics(workspace: Path, evidence: Path | None = None, env: Mapping[str, str] | None = None) -> dict[str, Any]:
     env = env or os.environ
     checks: list[dict[str, Any]] = []
@@ -406,7 +422,8 @@ def build_diagnostics(workspace: Path, evidence: Path | None = None, env: Mappin
     #    只要 workspace 可写，就能推断出将来可以创建子目录。
     session_store = workspace / ".deepseek-runtime" / "sessions"
     writable_target = session_store if session_store.exists() else session_store.parent if session_store.parent.exists() else workspace
-    session_writable = workspace.exists() and os.access(writable_target, os.W_OK)
+    # Windows 的 os.access(W_OK) 对目录语义不可靠，改用 try-write 探测（CFG-003 跨平台）
+    session_writable = _directory_writable(workspace, writable_target)
     checks.append(_check("session_store_writable", "pass" if session_writable else "fail", "session store parent is writable" if session_writable else "session store parent is not writable", path=str(session_store)))
 
     # --- 检查④：CLI 入口 deepseek-runtime 是否可用 ---

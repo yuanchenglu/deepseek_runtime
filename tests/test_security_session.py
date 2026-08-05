@@ -110,7 +110,7 @@ class SecuritySessionTests(unittest.TestCase):
             # 💡 答：在临时工作区中创建一个名为 "notes.txt" 的笔记文件路径。
             #    这是我们要测试变更的目标文件。
 
-            target.write_text("old\n", encoding="utf-8")
+            target.write_bytes(b"old\n")
             # ❓ 问：写入什么内容？
             # 💡 答：向目标文件写入 "old\n"（旧内容），模拟一个已有文件。
             #    编码为 UTF-8，确保中文字符也能正确处理。
@@ -208,7 +208,7 @@ class SecuritySessionTests(unittest.TestCase):
 
             workspace = Path(directory)
             target = workspace / "notes.txt"
-            target.write_text("old\n", encoding="utf-8")
+            target.write_bytes(b"old\n")
             # ❓ 问：这几行在做什么？
             # 💡 答：在临时工作区中创建一个 notes.txt 文件，内容为 "old\n"，
             #    用于测试文件修改的权限控制。

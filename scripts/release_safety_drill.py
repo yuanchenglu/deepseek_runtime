@@ -241,7 +241,7 @@ def _changeset_check(workspace: Path) -> dict[str, Any]:
     # 💡 在工作区创建一个 notes.txt 文件，初始内容为 "old\n"（末尾换行符）。
     #    write_text 是 pathlib.Path 的方法，把字符串写入文件。
     target = workspace / "notes.txt"
-    target.write_text("old\n", encoding="utf-8")
+    target.write_bytes(b"old\n")
     # ❓ ChangeManager 是什么？
     # 💡 变更管理器——所有文件变更的"调度中心"。
     #    它需要一个 WorkspaceSandbox 来确保变更不越界。
@@ -275,7 +275,7 @@ def _changeset_check(workspace: Path) -> dict[str, Any]:
     # ❓ 验证回滚是否成功
     # 💡 读取文件当前内容，如果确实恢复成了 "old\n"，回滚成功。
     #    否则抛 AssertionError。
-    if target.read_text(encoding="utf-8") != "old\n":
+    if target.read_bytes() != b"old\n":
         raise AssertionError("rollback failed")
     # ❓ 返回了什么证据？
     # 💡 - diff_sha256: 差异预览的 SHA-256 哈希（脱敏指纹）
