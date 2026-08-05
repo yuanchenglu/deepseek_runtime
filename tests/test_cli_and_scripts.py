@@ -215,6 +215,7 @@ class CliAndScriptsTests(unittest.TestCase):
                 cwd=ROOT,
                 env=self._env(),
                 text=True,
+                encoding="utf-8",
                 capture_output=True,
                 check=False,
             )
@@ -235,6 +236,7 @@ class CliAndScriptsTests(unittest.TestCase):
                 cwd=ROOT,
                 env=self._env(),
                 text=True,
+                encoding="utf-8",
                 capture_output=True,
                 check=False,
             )
@@ -339,6 +341,7 @@ class CliAndScriptsTests(unittest.TestCase):
                 cwd=ROOT,
                 env=self._env(),
                 text=True,
+                encoding="utf-8",
                 capture_output=True,
                 check=False,
             )
