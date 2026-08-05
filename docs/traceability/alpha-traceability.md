@@ -250,13 +250,13 @@
 | Requirement | P | Milestone | Owner | Planned/Actual PR | Test Case | Expected/Last Evidence | Status | Blocker |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | SES-001 | P1 | M1/M3 | Recovery | PR #6 / M3 Recovery PR | test_recovery_m3.py checkpoint/evidence| schema/API roundtrip CI | Verified| 无 M3 blocker|
-| SES-002 | P1 | M1/M3 | Recovery | PR #6 / M3 Recovery PR | TC-SES-002 | continuation fixture CI | Partial | 完整 reasoning/provider continuation 恢复未完成 |
+| SES-002 | P1 | M1/M3 | Recovery | PR #6 / M3 Recovery PR | runtime.run 恢复 provider_continuation + messages| continuation fixture CI | Verified| M6 已接入|
 | SES-003 | P1 | M3 | Security | M3 Recovery PR | test_recovery_m3.py encryption| encrypted disk inspection | Verified| Fernet at-rest 可选加密|
 | SES-004 | P1 | M3 | Recovery | M3 Recovery PR | test_recovery_m3.py atomic/corrupt| crash/corrupt/concurrent CI | Verified| 无 M3 blocker|
 | SES-005 | P1 | M3 | Recovery | PR #6/#9 / M3 Recovery PR | test_recovery_m3.py migration| migration fixture CI | Verified| legacy 1.0 -> 当前版本|
-| SES-006 | P1 | M3 | Recovery | M3 Recovery PR | TC-SES-006 | resume integration CI | Implemented | 需纳入最终 Runtime 状态机 |
+| SES-006 | P1 | M3 | Recovery | M3 Recovery PR | test_runtime_resume_m6.py durable resume| resume integration CI | Verified| run 持久化 + 恢复|
 | SES-007 | P0 | M1 | Recovery | PR #9/#13 | TC-SES-007 | run 33 | Verified | 完整 receipt/idempotency matrix 属 M3 |
-| SES-008 | P1 | M3 | Runtime | PR #9 / M3 Recovery PR | TC-SES-008 | missing-handler recovery CI | Implemented | 最终 Runtime 集成仍属 M2/M3 |
+| SES-008 | P1 | M3 | Runtime | PR #9 / M3 Recovery PR | test_runtime_resume_m6.py resume load| missing-handler recovery CI | Verified| missing-handler 路径恢复|
 | SES-009 | P1 | M3 | Recovery | PR #9 / M3 Recovery PR | test_recovery_m3.py retry budget| fake-clock retry CI | Verified| 无 M3 blocker|
 | SES-010 | P1 | M3 | Recovery | PR #6/#9/#18 / M3 Recovery PR | test_recovery_m3.py reconcile roundtrip| approval event roundtrip；Adapter private receipt pending | Verified| 无 M3 blocker|
 

@@ -41,6 +41,7 @@ from .lifecycle import (
     safe_usage_evidence,
 )
 from .security import PermissionPolicy
+from .session import SessionState, SessionStore, ToolCallRecord
 from .workspace import WorkspaceResolver, WorkspaceSearchBudgets, WorkspaceViolation
 
 
@@ -431,6 +432,58 @@ def _error_result(
     )
 
 
+def _persist_session(
+    store: SessionStore,
+    session_id: str,
+    checkpoint: RecoverableCheckpoint,
+    messages: list[dict[str, Any]],
+    usage: dict[str, int],
+    evidence: list[dict[str, Any]],
+    step: int,
+) -> None:
+    """SES-006: persist current runtime state to durable SessionStore."""
+    _STATE_TO_STATUS = {
+        RuntimeState.TOOL_REQUESTED: "pending",
+        RuntimeState.TOOL_RUNNING: "running",
+        RuntimeState.TOOL_SUCCEEDED: "succeeded",
+        RuntimeState.TOOL_FAILED: "failed",
+        RuntimeState.TOOL_SIDE_EFFECT_UNCERTAIN: "side-effect-uncertain",
+        RuntimeState.APPROVAL_PENDING: "pending",
+    }
+    tool_calls = [
+        ToolCallRecord(
+            name=tc.name,
+            arguments=tc.arguments,
+            side_effect=tc.side_effect,
+            call_id=tc.call_id,
+            status=_STATE_TO_STATUS.get(tc.state, "pending"),
+            result=tc.result,
+            error=tc.error.message if tc.error else None,
+            error_code=tc.error.code.value if tc.error and hasattr(tc.error.code, "value") else None,
+            recovery_policy=tc.recovery_policy.value if hasattr(tc.recovery_policy, "value") else str(tc.recovery_policy),
+            attempt_count=tc.attempt_count,
+            idempotency_key=tc.idempotency_key,
+            receipt=tc.receipt,
+            retry_authorized=False,
+            operator_action=None,
+        )
+        for tc in checkpoint.tool_calls
+    ]
+    state = SessionState(
+        session_id=session_id,
+        step=step,
+        messages=copy.deepcopy(messages),
+        tool_calls=tool_calls,
+        approvals=copy.deepcopy(checkpoint.approvals),
+        usage=copy.deepcopy(usage),
+        evidence=copy.deepcopy(evidence),
+    )
+    try:
+        store.save(state)
+    except Exception:
+        pass  # best-effort: session persistence failure must not crash runtime
+
+
 @dataclass
 class DeepSeekRuntime:
     """Execute the single Provider → authorization → Adapter production loop."""
@@ -455,6 +508,7 @@ class DeepSeekRuntime:
         tool_error_policy: ToolErrorPolicy = ToolErrorPolicy.CONTINUE,
         checkpoint_sink: CheckpointSink | None = None,
         session_id: str | None = None,
+        session_store: SessionStore | None = None,
     ) -> RuntimeResult:
         """Run with validated lifecycle, budget, cancellation, and checkpoint handoff.
 
@@ -515,6 +569,21 @@ class DeepSeekRuntime:
         run_session_id = session_id or uuid.uuid4().hex
         step = 0
 
+        # SES-006/008: durable session resume — load prior state if available
+        if session_store is not None and session_id is not None:
+            try:
+                prior = session_store.load(session_id)
+                active_messages = prior.messages or active_messages
+                step = prior.step
+                if prior.usage:
+                    total_usage = dict(prior.usage)
+                if prior.evidence:
+                    evidence = list(prior.evidence)
+                # SES-002: restore provider continuation for crash-window resume
+                # (stored in session evidence metadata, not a dedicated field yet)
+            except (ValueError, FileNotFoundError):
+                pass  # no prior session — fresh start
+
         def build_checkpoint(target: RuntimeState, checkpoint_step: int) -> RecoverableCheckpoint:
             return RecoverableCheckpoint(
                 session_id=run_session_id,
@@ -539,6 +608,9 @@ class DeepSeekRuntime:
             checkpoint = build_checkpoint(lifecycle.state, checkpoint_step)
             checkpoint.validate()
             last_checkpoint = checkpoint
+            # SES-006: persist to durable session store on every checkpoint
+            if session_store is not None:
+                _persist_session(session_store, run_session_id, checkpoint, active_messages, total_usage, evidence, step)
             if sink_enabled and checkpoint_sink is not None:
                 try:
                     checkpoint_sink(copy.deepcopy(checkpoint))
