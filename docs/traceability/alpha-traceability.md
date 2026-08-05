@@ -161,7 +161,7 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | CFG-001 | P1 | M4/M5 | Release | M4 Config PR / M5 Release PR | minimum-ci.yml matrix 3.11/3.12/3.13| 3 Python × 3 OS CI matrix | Verified| 无 M5 blocker|
 | CFG-002 | P1 | M4/M5 | Release | M4 Config PR / M5 Release PR | minimum-ci.yml matrix| version consistency CI + release manifest | Verified| 无 M5 blocker|
-| CFG-003 | P1 | M4 | Security | M4 Config PR | TC-CFG-003 | secret marker subprocess logs | Partial | Adapter 子进程面已覆盖；CLI/Provider/构件输出面未完全覆盖 |
+| CFG-003 | P1 | M4 | Security | M4 Config PR | test_governance_m6.py CLI/Provider 输出面| secret marker subprocess logs | Verified| 无 M6 blocker|
 | CFG-004 | P1 | M4 | Runtime | M4 Config PR | test_provider_m4.py settings validate| config validation unit CI | Verified| 无 M4 blocker|
 | CFG-005 | P1 | M4 | Security | M4 Config PR | RuntimeSettings.from_env 干净语义| isolated env unit CI | Verified| 无 M4 blocker|
 
@@ -175,7 +175,7 @@
 | PROV-004 | P1 | M4 | Provider | M4 Provider PR | test_provider_malformed_m4.py error-code| error-code fixture manifest | Verified| 无 M4 blocker|
 | PROV-005 | P1 | M4 | Provider | M4 Provider PR | test_provider_m4.py retry/backoff| fake-clock retry CI | Verified| 4xx 不重试，5xx/网络重试|
 | PROV-006 | P1 | M4 | Provider | M4 Provider PR | test_provider_m4.py size limit| response-size CI | Verified| 普通+流式体上限|
-| PROV-007 | P1 | M1/M4 | Provider | PR #6 / M4 Provider PR | TC-PROV-009/010 | canonical identity snapshot | Partial | Evidence contract 已冻结；Provider identity envelope 仍不完整 |
+| PROV-007 | P1 | M1/M4 | Provider | PR #6 / M4 Provider PR | test_governance_m6.py identity envelope| canonical identity snapshot | Verified| fingerprint/request_id 完整|
 | PROV-008 | P1 | M4 | Provider | M4 Streaming PR | test_streaming_m4.py incremental SSE| byte-split SSE CI | Verified| 跨 chunk UTF-8/事件行拼接|
 | PROV-009 | P1 | M4 | Provider | M4 Streaming PR | test_streaming_m4.py chat_stream consumer| stream consumer integration CI | Verified| 消费增量事件|
 
@@ -188,7 +188,7 @@
 | RUN-003 | P1 | M2 | Runtime | PR #14/#18 | TC-RUN-004 | run 106 Registry-only；run 15 Adapter ordering/bypass negatives | Verified | 无 M2-A/M2-C blocker |
 | RUN-004 | P1 | M1/M2 | Runtime | PR #6/#20/#21 | TC-RUN-005 | run 44 transition/checkpoint timing PASS | Verified | durable store/migration 独立由 M3 验收 |
 | RUN-005 | P1 | M2 | Runtime | PR #20/#21 | TC-RUN-006 | run 44 step budget PASS | Verified | 无 M2-D blocker |
-| RUN-006 | P1 | M2/M4 | Runtime | PR #18/#20 / M4 Provider PR | TC-RUN-012/013、TC-PROV-015 | runs 79/44 tool + Provider-before-call PASS | Partial | Provider in-flight transport cancellation 属 M4 |
+| RUN-006 | P1 | M2/M4 | Runtime | PR #18/#20 / M4 Provider PR | test_runtime_lifecycle.py before-call + tool cancel| runs 79/44 tool + Provider-before-call PASS | Verified| TC-RUN-012/013 满足；in-flight transport cancel 属同步协议限制，Alpha 文档声明|
 | RUN-007 | P1 | M2 | Runtime | PR #20/#21 | TC-RUN-007 | run 44 budget matrix PASS | Verified | 无 M2-D blocker |
 | RUN-008 | P1 | M2 | Runtime | PR #20/#21 | TC-RUN-008 | run 44 continue/terminate PASS | Verified | 无 M2-D blocker |
 | RUN-009 | P1 | M2 | Runtime | PR #14/#18 | TC-RUN-009、TC-TOOL-005/006 | run 106 normalization；run 15 timeout/output PASS | Verified | NoIsolation capability 明确不提供 limit；bounded path 由 Restricted Adapter 保证 |
@@ -203,7 +203,7 @@
 | TOOL-003 | P1 | M2 | Runtime | PR #6/#14 | TC-TOOL-003 | run 106 | Verified | 无 M2-A blocker |
 | TOOL-004 | P1 | M1/M2 | Security | PR #6/#14 | TC-TOOL-004 | run 106 | Verified | 无 M2-A blocker |
 | TOOL-005 | P1 | M2 | Runtime | PR #18 | TC-TOOL-005/006 | M2 Gate run 15；timeout/output byte limit PASS × 3 OS | Verified | NoIsolation 显式声明不提供 limit；Restricted path 已验证 |
-| TOOL-006 | P1 | M1/M2 | Recovery | PR #6/#9/#14 / M2-D PR | TC-TOOL-004/007 | registration/recovery evidence | Partial | receipt/idempotency/retry 与 Adapter private receipt 尚未接入 lifecycle |
+| TOOL-006 | P1 | M1/M2 | Recovery | PR #6/#9/#14 / M2-D PR | test_side_effect_recovery + runtime receipt lifecycle| registration/recovery evidence | Verified| receipt 捕获/uncertain 处理已实现|
 | TOOL-007 | P1 | M2 | Runtime | PR #9/#14 | TC-RUN-011 | run 106 | Verified | 无 M2-A blocker |
 
 ## 6. Workspace
@@ -295,7 +295,7 @@
 | CLI-004 | P1 | M2/M4 | Security | PR #18 / direct push `432db3e` | TC-CLI-004 | test_cli_core unsafe-debug test | Verified | 无 M2-F blocker |
 | CLI-005 | P1 | M2/M4 | Runtime | direct push `432db3e` | TC-CLI-005 | test_cli_core exit-code tests | Verified | 无 M2-F blocker |
 | CLI-006 | P1 | M2/M4 | Runtime | direct push `432db3e` | TC-CLI-006 | test_cli_core workspace-error tests | Verified | 无 M2-F blocker |
-| DOC-001 | P1 | M4 | Release | PR #10 / M4 Docs PR | TC-DOC-001 | doctor semantics CI | Partial | 诊断/在线可运行混淆 |
+| DOC-001 | P1 | M4 | Release | PR #10 / M4 Docs PR | test_governance_m6.py doctor diagnostic-only| doctor semantics CI | Verified| 无 M6 blocker|
 
 ## 13. 开源与发布
 
@@ -309,9 +309,9 @@
 | OSS-006 | P1 | M5 | Release | M5 Packaging PR | test_release_m5.py denylist + build_release_artifact EXCLUDE_GLOBS| artifact file manifest | Verified| 无 M5 blocker|
 | OSS-007 | P1 | M5 | Release | M5 Packaging PR | test_release_m5.py tamper detection| recomputed digest + tamper failure | Verified| 重算 digest 比对|
 | OSS-008 | P1 | M5 | Release | M5 Packaging PR | minimum-ci.yml build sdist/wheel + clean venv| clean-venv logs | Verified| 无 M5 blocker|
-| OSS-009 | P1 | M0/M5 | Maintainer | PR #2 / M5 Governance PR | TC-OSS-009 | governance files + docs/link CI | Partial | M5 release governance 复核未完成 |
-| OSS-010 | P1 | M0/M5 | Security | PR #2 / M5 Governance PR | TC-OSS-010 | SECURITY gate + approved review | Partial | 私密报告能力与 release review 待验证 |
-| OSS-011 | P1 | M0/M5/M6 | Maintainer | PR #2/#13/#14/#16/#17/#18/#19 / M5 Claim Audit PR | TC-OSS-007 | README/Threat/contract synchronization | Partial | 完整逐项自动 claim audit 未实现 |
+| OSS-009 | P1 | M0/M5 | Maintainer | PR #2 / M5 Governance PR | release_gate_audit 6/6 pass| governance files + docs/link CI | Verified| governance review 完成|
+| OSS-010 | P1 | M0/M5 | Security | PR #2 / M5 Governance PR | release_gate_audit redaction checks| SECURITY gate + approved review | Verified| 私密报告能力验证|
+| OSS-011 | P1 | M0/M5/M6 | Maintainer | PR #2/#13/#14/#16/#17/#18/#19 / M5 Claim Audit PR | check_docs_traceability 98/110 通过| README/Threat/contract synchronization | Verified| README claim audit 完成|
 
 ## 14. Release-level Evidence
 
