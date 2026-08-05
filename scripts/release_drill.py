@@ -75,7 +75,7 @@ def _run(command: list[str], *, env: dict[str, str], timeout: int = 180) -> dict
     #    timeout=timeout：超时时间，默认 180 秒（3 分钟），防止命令卡死。
     #    check=False：即使命令返回非零退出码，也不抛异常——让调用方自行处理错误。
     # 参考 llm-harness-agent 论文 C3 (OpenHands) 中关于沙箱化执行和超时管理的讨论。
-    completed = subprocess.run(command, cwd=ROOT, env=env, text=True, capture_output=True, timeout=timeout, check=False)
+    completed = subprocess.run(command, cwd=ROOT, env=env, text=True, encoding="utf-8", capture_output=True, timeout=timeout, check=False)
     # ❓ 为什么要对 stdout/stderr 做 .encode("utf-8")？
     # 💡 因为 hashlib.sha256() 需要字节数据（bytes）而不是字符串（str）。
     #    我们先把文本编码成 UTF-8 字节序列，然后计算 SHA-256 哈希。
