@@ -151,6 +151,11 @@ def main() -> None:
     args = parser.parse_args()
     # ❓ 为什么单独调用 run_observability_drill？
     # 💡 关注点分离——核心逻辑在 run_observability_drill 中，main 只处理 I/O。
+    # Windows 控制台默认 cp1252 无法编码中文输出，强制 stdout UTF-8
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
     result = run_observability_drill(args.evidence, args.pricing)
     # ❓ json.dumps 参数？
     # 💡 ensure_ascii=False 允许输出非 ASCII 字符

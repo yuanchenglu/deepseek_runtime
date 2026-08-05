@@ -122,6 +122,8 @@ def run_release_drill(skip_tests: bool = False) -> dict[str, Any]:
     #    如果没有，就直接设成 SRC 的路径。
     #    这样脚本就能 import deepseek_runtime 包里的模块了。
     env["PYTHONPATH"] = str(SRC) + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+    # Windows 控制台默认 cp1252 无法编码中文输出，强制子进程 UTF-8（CFG-003 跨平台）
+    env["PYTHONIOENCODING"] = "utf-8"
     # ❓ commands 列表是做什么的？
     # 💡 它是一个命令列表，每个命令后续会被 _run() 执行。初始为空，逐步添加。
     commands = []
