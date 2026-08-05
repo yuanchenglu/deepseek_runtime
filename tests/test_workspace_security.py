@@ -43,7 +43,7 @@ class WorkspaceSecurityTests(unittest.TestCase):
             source = workspace / "src"
             source.mkdir()
             target = source / "main.py"
-            target.write_text("needle = 'inside'\n", encoding="utf-8")
+            target.write_bytes(b"needle = 'inside'\n")
             tools = WorkspaceTools(workspace)
 
             read_result = tools.read_file({"input": "src/main.py"})
