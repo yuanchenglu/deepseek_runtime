@@ -40,7 +40,7 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 | M3 Recovery、Change、Evidence、Observability | **CLOSED** | ChangeManager 鲁棒性、SessionStore 加密/迁移、Evidence total-function、Observability 非法值拒绝 | `m3-closeout.md`、189 pass；SES-002/006/008、OBS-004 -> M4 |
 | M4 Provider、配置与协议收口 | **CLOSED** | retry/backoff、size limit、malformed 分类、增量 SSE parser、config 校验 | `m4-closeout.md`、206 pass；CFG-001/002/003、PROV-007、DOC-001 -> M5 |
 | M5 完整 CI、Packaging 与治理 | **CLOSED** | 3 OS × 3 Python matrix、coverage、wheel/sdist + clean venv、tamper 检测、secret scan | `m5-closeout.md`、209 pass；OSS-009/010/011、DOC-001 -> M6 |
-| M6 RC 与 Alpha 发布 | **READY** | Active P1=0、CI 全绿、live smoke pass、audit 6/6；待 RC 合入 master + tag | `m6-rc-report.md`、218 pass |
+| M6 RC 与 Alpha 发布 | **CLOSED** | Active P1=0、CI 全绿、live smoke pass、audit 6/6；master `3693786`、tag v0.1.1a1、Release 已发布 | `m6-closeout.md`、218 pass |
 
 ### 3.1 进度判断
 
@@ -159,7 +159,7 @@ Provider tool call
 
 ```text
 M5 closeout
--> M6 RC / Alpha Release Gate
+-> M6 RC / Alpha Release Gate（已完成：master 3693786 / v0.1.1a1）
 ```
 
 完整自主执行规则见：

@@ -1,8 +1,8 @@
 # DeepSeek Runtime 文档索引
 
-> 适用验证基线：`develop@9fb67ba`；M6 READY FOR RELEASE
+> 适用验证基线：`develop@9fb67ba`；M6 CLOSED / v0.1.1a1 RELEASED
 > 文档修订：以各文件所在 Git commit 为准
-> 文档状态：Open-source Alpha Hardening；M1~M6 执行完毕；READY FOR RELEASE
+> 文档状态：Open-source Alpha Hardening；M1~M6 全部完成；Alpha v0.1.1a1 已发布
 > 原则：PRD 是产品范围、优先级和验收标准的唯一事实源；架构、测试和路线图均引用 PRD Requirement ID。
 
 ## 核心文档

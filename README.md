@@ -2,7 +2,7 @@
 
 > 面向 DeepSeek API 的本地 Agent Runtime Kernel。
 >
-> **当前阶段：Open-source Alpha Hardening；M1~M6 执行完毕，READY FOR RELEASE；待 RC 合入 master + tag v0.1.1a1。**
+> **当前阶段：Open-source Alpha Hardening；M1~M6 全部完成；Alpha v0.1.1a1 已发布。**
 
 [English](README_en.md) | [简体中文](README.md)
 
