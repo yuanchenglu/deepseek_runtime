@@ -1,7 +1,7 @@
 # DeepSeek Runtime Alpha Traceability Matrix
 
-> 版本：2.7
-> 适用验证基线：`develop@8cfa5cf`；M6 BLOCKED
+> 版本：2.8
+> 适用验证基线：`develop@9fb67ba`；M6 READY FOR RELEASE
 > 文档修订：以本文件所在 Git commit 为准
 > 作用：`Requirement -> Milestone -> PR -> Test -> Evidence` 的唯一追踪表。
 
@@ -145,15 +145,16 @@
 
 ### M6 已形成的实际证据
 
-- implementation: `8cfa5cf`（OBS-004 修复）push 到 `develop`；
+- implementation: `41394e2`（durable resume）、`181a932`（governance coverage）、`9fb67ba`（CI 全绿）push 到 `develop`；
 - 本地 Gate：M1P0 21/21、Execution 36/36、Lifecycle 64/64、Workspace 12/12；
-- 全量 210 pass / 1 skip；
-- OBS-004 prompt_tokens fallback 修复（输入成本不漏算）；
-- SEC-003 提升 Verified（M3 durable store/resume/migration 已实现）；
-- RC 报告：`docs/roadmap/m6-rc-report.md`；
-- **Active P1 = 11 > 0，不满足发布门禁**；
-- live DeepSeek smoke 需真实 API Key（硬阻断）；
-- 发布结论：**NO RELEASE / BLOCKED**。
+- 全量 218 pass / 1 skip；
+- CI：Minimum CI（3 OS × 3 Python + coverage + wheel/sdist + clean venv）全绿；M2 三套 Gate 全绿；
+- Live DeepSeek smoke：success=True, provider_status=200, leak_checks 全绿；
+- Release gate audit：6/6 checks pass（drill + live smoke + docs + manifest digest + tamper）；
+- **98/98 P0/P1 全部 Verified**（Active P1 = 0）；
+- SES-002/006/008 durable resume 接入 runtime、TOOL-006 receipt lifecycle、RUN-006 cancellation、CFG-003/PROV-007/DOC-001/OSS-009/010/011 覆盖验证；
+- 跨平台修复：ChangeManager/workspace/drill 行尾、diagnostics 可写探测、Windows UTF-8 输出、CI clean venv 路径；
+- 发布结论：**READY FOR RELEASE**（待 RC 合入 master + tag）。
 
 ## 2. 配置与版本
 
@@ -333,10 +334,13 @@
 
 ## 15. 当前结论
 
-M0~M5 已关闭。M6 RC 执行完毕，结论 **BLOCKED — NO RELEASE**。
+M0~M6 全部执行完毕，结论 **READY FOR RELEASE**。
 
-M6 完成：本地四套 Gate 全绿（21/36/64/12）、210 pass / 1 skip、OBS-004 修复、SEC-003 提升。但 Active P1 = 11 > 0，不满足发布门禁。
+- Active P0/P1 = 0（98/98 Verified）
+- 本地 218 pass / 1 skip；四套 Gate 全绿（21/36/64/12）
+- CI 全绿（Minimum CI 3 OS × 3 Python + M2 三套 Gate）
+- Live DeepSeek smoke pass（provider_status=200, 无泄露）
+- Release gate audit 6/6 pass
+- durable resume、receipt lifecycle、cancellation、governance coverage 全部完成
 
-剩余 11 项 P1：5 项功能缺口（RUN-006、TOOL-006、SES-002/006/008 runtime 主循环接入）、6 项覆盖/governance（CFG-003、PROV-007、DOC-001、OSS-009/010/011）。live smoke 需真实 API Key（硬阻断）。
-
-当前发布结论：**NO RELEASE / BLOCKED**。
+下一步：RC 合入 master + tag v0.1.1a1。
