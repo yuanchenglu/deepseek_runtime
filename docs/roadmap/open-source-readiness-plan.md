@@ -1,13 +1,13 @@
 # DeepSeek Runtime 开源就绪执行计划
 
-> 计划版本：2.3.4  
-> 状态日期：2026-08-03  
-> 计划状态：**Execution in progress - M0/M1/M2-A/M2-B/M2-C/M2-D/M2-E closed; M2-F CLI Core next**  
-> 已合入开发基线：`develop@8c097a6348bc45cc40a24635124c3c2c845fed57`  
-> 当前工作入口：M2-F CLI Core implementation  
+> 计划版本：2.3.5  
+> 状态日期：2026-10-08  
+> 计划状态：**Complete — M0–M6 全部关闭；v0.1.1a1（Open-source Alpha）已发布**  
+> 已合入开发基线：`develop@6ab5ab659836245f519249ff47e778e2feadd615`  
+> 当前工作入口：无（本计划已执行完毕；后续维护或新版本另行立项）  
 > 全计划自主执行提示词：`docs/roadmap/full-plan-autonomous-handoff.md`  
 > 发布分支：`master`  
-> 发布结论：**NO RELEASE**
+> 发布结论：**RELEASED — v0.1.1a1（master@3693786be50772f560388a889890efbcde01eea8，tag `v0.1.1a1`）**
 
 ## 1. 唯一目标
 
@@ -15,14 +15,13 @@
 
 M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop、Hosted API、多 Provider 或 Workflow DSL 掩盖 Runtime、安全、恢复和发布工程缺陷。
 
-## 2. 当前事实快照
+## 2. 当前事实快照（2026-10-08）
 
-- 当前交接容器没有本地 Git 工作树，也没有未提交、未 push 的本地文件；
-- M2-D implementation PR #20 已从 exact head `10f5240d` squash merge 为 `develop@2fe059d9`；
-- docs-only closeout PR #21 正在把合入态 Requirement 提升为 Verified；
-- 原 M2-D blocker 已修复：同一 tool batch 后续 ASK 的 resolved outcome 在 Adapter 执行前 handoff；deny、timeout、unavailable、invalid outcome 在结构化返回前 handoff；
-- 不得通过删除测试、降低断言、隐藏失败 run 或只引用较早绿色 head 将 M2-D 标记为完成；
-- 新会话必须使用 `docs/roadmap/full-plan-autonomous-handoff.md`，关闭 M2-D 后自动连续推进 M2-E、M2-F、M2-G、M3、M4、M5、M6，不等待用户反复发送“继续”。
+- M0–M6 全部关闭；Alpha 已发布：tag `v0.1.1a1`、master `3693786be50772f560388a889890efbcde01eea8`（PR #23）；
+- 发布证据：`docs/roadmap/m6-closeout.md`、`docs/testing/evidence/`、GitHub Release `v0.1.1a1`；
+- 发布后 develop 收口：`6ab5ab6`（移除 auto-merge workflow、清理过期 alpha tags、M6 文档定稿）；
+- 全量测试基线：218 pass（2026-10-08 本机复跑：OK, skipped=1）；
+- 后续若继续开发，须先复核 GitHub 远程事实（develop/master/Tags/Releases/CI），并另立新计划，不在本计划内扩围。
 
 ## 3. 总体进展
 
@@ -40,15 +39,13 @@ M0–M6 期间不通过新增 MCP、Skills、Multi-Agent、RAG、IDE、Desktop�
 | M3 Recovery、Change、Evidence、Observability | **CLOSED** | ChangeManager 鲁棒性、SessionStore 加密/迁移、Evidence total-function、Observability 非法值拒绝 | `m3-closeout.md`、189 pass；SES-002/006/008、OBS-004 -> M4 |
 | M4 Provider、配置与协议收口 | **CLOSED** | retry/backoff、size limit、malformed 分类、增量 SSE parser、config 校验 | `m4-closeout.md`、206 pass；CFG-001/002/003、PROV-007、DOC-001 -> M5 |
 | M5 完整 CI、Packaging 与治理 | **CLOSED** | 3 OS × 3 Python matrix、coverage、wheel/sdist + clean venv、tamper 检测、secret scan | `m5-closeout.md`、209 pass；OSS-009/010/011、DOC-001 -> M6 |
-| M6 RC 与 Alpha 发布 | **READY** | Active P1=0、CI 全绿、live smoke pass、audit 6/6；待 RC 合入 master + tag | `m6-rc-report.md`、218 pass |
+| M6 RC 与 Alpha 发布 | **CLOSED** | Active P1=0、CI 全绿、live smoke pass、audit 6/6；master `3693786`、tag v0.1.1a1、Release 已发布 | `m6-closeout.md`、218 pass |
 
-### 3.1 进度判断
+### 3.1 进度判断（2026-10-08 定稿）
 
-- 基线、治理和 P0 安全合同已完成；
-- M2 Runtime/Tool/Security 主链中 A/B/C/D/E 已关闭，F 为当前唯一合法下一切片，G 未开始；
-- M3 durable recovery/evidence、M4 Provider、M5 packaging/release matrix、M6 RC 仍是主要未完成工作；
-- 当前整体 Alpha 发布就绪度约为 **40%–45%**，仅用于资源规划，不替代 Requirement/Test/Evidence Gate；
-- 当前必须保持 **NO RELEASE**。
+- M0–M6 全部关闭；Active P0/P1 = 0；
+- 三平台（Linux/macOS/Windows）Gate 全绿；发布证据齐全（`m6-closeout.md`，218 pass）；
+- v0.1.1a1 已发布（master `3693786`、tag `v0.1.1a1`）；发布结论 **RELEASED**。
 
 ## 4. 已关闭阶段
 
@@ -159,7 +156,7 @@ Provider tool call
 
 ```text
 M5 closeout
--> M6 RC / Alpha Release Gate
+-> M6 RC / Alpha Release Gate（已完成：master 3693786 / v0.1.1a1）
 ```
 
 完整自主执行规则见：
