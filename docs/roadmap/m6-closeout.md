@@ -1,9 +1,9 @@
 # M6 RC / Alpha Release Gate Closeout
 
 > Milestone: M6 RC / Alpha Release Gate
-> Status: **READY FOR RELEASE**
+> Status: **CLOSED**
 > 验证基线：`develop@9fb67ba`
-> Release decision: 待 RC 合入 master + tag `v0.1.1a1`
+> Release decision: **RELEASED v0.1.1a1**（master `3693786`、tag `v0.1.1a1`、GitHub Release 已发布）
 
 ## 1. Release Gate 执行结果
 
@@ -38,6 +38,6 @@
 
 ## 4. 发布结论
 
-**READY FOR RELEASE**。Active P1 = 0，所有 Gate 通过，live smoke pass。
+**RELEASED**。Active P1 = 0，所有 Gate 通过，live smoke pass。
 
-下一步：RC 合入 master + tag `v0.1.1a1`。
+RC 已合入 master（`3693786`）、tag `v0.1.1a1` 已推送、GitHub Release 已发布。
